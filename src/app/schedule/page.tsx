@@ -105,9 +105,7 @@ export default function SchedulePage() {
   return (
     <DndContext onDragEnd={handleDragEnd}>
         <div className="flex h-svh flex-col relative overflow-hidden">
-            <Header
-              showDateNav
-            />
+            <Header />
             <main className="flex flex-1 overflow-hidden">
                 <div className="w-[340px] flex flex-col border-r">
                     <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
@@ -122,8 +120,8 @@ export default function SchedulePage() {
                     <DailyOverview date={currentDate} />
                 </div>
                  <div 
-                    className={cn("transition-all duration-300 ease-in-out bg-card", 
-                        isRightSidebarOpen ? "w-[240px]" : "w-0"
+                    className={cn("transition-all duration-300 ease-in-out bg-card border-l", 
+                        isRightSidebarOpen ? "w-[64px]" : "w-0"
                     )}
                  >
                     <RightSidebar 
@@ -134,8 +132,8 @@ export default function SchedulePage() {
              <Button 
                 variant="outline"
                 className={cn(
-                    "fixed bottom-1/2 translate-y-1/2 right-0 z-50 h-24 w-8 rounded-l-full rounded-r-none p-0 flex items-center justify-center transition-transform duration-300 ease-in-out group hover:-translate-x-1",
-                    isRightSidebarOpen && "translate-x-[-240px] hover:translate-x-[-244px]"
+                    "fixed bottom-4 right-0 z-50 h-12 w-8 rounded-l-full rounded-r-none p-0 flex items-center justify-center transition-transform duration-300 ease-in-out group hover:-translate-x-1",
+                    isRightSidebarOpen && "translate-x-[-64px] hover:translate-x-[-68px]"
                 )}
                 onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
                 >
