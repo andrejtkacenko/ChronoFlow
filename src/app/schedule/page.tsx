@@ -45,11 +45,13 @@ export default function SchedulePage() {
         showDateNav
       />
       <main className="flex flex-1 overflow-hidden">
-        <div className="w-[25%] min-w-[300px] max-w-[400px] border-r flex flex-col">
+        <div className="w-[340px] border-r flex flex-col">
             <div className="flex-1 flex flex-col overflow-hidden p-4">
               <Inbox />
             </div>
-            <Separator />
+            <div className="-mx-4">
+               <Separator/>
+            </div>
             <div className="p-4">
               <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
             </div>
