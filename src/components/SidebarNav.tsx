@@ -1,3 +1,6 @@
+
+'use client';
+
 import {
   Calendar,
   FolderKanban,
@@ -15,8 +18,12 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function SidebarNav() {
+  const pathname = usePathname();
+
   return (
     <>
       <SidebarHeader className="p-4">
@@ -28,16 +35,24 @@ export default function SidebarNav() {
       <SidebarContent className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Dashboard" isActive>
-              <LayoutDashboard />
-              <span>Dashboard</span>
-            </SidebarMenuButton>
+            <Link href="/" passHref>
+              <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === '/'}>
+                <div>
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
+                </div>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Calendar">
-              <Calendar />
-              <span>Calendar</span>
-            </SidebarMenuButton>
+            <Link href="/calendar" passHref>
+              <SidebarMenuButton asChild tooltip="Calendar" isActive={pathname === '/calendar'}>
+                <div>
+                  <Calendar />
+                  <span>Calendar</span>
+                </div>
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton tooltip="Inbox">
