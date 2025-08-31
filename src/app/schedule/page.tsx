@@ -9,6 +9,8 @@ import DailyOverview from "@/components/DailyOverview";
 import { Skeleton } from '@/components/ui/skeleton';
 import { addDays, subDays } from 'date-fns';
 import MiniCalendar from '@/components/MiniCalendar';
+import Inbox from '@/components/Inbox';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
@@ -42,11 +44,21 @@ export default function SchedulePage() {
         onToday={handleSetToday}
         showDateNav
       />
-      <main className="flex-1 overflow-y-auto relative">
-        <DailyOverview date={currentDate} />
-        <div className="absolute bottom-4 left-4 z-20 hidden md:block">
-            <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
-        </div>
+      <main className="flex-1 overflow-hidden">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={30}>
+            <div className="flex h-full flex-col gap-4 p-4">
+              <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
+              <Inbox />
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={75}>
+              <div className="h-full overflow-y-auto">
+                <DailyOverview date={currentDate} />
+              </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </main>
     </div>
   );
