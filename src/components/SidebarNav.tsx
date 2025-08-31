@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  Clock,
 } from "lucide-react";
 import ChronoFlowLogo from "./ChronoFlowLogo";
 import {
@@ -44,6 +45,16 @@ export default function SidebarNav() {
                 <div>
                   <LayoutDashboard />
                   <span>Dashboard</span>
+                </div>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <Link href="/schedule" passHref>
+              <SidebarMenuButton asChild tooltip="Schedule" isActive={pathname === '/schedule'}>
+                <div>
+                  <Clock />
+                  <span>Schedule</span>
                 </div>
               </SidebarMenuButton>
             </Link>

@@ -7,10 +7,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import SidebarNav from "@/components/SidebarNav";
 import Header from "@/components/Header";
+import DailyOverview from "@/components/DailyOverview";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function Home() {
+export default function SchedulePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -37,14 +37,7 @@ export default function Home() {
         <div className="flex h-svh flex-col">
           <Header />
           <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Welcome to ChronoFlow</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>Use the sidebar to navigate to your schedule or calendar.</p>
-              </CardContent>
-            </Card>
+            <DailyOverview />
           </main>
         </div>
       </SidebarInset>
