@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Sparkles, LogOut, Menu, X, PanelRightOpen } from "lucide-react";
+import { Sparkles, LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SmartScheduler from "./SmartScheduler";
 import { useState } from "react";
@@ -30,19 +30,11 @@ const navLinks = [
 ]
 
 interface HeaderProps {
-  currentDate?: Date;
-  onPrevious?: () => void;
-  onNext?: () => void;
-  onToday?: () => void;
   showDateNav?: boolean;
-  isRightSidebarOpen?: boolean;
-  onToggleRightSidebar?: () => void;
 }
 
 export default function Header({ 
   showDateNav = false,
-  isRightSidebarOpen,
-  onToggleRightSidebar,
 }: HeaderProps) {
   const [isSmartSchedulerOpen, setSmartSchedulerOpen] = useState(false);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -91,16 +83,6 @@ export default function Header({
           >
             <Sparkles className="h-5 w-5 text-primary" />
           </Button>
-          {showDateNav && onToggleRightSidebar && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleRightSidebar}
-              aria-label="Toggle Right Sidebar"
-            >
-              <PanelRightOpen className={cn("h-5 w-5", isRightSidebarOpen && "text-primary")} />
-            </Button>
-          )}
            {user && (
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>

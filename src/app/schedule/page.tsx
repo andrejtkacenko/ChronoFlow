@@ -13,11 +13,12 @@ import Inbox from '@/components/Inbox';
 import { Separator } from '@/components/ui/separator';
 import RightSidebar from '@/components/RightSidebar';
 import { cn } from '@/lib/utils';
-import { DndContext, DragEndEvent, DragOverlay } from '@dnd-kit/core';
+import { DndContext, DragEndEvent } from '@dnd-kit/core';
 import NewEventDialog from '@/components/NewEventDialog';
 import { addDoc, collection, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { iconMap } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Task {
     id: string;
@@ -103,35 +104,52 @@ export default function SchedulePage() {
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
-        <div className="flex h-svh flex-col">
+        <div className="flex h-svh flex-col relative">
             <Header
-            currentDate={currentDate}
-            onNext={handleNextDay}
-            onPrevious={handlePreviousDay}
-            onToday={handleSetToday}
-            showDateNav
-            isRightSidebarOpen={isRightSidebarOpen}
-            onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+              showDateNav
             />
             <main className="flex flex-1 overflow-hidden">
-            <div className="w-[340px] flex flex-col border-r">
-                <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
-                    <Inbox />
+                <div className="w-[340px] flex flex-col border-r">
+                    <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
+                        <Inbox />
+                    </div>
+                    <Separator />
+                    <div className="py-4 flex justify-center">
+                    <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
+                    </div>
                 </div>
-                <Separator />
-                <div className="py-4 flex justify-center">
-                <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
+                <div ref={dailyOverviewRef} className="flex-1 h-full overflow-y-auto">
+                    <DailyOverview date={currentDate} />
                 </div>
-            </div>
-            <div ref={dailyOverviewRef} className="flex-1 h-full overflow-y-auto">
-                <DailyOverview date={currentDate} />
-            </div>
-            <div className={cn("border-l transition-all duration-300", isRightSidebarOpen ? "w-[240px]" : "w-[68px]")}>
-                <RightSidebar 
-                    isOpen={isRightSidebarOpen} 
-                />
-            </div>
+                <div className={cn("border-l transition-all duration-300", isRightSidebarOpen ? "w-[240px]" : "w-0")}>
+                    <RightSidebar 
+                        isOpen={isRightSidebarOpen} 
+                    />
+                </div>
             </main>
+             <Button 
+                variant="outline"
+                size="icon"
+                className={cn(
+                    "fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full shadow-lg transition-transform duration-300 ease-in-out",
+                    isRightSidebarOpen ? 'translate-x-0' : `translate-x-[calc(100%+1.5rem)]`,
+                    isRightSidebarOpen && "right-[260px]"
+                )}
+                onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+                >
+                <ChevronRight className={cn("transition-transform", isRightSidebarOpen && "rotate-180")} />
+            </Button>
+            <Button 
+                variant="outline"
+                size="icon"
+                className={cn(
+                    "fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full shadow-lg transition-transform duration-300 ease-in-out",
+                    isRightSidebarOpen && 'translate-x-[calc(100%+1.5rem)]'
+                )}
+                onClick={() => setIsRightSidebarOpen(true)}
+                >
+                <ChevronLeft />
+            </Button>
         </div>
         {draggedTask && (
             <NewEventDialog
