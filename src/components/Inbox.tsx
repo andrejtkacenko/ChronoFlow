@@ -9,15 +9,54 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from './ui/skeleton';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Plus, X } from 'lucide-react';
+import { Plus, GripVertical } from 'lucide-react';
 import { addTask } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useDraggable } from '@dnd-kit/core';
+import {CSS} from '@dnd-kit/utilities';
 
 interface Task {
     id: string;
     label: string;
     completed: boolean;
+}
+
+const DraggableTask = ({ task, onCompletionChange }: { task: Task, onCompletionChange: (id: string, completed: boolean) => void }) => {
+    const {attributes, listeners, setNodeRef, transform} = useDraggable({
+        id: `task-${task.id}`,
+        data: {
+            type: 'task',
+            task,
+        },
+    });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+      };
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            style={style}
+            className="flex items-center space-x-3 bg-card p-2 rounded-md"
+        >
+            <Button variant="ghost" size="icon" className="h-8 w-8 cursor-grab" {...listeners} {...attributes}>
+                <GripVertical className="h-4 w-4" />
+            </Button>
+            <Checkbox
+                id={task.id}
+                checked={task.completed}
+                onCheckedChange={(checked) => onCompletionChange(task.id, !!checked)}
+            />
+            <label
+                htmlFor={task.id}
+                className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${task.completed ? 'line-through text-muted-foreground' : ''}`}
+            >
+                {task.label}
+            </label>
+        </div>
+    );
 }
 
 export default function Inbox() {
@@ -35,7 +74,7 @@ export default function Inbox() {
             querySnapshot.forEach((doc) => {
                 tasksData.push({ id: doc.id, ...doc.data() } as Task);
             });
-            setTasks(tasksData);
+            setTasks(tasksData.filter(t => !t.completed));
             setLoading(false);
         }, (error) => {
             console.error("Error fetching tasks: ", error);
@@ -156,19 +195,7 @@ export default function Inbox() {
                 <ScrollArea className="h-full pr-4">
                     <div className="space-y-4 px-4">
                         {tasks.length > 0 ? tasks.map(task => (
-                            <div key={task.id} className="flex items-center space-x-3">
-                                <Checkbox
-                                    id={task.id}
-                                    checked={task.completed}
-                                    onCheckedChange={(checked) => handleTaskCompletion(task.id, !!checked)}
-                                />
-                                <label
-                                    htmlFor={task.id}
-                                    className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${task.completed ? 'line-through text-muted-foreground' : ''}`}
-                                >
-                                    {task.label}
-                                </label>
-                            </div>
+                           <DraggableTask key={task.id} task={task} onCompletionChange={handleTaskCompletion} />
                         )) : (
                             <p className="text-sm text-muted-foreground text-center py-4">No tasks in your inbox.</p>
                         )}

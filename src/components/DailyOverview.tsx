@@ -2,11 +2,12 @@
 
 import type { ScheduleItem } from "@/lib/types";
 import { iconMap } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { format, isSameDay } from 'date-fns';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from "./ui/skeleton";
+import { useDroppable } from '@dnd-kit/core';
 
 const hours = Array.from({ length: 24 }, (_, i) => {
     const hour24 = i;
@@ -67,6 +68,10 @@ const CurrentTimeIndicator = () => {
 export default function DailyOverview({ date }: { date: Date }) {
     const [dailySchedule, setDailySchedule] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const {isOver, setNodeRef} = useDroppable({
+        id: 'daily-overview-droppable',
+      });
+      
 
     useEffect(() => {
         setLoading(true);
@@ -120,7 +125,7 @@ export default function DailyOverview({ date }: { date: Date }) {
     }
 
   return (
-    <div className="relative h-full">
+    <div ref={setNodeRef} className="relative h-full">
         {isSameDay(date, new Date()) && <CurrentTimeIndicator />}
         <div className="grid grid-cols-1 divide-y divide-border/80">
             {hours.map((hour) => (
