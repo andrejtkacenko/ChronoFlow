@@ -1,7 +1,9 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 import {
   format,
   startOfMonth,
@@ -22,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import SidebarNav from '@/components/SidebarNav';
 import Header from '@/components/Header';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CalendarHeader = ({
   currentMonth,
@@ -93,7 +96,15 @@ const DayCell = ({
 );
 
 export default function CalendarPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -123,6 +134,14 @@ export default function CalendarPage() {
     const dateString = format(day, 'yyyy-MM-dd');
     return eventsByDay.get(dateString) || [];
   };
+
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Skeleton className="h-24 w-24 rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
