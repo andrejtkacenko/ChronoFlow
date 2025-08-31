@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import DailyOverview from "@/components/DailyOverview";
 import { Skeleton } from '@/components/ui/skeleton';
 import { addDays, subDays } from 'date-fns';
+import MiniCalendar from '@/components/MiniCalendar';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
@@ -41,8 +42,11 @@ export default function SchedulePage() {
         onToday={handleSetToday}
         showDateNav
       />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto relative">
         <DailyOverview date={currentDate} />
+        <div className="absolute bottom-4 left-4 z-20 hidden md:block">
+            <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
+        </div>
       </main>
     </div>
   );
