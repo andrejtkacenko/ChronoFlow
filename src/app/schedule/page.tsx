@@ -52,7 +52,7 @@ export default function SchedulePage() {
               <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
             </div>
           </ResizablePanel>
-          <ResizableHandle withHandle />
+          <ResizableHandle />
           <ResizablePanel defaultSize={75}>
               <div className="h-full overflow-y-auto">
                 <DailyOverview date={currentDate} />
