@@ -104,7 +104,7 @@ export default function SchedulePage() {
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
-        <div className="flex h-svh flex-col relative">
+        <div className="flex h-svh flex-col relative overflow-hidden">
             <Header
               showDateNav
             />
@@ -121,7 +121,11 @@ export default function SchedulePage() {
                 <div ref={dailyOverviewRef} className="flex-1 h-full overflow-y-auto">
                     <DailyOverview date={currentDate} />
                 </div>
-                <div className={cn("border-l transition-all duration-300", isRightSidebarOpen ? "w-[240px]" : "w-0")}>
+                 <div 
+                    className={cn("transition-all duration-300 ease-in-out bg-card", 
+                        isRightSidebarOpen ? "w-[240px]" : "w-0"
+                    )}
+                 >
                     <RightSidebar 
                         isOpen={isRightSidebarOpen} 
                     />
@@ -129,26 +133,13 @@ export default function SchedulePage() {
             </main>
              <Button 
                 variant="outline"
-                size="icon"
                 className={cn(
-                    "fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full shadow-lg transition-transform duration-300 ease-in-out",
-                    isRightSidebarOpen ? 'translate-x-0' : `translate-x-[calc(100%+1.5rem)]`,
-                    isRightSidebarOpen && "right-[260px]"
+                    "fixed bottom-1/2 translate-y-1/2 right-0 z-50 h-24 w-8 rounded-l-full rounded-r-none p-0 flex items-center justify-center transition-transform duration-300 ease-in-out group hover:-translate-x-1",
+                    isRightSidebarOpen && "translate-x-[-240px] hover:translate-x-[-244px]"
                 )}
                 onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
                 >
-                <ChevronRight className={cn("transition-transform", isRightSidebarOpen && "rotate-180")} />
-            </Button>
-            <Button 
-                variant="outline"
-                size="icon"
-                className={cn(
-                    "fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full shadow-lg transition-transform duration-300 ease-in-out",
-                    isRightSidebarOpen && 'translate-x-[calc(100%+1.5rem)]'
-                )}
-                onClick={() => setIsRightSidebarOpen(true)}
-                >
-                <ChevronLeft />
+                <ChevronLeft className={cn("h-5 w-5 transition-transform", !isRightSidebarOpen && "rotate-180")} />
             </Button>
         </div>
         {draggedTask && (

@@ -40,7 +40,7 @@ export default function RightSidebar({ isOpen }: RightSidebarProps) {
   };
 
   return (
-    <div className={cn("h-full overflow-y-auto transition-all duration-300", isOpen ? "p-4" : "p-2")}>
+    <div className={cn("h-full overflow-y-auto transition-opacity duration-300", isOpen ? "p-4 opacity-100" : "p-2 opacity-0")}>
       <h2 className={cn("text-lg font-semibold mb-4 truncate px-3 pt-4", !isOpen && "sr-only")}>
         Actions
       </h2>
