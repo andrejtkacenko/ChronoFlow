@@ -7,6 +7,11 @@ import { db } from '@/lib/firebase';
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from './ui/skeleton';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Plus } from 'lucide-react';
+import { addTask } from '@/lib/client-actions';
+import { useToast } from '@/hooks/use-toast';
 
 interface Task {
     id: string;
@@ -17,6 +22,8 @@ interface Task {
 export default function Inbox() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
+    const [newTaskLabel, setNewTaskLabel] = useState('');
+    const { toast } = useToast();
 
     useEffect(() => {
         const q = query(collection(db, "tasks"), orderBy("label"));
@@ -43,6 +50,27 @@ export default function Inbox() {
             console.error("Error updating task: ", error);
         }
     };
+
+    const handleAddTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTaskLabel.trim()) return;
+
+        try {
+            await addTask(newTaskLabel);
+            setNewTaskLabel('');
+            toast({
+                title: "Task Added",
+                description: `"${newTaskLabel}" has been added to your inbox.`,
+            });
+        } catch (error) {
+            console.error("Error adding task: ", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to add task. Please try again.",
+            });
+        }
+    }
 
     if (loading) {
         return (
@@ -78,7 +106,20 @@ export default function Inbox() {
 
     return (
         <div className="flex-1 flex flex-col h-full">
-            <h2 className="text-xl font-semibold mb-4 px-4">Inbox</h2>
+            <div className="px-4">
+                <h2 className="text-xl font-semibold mb-2">Inbox</h2>
+                 <form onSubmit={handleAddTask} className="flex items-center gap-2 mb-4">
+                    <Input 
+                        value={newTaskLabel}
+                        onChange={(e) => setNewTaskLabel(e.target.value)}
+                        placeholder="Add a new task..."
+                        className="h-9"
+                    />
+                    <Button type="submit" size="icon" className="h-9 w-9 shrink-0">
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                </form>
+            </div>
             <div className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full pr-4">
                     <div className="space-y-4 px-4">
@@ -97,7 +138,7 @@ export default function Inbox() {
                                 </label>
                             </div>
                         )) : (
-                            <p className="text-sm text-muted-foreground">No tasks in your inbox.</p>
+                            <p className="text-sm text-muted-foreground text-center py-4">No tasks in your inbox.</p>
                         )}
                     </div>
                 </ScrollArea>
