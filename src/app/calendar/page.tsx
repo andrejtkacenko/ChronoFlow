@@ -21,8 +21,6 @@ import { Button } from '@/components/ui/button';
 import { scheduleItems } from '@/lib/data';
 import type { ScheduleItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
-import SidebarNav from '@/components/SidebarNav';
 import Header from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -144,42 +142,35 @@ export default function CalendarPage() {
   }
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarNav />
-      </Sidebar>
-      <SidebarInset>
-        <div className="flex h-svh flex-col">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <div className="space-y-4">
-              <CalendarHeader
-                currentMonth={currentMonth}
-                onNextMonth={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                onPreviousMonth={() =>
-                  setCurrentMonth(subMonths(currentMonth, 1))
-                }
+    <div className="flex h-svh flex-col">
+      <Header />
+      <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="space-y-4">
+          <CalendarHeader
+            currentMonth={currentMonth}
+            onNextMonth={() => setCurrentMonth(addMonths(currentMonth, 1))}
+            onPreviousMonth={() =>
+              setCurrentMonth(subMonths(currentMonth, 1))
+            }
+          />
+          <div className="grid grid-cols-7 gap-2 text-center text-sm font-semibold text-muted-foreground">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <div key={day}>{day}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {days.map((day) => (
+              <DayCell
+                key={day.toString()}
+                day={day}
+                isCurrentMonth={isSameMonth(day, currentMonth)}
+                isToday={isSameDay(day, new Date())}
+                events={getEventsForDay(day)}
               />
-              <div className="grid grid-cols-7 gap-2 text-center text-sm font-semibold text-muted-foreground">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day}>{day}</div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-2">
-                {days.map((day) => (
-                  <DayCell
-                    key={day.toString()}
-                    day={day}
-                    isCurrentMonth={isSameMonth(day, currentMonth)}
-                    isToday={isSameDay(day, new Date())}
-                    events={getEventsForDay(day)}
-                  />
-                ))}
-              </div>
-            </div>
-          </main>
+            ))}
+          </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </main>
+    </div>
   );
 }
