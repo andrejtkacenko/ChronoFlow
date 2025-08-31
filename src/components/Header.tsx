@@ -84,17 +84,11 @@ export default function Header({
         <NavLinks />
 
         {showDateNav && (
-            <div className="flex items-center gap-2 mx-auto">
+            <div className="flex items-center gap-4 mx-auto">
                 <Button variant="outline" size="sm" onClick={onToday}>
                 Today
                 </Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={onPrevious} aria-label="Previous Day">
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
                 <span className="text-md w-36 text-center font-semibold">{formattedDate}</span>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={onNext} aria-label="Next Day">
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
             </div>
         )}
 
