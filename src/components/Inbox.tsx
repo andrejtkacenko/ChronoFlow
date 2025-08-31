@@ -51,16 +51,24 @@ export default function Inbox() {
                 <div className="flex-1 overflow-hidden">
                     <div className="space-y-4 px-4">
                         <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4" />
-                            <Skeleton className="h-4 w-40" />
+                            <Skeleton className="h-4 w-4 rounded-sm" />
+                            <Skeleton className="h-4 w-[250px]" />
                         </div>
-                        <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4" />
-                            <Skeleton className="h-4 w-48" />
+                         <div className="flex items-center space-x-3">
+                            <Skeleton className="h-4 w-4 rounded-sm" />
+                            <Skeleton className="h-4 w-[200px]" />
                         </div>
-                        <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4" />
-                            <Skeleton className="h-4 w-32" />
+                         <div className="flex items-center space-x-3">
+                            <Skeleton className="h-4 w-4 rounded-sm" />
+                            <Skeleton className="h-4 w-[280px]" />
+                        </div>
+                         <div className="flex items-center space-x-3">
+                            <Skeleton className="h-4 w-4 rounded-sm" />
+                            <Skeleton className="h-4 w-[220px]" />
+                        </div>
+                         <div className="flex items-center space-x-3">
+                            <Skeleton className="h-4 w-4 rounded-sm" />
+                            <Skeleton className="h-4 w-[180px]" />
                         </div>
                     </div>
                 </div>

@@ -101,10 +101,20 @@ export default function DailyOverview({ date }: { date: Date }) {
                     </div>
                     ))}
                 </div>
-                 <div className="absolute inset-0 top-0 pt-20 pl-20 pr-4">
-                     <Skeleton className="h-24 w-full" />
-                     <Skeleton className="h-16 w-full mt-4" />
-                 </div>
+                <div className="absolute inset-0 top-0 mr-4">
+                    <Skeleton
+                        className="absolute left-[4.5rem] right-0 rounded-lg"
+                        style={{ top: '760px', height: '80px' }}
+                    />
+                    <Skeleton
+                        className="absolute left-[4.5rem] right-0 rounded-lg"
+                        style={{ top: '960px', height: '120px' }}
+                    />
+                    <Skeleton
+                        className="absolute left-[4.5rem] right-0 rounded-lg"
+                        style={{ top: '1200px', height: '60px' }}
+                    />
+                </div>
             </div>
         )
     }
