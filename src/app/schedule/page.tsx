@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
@@ -9,16 +9,22 @@ import SidebarNav from "@/components/SidebarNav";
 import Header from "@/components/Header";
 import DailyOverview from "@/components/DailyOverview";
 import { Skeleton } from '@/components/ui/skeleton';
+import { addDays, subDays } from 'date-fns';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  const handleNextDay = () => setCurrentDate(addDays(currentDate, 1));
+  const handlePreviousDay = () => setCurrentDate(subDays(currentDate, 1));
+  const handleSetToday = () => setCurrentDate(new Date());
 
   if (loading || !user) {
     return (
@@ -35,9 +41,15 @@ export default function SchedulePage() {
       </Sidebar>
       <SidebarInset>
         <div className="flex h-svh flex-col">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <DailyOverview />
+          <Header
+            currentDate={currentDate}
+            onNext={handleNextDay}
+            onPrevious={handlePreviousDay}
+            onToday={handleSetToday}
+            showTodayButton
+          />
+          <main className="flex-1 overflow-y-auto">
+            <DailyOverview date={currentDate} />
           </main>
         </div>
       </SidebarInset>
