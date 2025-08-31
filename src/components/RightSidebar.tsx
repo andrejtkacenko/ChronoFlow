@@ -1,14 +1,13 @@
 import { Button } from "./ui/button";
-import { FilePlus2, PlusCircle } from "lucide-react";
+import { FilePlus2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface RightSidebarProps {
   isOpen: boolean;
-  onNewTask: () => void;
 }
 
-export default function RightSidebar({ isOpen, onNewTask }: RightSidebarProps) {
+export default function RightSidebar({ isOpen }: RightSidebarProps) {
   const ActionButton = ({
     icon,
     label,
@@ -46,7 +45,6 @@ export default function RightSidebar({ isOpen, onNewTask }: RightSidebarProps) {
         Actions
       </h2>
       <div className="space-y-2">
-        <ActionButton icon={<PlusCircle />} label="New Task" onClick={onNewTask} />
         <ActionButton icon={<FilePlus2 />} label="New from Template" />
       </div>
     </div>

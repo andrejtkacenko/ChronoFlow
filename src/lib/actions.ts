@@ -28,15 +28,3 @@ export async function getSuggestedTimeSlots(tasks: string): Promise<string> {
     return "Sorry, I couldn't find a time slot. There might be an issue with the AI service. Please try again later.";
   }
 }
-
-export async function addTask(taskLabel: string): Promise<void> {
-  try {
-    await addDoc(collection(db, 'tasks'), {
-      label: taskLabel,
-      completed: false,
-    });
-  } catch (error) {
-    console.error('Error adding task: ', error);
-    throw new Error('Failed to add task');
-  }
-}

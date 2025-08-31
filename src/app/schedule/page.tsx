@@ -13,14 +13,12 @@ import Inbox from '@/components/Inbox';
 import { Separator } from '@/components/ui/separator';
 import RightSidebar from '@/components/RightSidebar';
 import { cn } from '@/lib/utils';
-import QuickCapture from '@/components/QuickCapture';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
-  const [isQuickCaptureOpen, setQuickCaptureOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -68,12 +66,10 @@ export default function SchedulePage() {
           <div className={cn("border-l transition-all duration-300", isRightSidebarOpen ? "w-[240px]" : "w-[68px]")}>
               <RightSidebar 
                 isOpen={isRightSidebarOpen} 
-                onNewTask={() => setQuickCaptureOpen(true)}
               />
           </div>
         </main>
       </div>
-      <QuickCapture open={isQuickCaptureOpen} onOpenChange={setQuickCaptureOpen} />
     </>
   );
 }

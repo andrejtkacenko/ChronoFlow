@@ -1,9 +1,8 @@
 
 "use client";
 
-import { ChevronLeft, ChevronRight, PlusCircle, Sparkles, LogOut, Menu, X, PanelRightOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, LogOut, Menu, X, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import QuickCapture from "./QuickCapture";
 import SmartScheduler from "./SmartScheduler";
 import { useState } from "react";
 import { format } from 'date-fns';
@@ -50,7 +49,6 @@ export default function Header({
   isRightSidebarOpen,
   onToggleRightSidebar,
 }: HeaderProps) {
-  const [isQuickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [isSmartSchedulerOpen, setSmartSchedulerOpen] = useState(false);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -109,10 +107,6 @@ export default function Header({
           >
             <Sparkles className="h-5 w-5 text-primary" />
           </Button>
-          <Button onClick={() => setQuickCaptureOpen(true)} className="hidden sm:flex">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Quick Capture
-          </Button>
           {showDateNav && onToggleRightSidebar && (
             <Button
               variant="ghost"
@@ -164,7 +158,6 @@ export default function Header({
             </div>
         )}
       </header>
-      <QuickCapture open={isQuickCaptureOpen} onOpenChange={setQuickCaptureOpen} />
       <SmartScheduler open={isSmartSchedulerOpen} onOpenChange={setSmartSchedulerOpen} />
     </>
   );
