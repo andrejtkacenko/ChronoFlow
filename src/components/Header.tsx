@@ -1,11 +1,10 @@
 
 "use client";
 
-import { ChevronLeft, ChevronRight, Sparkles, LogOut, Menu, X, PanelRightOpen } from "lucide-react";
+import { Sparkles, LogOut, Menu, X, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SmartScheduler from "./SmartScheduler";
 import { useState } from "react";
-import { format } from 'date-fns';
 import { useAuth } from "@/hooks/use-auth";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -41,10 +40,6 @@ interface HeaderProps {
 }
 
 export default function Header({ 
-  currentDate = new Date(), 
-  onPrevious, 
-  onNext,
-  onToday,
   showDateNav = false,
   isRightSidebarOpen,
   onToggleRightSidebar,
@@ -55,8 +50,6 @@ export default function Header({
   const { user, logout } = useAuth();
   const pathname = usePathname();
   
-  const formattedDate = format(currentDate, "MMMM d, yyyy");
-
   const NavLinks = ({isMobile = false}: {isMobile?: boolean}) => (
     <nav className={cn("items-center gap-2", isMobile ? "flex flex-col space-y-2 mt-4" : "hidden md:flex")}>
         {navLinks.map(link => (
@@ -85,10 +78,7 @@ export default function Header({
 
         {showDateNav && (
             <div className="flex items-center gap-4 mx-auto">
-                <Button variant="outline" size="sm" onClick={onToday}>
-                Today
-                </Button>
-                <span className="text-md w-36 text-center font-semibold">{formattedDate}</span>
+                {/* Date navigation removed as per user request */}
             </div>
         )}
 
