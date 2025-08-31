@@ -59,7 +59,7 @@ export default function Header({
     <nav className={cn("items-center gap-2", isMobile ? "flex flex-col space-y-2 mt-4" : "hidden md:flex")}>
         {navLinks.map(link => (
             <Button 
-              key={link.href}
+              key={`${link.href}-${link.label}`}
               asChild
               variant={pathname === link.href ? "secondary" : "ghost"}
               className={cn(isMobile && "w-full")}
