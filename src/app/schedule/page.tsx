@@ -132,7 +132,7 @@ export default function SchedulePage() {
              <Button 
                 variant="outline"
                 className={cn(
-                    "fixed bottom-4 right-0 z-50 h-12 w-8 rounded-l-full rounded-r-none p-0 flex items-center justify-center transition-transform duration-300 ease-in-out group hover:-translate-x-1"
+                    "fixed bottom-4 right-0 z-50 h-12 w-8 rounded-l-full rounded-r-none p-0 flex items-center justify-center transition-all duration-300 ease-in-out group hover:w-10"
                 )}
                 onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
                 >
