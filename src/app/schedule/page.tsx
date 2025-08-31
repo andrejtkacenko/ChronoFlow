@@ -48,8 +48,8 @@ export default function SchedulePage() {
         <ResizablePanelGroup direction="horizontal" className="h-full">
           <ResizablePanel defaultSize={25} minSize={20} maxSize={30}>
             <div className="flex h-full flex-col gap-4 p-4">
-              <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
               <Inbox />
+              <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
