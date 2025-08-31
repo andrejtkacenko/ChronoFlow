@@ -5,7 +5,7 @@ import { getAuth } from "firebase/auth";
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
-const firebaseConfig = {"apiKey":"FIREBASE_API_KEY","authDomain":"FIREBASE_AUTH_DOMAIN","projectId":"FIREBASE_PROJECT_ID","storageBucket":"FIREBASE_STORAGE_BUCKET","messagingSenderId":"FIREBASE_MESSAGING_SENDER_ID","appId":"FIREBASE_APP_ID"};
+const firebaseConfig = {"projectId":"chronoflow-ewvuy","appId":"1:438652018804:web:1ead458ac9e6190455f121","storageBucket":"chronoflow-ewvuy.firebasestorage.app","apiKey":"AIzaSyBG7mK5_oDdB6qYy6wPkw6g6Aj6WbzAVmU","authDomain":"chronoflow-ewvuy.firebaseapp.com","measurementId":"","messagingSenderId":"438652018804"};
 
 // Initialize Firebase
 let app;
