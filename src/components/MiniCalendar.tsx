@@ -19,7 +19,7 @@ export default function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
     }
 
     return (
-        <div>
+        <div className="flex justify-center">
             <Calendar
                 mode="single"
                 selected={date}
