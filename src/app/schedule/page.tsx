@@ -11,6 +11,7 @@ import { addDays, subDays } from 'date-fns';
 import MiniCalendar from '@/components/MiniCalendar';
 import Inbox from '@/components/Inbox';
 import { Separator } from '@/components/ui/separator';
+import RightSidebar from '@/components/RightSidebar';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
@@ -46,18 +47,21 @@ export default function SchedulePage() {
       />
       <main className="flex flex-1 overflow-hidden">
         <div className="w-[340px] border-r flex flex-col">
-            <div className="flex-1 flex flex-col overflow-y-auto pt-4">
-              <div className="px-4 flex-1">
+            <div className="flex-1 flex flex-col overflow-y-auto">
+              <div className="px-4 flex-1 flex flex-col">
                 <Inbox />
               </div>
             </div>
-            <Separator className="my-4"/>
-            <div className="pb-4 px-4">
+            <Separator />
+            <div className="pb-4 pt-4 flex justify-center">
               <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
             </div>
         </div>
         <div className="flex-1 h-full overflow-y-auto">
             <DailyOverview date={currentDate} />
+        </div>
+        <div className="w-[300px] border-l">
+          <RightSidebar />
         </div>
       </main>
     </div>
