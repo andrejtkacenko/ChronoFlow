@@ -1,4 +1,22 @@
 import type { LucideIcon } from "lucide-react";
+import {
+    Briefcase,
+    BrainCircuit,
+    Coffee,
+    Dumbbell,
+    Plane,
+    Users,
+  } from 'lucide-react';
+  
+export const iconMap: { [key: string]: LucideIcon } = {
+    Briefcase,
+    BrainCircuit,
+    Coffee,
+    Dumbbell,
+    Plane,
+    Users,
+    Default: Briefcase,
+};
 
 export type ScheduleItem = {
   id: string;
@@ -10,6 +28,7 @@ export type ScheduleItem = {
   description?: string;
   location?: string;
   attendees?: string[];
-  icon: LucideIcon;
+  icon: string; // Storing icon name as string
   color: string;
+  date: string; // YYYY-MM-DD
 };

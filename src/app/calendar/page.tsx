@@ -18,11 +18,12 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { scheduleItems } from '@/lib/data';
 import type { ScheduleItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import Header from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const CalendarHeader = ({
   currentMonth,
@@ -94,46 +95,71 @@ const DayCell = ({
 );
 
 export default function CalendarPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const startDate = startOfWeek(monthStart);
   const endDate = endOfWeek(monthEnd);
 
+  useEffect(() => {
+    if (user) {
+      setLoading(true);
+      const firstDay = format(startDate, 'yyyy-MM-dd');
+      const lastDay = format(endDate, 'yyyy-MM-dd');
+      
+      const q = query(
+        collection(db, "scheduleItems"),
+        where("date", ">=", firstDay),
+        where("date", "<=", lastDay)
+      );
+
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const items: ScheduleItem[] = [];
+        querySnapshot.forEach((doc) => {
+          items.push({ id: doc.id, ...doc.data() } as ScheduleItem);
+        });
+        setScheduleItems(items);
+        setLoading(false);
+      }, (error) => {
+        console.error("Error fetching schedule items: ", error);
+        setLoading(false);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [currentMonth, user, startDate, endDate]);
+
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   const eventsByDay = useMemo(() => {
     const eventsMap = new Map<string, ScheduleItem[]>();
     scheduleItems.forEach((item) => {
-      // In a real app, you'd parse item.date. For this demo, we'll fake it based on title.
-      // This is a crude way to put events on different days for demo purposes.
-      const dayOfMonth = (item.id.charCodeAt(0) % 28) + 1;
-      const eventDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), dayOfMonth);
-
-      const dateString = format(eventDate, 'yyyy-MM-dd');
+      const dateString = item.date; // Date is already YYYY-MM-DD
       if (!eventsMap.has(dateString)) {
         eventsMap.set(dateString, []);
       }
       eventsMap.get(dateString)?.push(item);
     });
     return eventsMap;
-  }, [currentMonth]);
+  }, [scheduleItems]);
 
   const getEventsForDay = (day: Date) => {
     const dateString = format(day, 'yyyy-MM-dd');
     return eventsByDay.get(dateString) || [];
   };
 
-  if (loading || !user) {
+  if (authLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Skeleton className="h-24 w-24 rounded-full" />

@@ -1,9 +1,12 @@
 "use client";
 
-import { scheduleItems } from "@/lib/data";
 import type { ScheduleItem } from "@/lib/types";
+import { iconMap } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { format, isSameDay } from 'date-fns';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Skeleton } from "./ui/skeleton";
 
 const hours = Array.from({ length: 24 }, (_, i) => {
     const hour24 = i;
@@ -17,6 +20,7 @@ const hours = Array.from({ length: 24 }, (_, i) => {
 const EventCard = ({ item }: { item: ScheduleItem }) => {
   const top = (parseInt(item.startTime.split(":")[0]) * 60 + parseInt(item.startTime.split(":")[1])) * 1.3333; // 80px per hour
   const height = item.duration * 1.3333;
+  const Icon = iconMap[item.icon] || iconMap.Default;
 
   return (
     <div
@@ -29,9 +33,12 @@ const EventCard = ({ item }: { item: ScheduleItem }) => {
       }}
     >
       <div className="flex h-full flex-col overflow-hidden">
-        <h3 className="font-semibold truncate text-sm" style={{color: item.color}}>{item.title}</h3>
-        <p className="text-xs text-muted-foreground">{item.startTime} - {item.endTime}</p>
-        {item.description && <p className="mt-1 text-xs text-muted-foreground truncate">{item.description}</p>}
+        <div className="flex items-center gap-2">
+            <Icon className="size-4" style={{color: item.color}} />
+            <h3 className="font-semibold truncate text-sm" style={{color: item.color}}>{item.title}</h3>
+        </div>
+        <p className="text-xs text-muted-foreground pl-6">{item.startTime} - {item.endTime}</p>
+        {item.description && <p className="mt-1 text-xs text-muted-foreground truncate pl-6">{item.description}</p>}
       </div>
     </div>
   );
@@ -58,21 +65,48 @@ const CurrentTimeIndicator = () => {
 };
 
 export default function DailyOverview({ date }: { date: Date }) {
-    const [isClient, setIsClient] = useState(false);
-    
-    // This is a placeholder to simulate fetching events for the given date
-    const dailySchedule = scheduleItems.filter(item => {
-        // In a real app, you would parse and compare dates.
-        // For this demo, we'll just show all items if it's the current date for simplicity.
-        return isSameDay(new Date(), date);
-    });
+    const [dailySchedule, setDailySchedule] = useState<ScheduleItem[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setIsClient(true);
-    }, []);
+        setLoading(true);
+        const dateString = format(date, 'yyyy-MM-dd');
+        const q = query(collection(db, "scheduleItems"), where("date", "==", dateString));
 
-    if (!isClient) {
-        return null;
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const items: ScheduleItem[] = [];
+            querySnapshot.forEach((doc) => {
+                items.push({ id: doc.id, ...doc.data() } as ScheduleItem);
+            });
+            setDailySchedule(items.sort((a,b) => a.startTime.localeCompare(b.startTime)));
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching schedule items: ", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [date]);
+
+    if (loading) {
+        return (
+            <div className="relative h-full">
+                <div className="grid grid-cols-1 divide-y divide-border/80">
+                    {hours.map((hour) => (
+                    <div key={hour} className="relative flex h-[80px]">
+                        <div className="w-16 flex-shrink-0 -translate-y-3 pr-2 text-right text-xs text-muted-foreground">
+                        <span className="relative top-px">{hour}</span>
+                        </div>
+                        <div className="flex-1"></div>
+                    </div>
+                    ))}
+                </div>
+                 <div className="absolute inset-0 top-0 pt-20 pl-20 pr-4">
+                     <Skeleton className="h-24 w-full" />
+                     <Skeleton className="h-16 w-full mt-4" />
+                 </div>
+            </div>
+        )
     }
 
   return (
@@ -89,9 +123,15 @@ export default function DailyOverview({ date }: { date: Date }) {
             ))}
         </div>
         <div className="absolute inset-0 top-0">
-            {dailySchedule.map((item) => (
-            <EventCard key={item.id} item={item} />
-            ))}
+            {dailySchedule.length > 0 ? dailySchedule.map((item) => (
+               <EventCard key={item.id} item={item} />
+            )) : (
+              !loading && (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">No events scheduled for this day.</p>
+                </div>
+              )
+            )}
         </div>
     </div>
   );
