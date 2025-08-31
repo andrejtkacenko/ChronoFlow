@@ -1,10 +1,9 @@
 "use server";
 
 import { suggestOptimalTimeSlots } from "@/ai/flows/suggest-optimal-time-slots";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import type { ScheduleItem } from "./types";
-
 
 export async function getSuggestedTimeSlots(tasks: string): Promise<string> {
   // In a real application, you would fetch the user's schedule from a database.
@@ -27,5 +26,17 @@ export async function getSuggestedTimeSlots(tasks: string): Promise<string> {
   } catch (error) {
     console.error("Error getting suggestions:", error);
     return "Sorry, I couldn't find a time slot. There might be an issue with the AI service. Please try again later.";
+  }
+}
+
+export async function addTask(taskLabel: string): Promise<void> {
+  try {
+    await addDoc(collection(db, 'tasks'), {
+      label: taskLabel,
+      completed: false,
+    });
+  } catch (error) {
+    console.error('Error adding task: ', error);
+    throw new Error('Failed to add task');
   }
 }

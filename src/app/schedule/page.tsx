@@ -13,12 +13,14 @@ import Inbox from '@/components/Inbox';
 import { Separator } from '@/components/ui/separator';
 import RightSidebar from '@/components/RightSidebar';
 import { cn } from '@/lib/utils';
+import QuickCapture from '@/components/QuickCapture';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
+  const [isQuickCaptureOpen, setQuickCaptureOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -39,35 +41,39 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="flex h-svh flex-col">
-      <Header
-        currentDate={currentDate}
-        onNext={handleNextDay}
-        onPrevious={handlePreviousDay}
-        onToday={handleSetToday}
-        showDateNav
-        isRightSidebarOpen={isRightSidebarOpen}
-        onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-      />
-      <main className="flex flex-1 overflow-hidden">
-        <div className="w-[340px] border-r flex flex-col">
-            <div className="flex-1 flex flex-col overflow-y-auto">
-              <div className="px-4 pt-4 flex-1 flex flex-col">
-                <Inbox />
-              </div>
+    <>
+      <div className="flex h-svh flex-col">
+        <Header
+          currentDate={currentDate}
+          onNext={handleNextDay}
+          onPrevious={handlePreviousDay}
+          onToday={handleSetToday}
+          showDateNav
+          isRightSidebarOpen={isRightSidebarOpen}
+          onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+        />
+        <main className="flex flex-1 overflow-hidden">
+          <div className="w-[340px] flex flex-col border-r">
+            <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
+              <Inbox />
             </div>
             <Separator />
-            <div className="pb-4 pt-4 flex justify-center">
+            <div className="py-4 flex justify-center">
               <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
             </div>
-        </div>
-        <div className="flex-1 h-full overflow-y-auto">
-            <DailyOverview date={currentDate} />
-        </div>
-        <div className={cn("border-l transition-all duration-300", isRightSidebarOpen ? "w-[240px]" : "w-[68px]")}>
-            <RightSidebar isOpen={isRightSidebarOpen} />
-        </div>
-      </main>
-    </div>
+          </div>
+          <div className="flex-1 h-full overflow-y-auto">
+              <DailyOverview date={currentDate} />
+          </div>
+          <div className={cn("border-l transition-all duration-300", isRightSidebarOpen ? "w-[240px]" : "w-[68px]")}>
+              <RightSidebar 
+                isOpen={isRightSidebarOpen} 
+                onNewTask={() => setQuickCaptureOpen(true)}
+              />
+          </div>
+        </main>
+      </div>
+      <QuickCapture open={isQuickCaptureOpen} onOpenChange={setQuickCaptureOpen} />
+    </>
   );
 }
