@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Checkbox } from "./ui/checkbox";
@@ -9,9 +9,10 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from './ui/skeleton';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { addTask } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface Task {
     id: string;
@@ -22,8 +23,10 @@ interface Task {
 export default function Inbox() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isAddingTask, setIsAddingTask] = useState(false);
     const [newTaskLabel, setNewTaskLabel] = useState('');
     const { toast } = useToast();
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const q = query(collection(db, "tasks"), orderBy("label"));
@@ -42,6 +45,12 @@ export default function Inbox() {
         return () => unsubscribe();
     }, []);
 
+    useEffect(() => {
+        if (isAddingTask) {
+            inputRef.current?.focus();
+        }
+    }, [isAddingTask]);
+
     const handleTaskCompletion = async (taskId: string, completed: boolean) => {
         const taskRef = doc(db, "tasks", taskId);
         try {
@@ -53,7 +62,10 @@ export default function Inbox() {
 
     const handleAddTask = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newTaskLabel.trim()) return;
+        if (!newTaskLabel.trim()) {
+            setIsAddingTask(false);
+            return;
+        }
 
         try {
             await addTask(newTaskLabel);
@@ -69,6 +81,8 @@ export default function Inbox() {
                 title: "Error",
                 description: "Failed to add task. Please try again.",
             });
+        } finally {
+            setIsAddingTask(false);
         }
     }
 
@@ -107,18 +121,36 @@ export default function Inbox() {
     return (
         <div className="flex-1 flex flex-col h-full">
             <div className="px-4">
-                <h2 className="text-xl font-semibold mb-2">Inbox</h2>
-                 <form onSubmit={handleAddTask} className="flex items-center gap-2 mb-4">
-                    <Input 
-                        value={newTaskLabel}
-                        onChange={(e) => setNewTaskLabel(e.target.value)}
-                        placeholder="Add a new task..."
-                        className="h-9"
-                    />
-                    <Button type="submit" size="icon" className="h-9 w-9 shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-xl font-semibold">Inbox</h2>
+                    <Button variant="ghost" size="icon" onClick={() => setIsAddingTask(true)} className={cn("h-8 w-8", isAddingTask && "hidden")}>
                         <Plus className="h-4 w-4" />
                     </Button>
-                </form>
+                </div>
+                {isAddingTask && (
+                     <form onSubmit={handleAddTask} className="flex items-center gap-2 mb-4">
+                        <Input 
+                            ref={inputRef}
+                            value={newTaskLabel}
+                            onChange={(e) => setNewTaskLabel(e.target.value)}
+                            placeholder="Add a new task..."
+                            className="h-9"
+                            onBlur={(e) => {
+                                // Only submit on blur if there is text, otherwise just close
+                                if (!e.relatedTarget) { // To prevent blur when clicking submit
+                                    if(newTaskLabel.trim()) {
+                                        handleAddTask(e);
+                                    } else {
+                                        setIsAddingTask(false);
+                                    }
+                                }
+                            }}
+                        />
+                         <Button type="submit" size="icon" className="h-9 w-9 shrink-0">
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </form>
+                )}
             </div>
             <div className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full pr-4">
