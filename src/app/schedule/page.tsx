@@ -12,6 +12,7 @@ import MiniCalendar from '@/components/MiniCalendar';
 import Inbox from '@/components/Inbox';
 import { Separator } from '@/components/ui/separator';
 import RightSidebar from '@/components/RightSidebar';
+import { cn } from '@/lib/utils';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
@@ -63,11 +64,9 @@ export default function SchedulePage() {
         <div className="flex-1 h-full overflow-y-auto">
             <DailyOverview date={currentDate} />
         </div>
-        {isRightSidebarOpen && (
-          <div className="w-[300px] border-l">
-            <RightSidebar />
-          </div>
-        )}
+        <div className={cn("border-l transition-all duration-300", isRightSidebarOpen ? "w-[240px]" : "w-[68px]")}>
+            <RightSidebar isOpen={isRightSidebarOpen} />
+        </div>
       </main>
     </div>
   );
