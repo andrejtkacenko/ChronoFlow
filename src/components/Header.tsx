@@ -1,7 +1,7 @@
 
 "use client";
 
-import { ChevronLeft, ChevronRight, PlusCircle, Sparkles, LogOut, Menu, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, PlusCircle, Sparkles, LogOut, Menu, X, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import QuickCapture from "./QuickCapture";
 import SmartScheduler from "./SmartScheduler";
@@ -37,6 +37,8 @@ interface HeaderProps {
   onNext?: () => void;
   onToday?: () => void;
   showDateNav?: boolean;
+  isRightSidebarOpen?: boolean;
+  onToggleRightSidebar?: () => void;
 }
 
 export default function Header({ 
@@ -45,6 +47,8 @@ export default function Header({
   onNext,
   onToday,
   showDateNav = false,
+  isRightSidebarOpen,
+  onToggleRightSidebar,
 }: HeaderProps) {
   const [isQuickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [isSmartSchedulerOpen, setSmartSchedulerOpen] = useState(false);
@@ -109,6 +113,16 @@ export default function Header({
             <PlusCircle className="mr-2 h-4 w-4" />
             Quick Capture
           </Button>
+          {showDateNav && onToggleRightSidebar && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleRightSidebar}
+              aria-label="Toggle Right Sidebar"
+            >
+              <PanelRightOpen className={cn("h-5 w-5", isRightSidebarOpen && "text-primary")} />
+            </Button>
+          )}
            {user && (
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>

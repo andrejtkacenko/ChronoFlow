@@ -17,6 +17,7 @@ export default function SchedulePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,11 +45,13 @@ export default function SchedulePage() {
         onPrevious={handlePreviousDay}
         onToday={handleSetToday}
         showDateNav
+        isRightSidebarOpen={isRightSidebarOpen}
+        onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
       />
       <main className="flex flex-1 overflow-hidden">
         <div className="w-[340px] border-r flex flex-col">
             <div className="flex-1 flex flex-col overflow-y-auto">
-              <div className="px-4 flex-1 flex flex-col">
+              <div className="px-4 pt-4 flex-1 flex flex-col">
                 <Inbox />
               </div>
             </div>
@@ -60,9 +63,11 @@ export default function SchedulePage() {
         <div className="flex-1 h-full overflow-y-auto">
             <DailyOverview date={currentDate} />
         </div>
-        <div className="w-[300px] border-l">
-          <RightSidebar />
-        </div>
+        {isRightSidebarOpen && (
+          <div className="w-[300px] border-l">
+            <RightSidebar />
+          </div>
+        )}
       </main>
     </div>
   );
