@@ -19,7 +19,7 @@ export default function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
     }
 
     return (
-        <div className="rounded-md border">
+        <div>
             <Calendar
                 mode="single"
                 selected={date}

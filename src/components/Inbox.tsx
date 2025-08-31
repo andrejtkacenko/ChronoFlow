@@ -17,8 +17,8 @@ export default function Inbox() {
     return (
         <div className="flex-1 flex flex-col h-full">
             <h2 className="text-xl font-semibold mb-4">Inbox</h2>
-            <div className="flex-1 overflow-hidden rounded-lg border">
-                <ScrollArea className="h-full p-4">
+            <div className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full pr-4">
                     <div className="space-y-4">
                         {tasks.map(task => (
                             <div key={task.id} className="flex items-center space-x-3">
