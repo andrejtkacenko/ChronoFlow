@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { addDays, subDays } from 'date-fns';
 import MiniCalendar from '@/components/MiniCalendar';
 import Inbox from '@/components/Inbox';
+import { Separator } from '@/components/ui/separator';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
@@ -47,6 +48,7 @@ export default function SchedulePage() {
         <div className="w-[25%] min-w-[300px] max-w-[400px] border-r">
             <div className="flex h-full flex-col gap-4 p-4">
               <Inbox />
+              <Separator className="my-4" />
               <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
             </div>
         </div>
