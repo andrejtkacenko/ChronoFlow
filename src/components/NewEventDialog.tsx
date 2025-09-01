@@ -82,6 +82,8 @@ export default function NewEventDialog({
   useEffect(() => {
     if (!isAllDay) {
         setEndTime(calculateEndTime(startTime, duration));
+    } else {
+        setEndTime('23:59');
     }
   }, [startTime, duration, isAllDay]);
 
@@ -96,13 +98,18 @@ export default function NewEventDialog({
     }
     setIsLoading(true);
 
+    const finalStartTime = isAllDay ? '00:00' : startTime;
+    const finalDuration = isAllDay ? 24 * 60 : duration;
+    const finalEndTime = isAllDay ? '23:59' : calculateEndTime(startTime, duration);
+
+
     const newEvent: Omit<ScheduleItem, 'id'> = {
       title,
       description,
       date: format(eventData.date, 'yyyy-MM-dd'),
-      startTime: isAllDay ? '00:00' : startTime,
-      duration: isAllDay ? 24 * 60 : duration,
-      endTime: isAllDay ? '23:59' : endTime,
+      startTime: finalStartTime,
+      duration: finalDuration,
+      endTime: finalEndTime,
       icon,
       color,
       type: 'event',
@@ -162,7 +169,20 @@ export default function NewEventDialog({
                         <>
                             <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
                             <span>-</span>
-                            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-28" />
+                            <Input type="time" value={endTime} disabled className="w-28" />
+                            <Select value={String(duration)} onValueChange={(value) => setDuration(Number(value))}>
+                              <SelectTrigger className="w-[120px]">
+                                <SelectValue placeholder="Duration" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="15">15 min</SelectItem>
+                                <SelectItem value="30">30 min</SelectItem>
+                                <SelectItem value="45">45 min</SelectItem>
+                                <SelectItem value="60">1 hour</SelectItem>
+                                <SelectItem value="90">1.5 hours</SelectItem>
+                                <SelectItem value="120">2 hours</SelectItem>
+                              </SelectContent>
+                            </Select>
                         </>
                     )}
                      <div className="flex-1"></div>
@@ -227,6 +247,21 @@ export default function NewEventDialog({
                   />
                 ))}
               </div>
+            </div>
+             <div className="space-y-2">
+              <Label>Icon</Label>
+                <Select value={icon} onValueChange={setIcon}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Icon" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {Object.keys(iconMap).map((iconName) => (
+                            <SelectItem key={iconName} value={iconName}>
+                                {iconName}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
           </div>
           <DialogFooter className="bg-muted p-4 flex justify-between w-full">
