@@ -6,6 +6,8 @@ import {
   Dialog,
   DialogContent,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,6 +130,9 @@ export default function NewEventDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0">
+        <DialogHeader>
+            <DialogTitle className="sr-only">New Event</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="p-6">
             <Input
