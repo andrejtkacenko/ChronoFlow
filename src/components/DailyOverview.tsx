@@ -96,7 +96,7 @@ export default function DailyOverview({ date }: { date: Date }) {
                 <div className="grid grid-cols-1 divide-y divide-border/80">
                     {hours.map((hour) => (
                     <div key={hour} className="relative flex h-[80px]">
-                        <div className="w-16 flex-shrink-0 -translate-y-3 pr-2 text-right text-xs text-muted-foreground">
+                        <div className="w-16 flex-shrink-0 -translate-y-2 pr-2 text-right text-xs text-muted-foreground">
                         <span className="relative top-px">{hour}</span>
                         </div>
                         <div className="flex-1"></div>
@@ -127,7 +127,7 @@ export default function DailyOverview({ date }: { date: Date }) {
         <div className="grid grid-cols-1 divide-y divide-border/80">
             {hours.map((hour) => (
             <div key={hour} className="relative flex h-[80px]">
-                <div className="w-16 flex-shrink-0 -translate-y-3 pr-2 text-right text-xs text-muted-foreground">
+                <div className="w-16 flex-shrink-0 -translate-y-2 pr-2 text-right text-xs text-muted-foreground">
                 <span className="relative top-px">{hour}</span>
                 </div>
                 <div className="flex-1"></div>
