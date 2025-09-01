@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ interface NewEventDialogProps {
   eventData: {
     date: Date;
     startTime: string;
-  };
+  } | null;
 }
 
 const calculateEndTime = (startTime: string, duration: number): string => {
@@ -61,12 +61,12 @@ export default function NewEventDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [isAllDay, setIsAllDay] = useState(false);
 
-  const [startTime, setStartTime] = useState(eventData.startTime);
-  const [endTime, setEndTime] = useState(calculateEndTime(eventData.startTime, duration));
+  const [startTime, setStartTime] = useState(eventData?.startTime ?? '00:00');
+  const [endTime, setEndTime] = useState(calculateEndTime(startTime, duration));
 
   useEffect(() => {
-    if (isOpen) {
-      // Reset form on open
+    if (isOpen && eventData) {
+      // Reset form state every time the dialog opens
       setTitle('');
       setDescription('');
       setDuration(60);
@@ -88,7 +88,7 @@ export default function NewEventDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) {
+    if (!title.trim() || !eventData) {
       toast({
         variant: 'destructive',
         title: 'Title is required',
@@ -98,17 +98,16 @@ export default function NewEventDialog({
     setIsLoading(true);
 
     const finalStartTime = isAllDay ? '00:00' : startTime;
-    const finalDuration = isAllDay ? 24 * 60 - 1 : duration; // 23:59
+    const finalDuration = isAllDay ? 24 * 60 - 1 : duration;
     const finalEndTime = isAllDay ? '23:59' : calculateEndTime(startTime, duration);
-
 
     const newEvent: Omit<ScheduleItem, 'id'> = {
       title,
       description,
       date: format(eventData.date, 'yyyy-MM-dd'),
       startTime: finalStartTime,
-      duration: finalDuration,
       endTime: finalEndTime,
+      duration: finalDuration,
       icon,
       color,
       type: 'event',
@@ -129,9 +128,11 @@ export default function NewEventDialog({
         description: 'Failed to create event. Please try again.',
       });
     } finally {
-      setIsLoading(false);
+      // The isLoading state will be reset by the useEffect when the dialog is re-opened
     }
   };
+  
+  if (!eventData) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
