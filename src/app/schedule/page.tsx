@@ -48,7 +48,7 @@ export default function SchedulePage() {
       <div className="flex h-svh flex-col relative overflow-hidden">
           <Header />
           <main className="flex flex-1 overflow-hidden">
-              <div className="w-[300px] flex flex-col border-r">
+              <div className="w-[250px] flex flex-col border-r">
                   <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
                       <Inbox />
                   </div>
