@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
 import { addDays, format } from 'date-fns';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useBreakpoint } from '@/hooks/use-breakpoint';
 
 const MINUTE_HEIGHT_PX = 80 / 60;
 
@@ -27,14 +27,18 @@ export default function SchedulePage() {
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isNewEventDialogOpen, setIsNewEventDialogOpen] = useState(false);
   const [newEventData, setNewEventData] = useState<{ date: Date; startTime: string } | null>(null);
-  const [numberOfDays, setNumberOfDays] = useState(1);
-  const isMobile = useIsMobile();
+  const [numberOfDays, setNumberOfDays] = useState(3);
+  const breakpoint = useBreakpoint();
 
   useEffect(() => {
-    if (isMobile) {
-      setNumberOfDays(1);
+    if (breakpoint === 'xl') {
+        setNumberOfDays(3);
+    } else if (breakpoint === 'md' || breakpoint === 'lg') {
+        setNumberOfDays(2);
+    } else {
+        setNumberOfDays(1);
     }
-  }, [isMobile]);
+  }, [breakpoint]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -108,7 +112,7 @@ export default function SchedulePage() {
                   </div>
               </div>
               <div className="flex-1 flex flex-col overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid" style={{ gridTemplateColumns: `repeat(${numberOfDays}, minmax(0, 1fr))`}}>
                      {days.map(day => (
                         <div key={day.toString()} className="min-w-0 border-r">
                             <div className="p-4 border-b text-center sticky top-0 bg-background/95 backdrop-blur-sm z-20">
@@ -119,7 +123,7 @@ export default function SchedulePage() {
                      ))}
                   </div>
                   <div className="flex-1 overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 h-full">
+                    <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${numberOfDays}, minmax(0, 1fr))`}}>
                         {days.map(day => (
                             <div key={day.toString()} className="min-w-0 border-r" onClick={(e) => handleGridClick(e, day)}>
                                 <DailyOverview 
@@ -139,9 +143,6 @@ export default function SchedulePage() {
                >
                   <RightSidebar
                       isOpen={isRightSidebarOpen}
-                      numberOfDays={numberOfDays}
-                      onNumberOfDaysChange={setNumberOfDays}
-                      isMobile={isMobile}
                   />
               </div>
           </main>

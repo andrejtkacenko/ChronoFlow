@@ -8,12 +8,9 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 interface RightSidebarProps {
   isOpen: boolean;
-  numberOfDays: number;
-  onNumberOfDaysChange: (days: number) => void;
-  isMobile: boolean;
 }
 
-export default function RightSidebar({ isOpen, numberOfDays, onNumberOfDaysChange, isMobile }: RightSidebarProps) {
+export default function RightSidebar({ isOpen }: RightSidebarProps) {
   const ActionButton = ({
     icon,
     label,
@@ -44,31 +41,7 @@ export default function RightSidebar({ isOpen, numberOfDays, onNumberOfDaysChang
                 <>
                     <h3 className="text-lg font-semibold mb-4">Settings</h3>
                     <div className="space-y-4">
-                        <div>
-                           <Label className="text-sm font-medium">View Layout</Label>
-                           {isMobile ? (
-                             <p className="text-xs text-muted-foreground mt-2">Multi-day view is disabled on mobile.</p>
-                           ) : (
-                             <RadioGroup 
-                                defaultValue={String(numberOfDays)} 
-                                onValueChange={(value) => onNumberOfDaysChange(Number(value))}
-                                className="mt-2"
-                              >
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="1" id="d1" />
-                                    <Label htmlFor="d1">1 Day</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="3" id="d3" />
-                                    <Label htmlFor="d3">3 Days</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="7" id="d7" />
-                                    <Label htmlFor="d7">7 Days</Label>
-                                </div>
-                            </RadioGroup>
-                           )}
-                        </div>
+                        <p className="text-sm text-muted-foreground">View settings are now automatic based on screen size.</p>
                     </div>
                 </>
             )}
