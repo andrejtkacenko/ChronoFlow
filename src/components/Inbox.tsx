@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, doc, updateDoc, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
@@ -47,11 +47,14 @@ export default function Inbox() {
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        const q = query(collection(db, "tasks"), where("completed", "==", false), orderBy("label"));
+        const q = query(collection(db, "tasks"), orderBy("label"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const tasksData: Task[] = [];
             querySnapshot.forEach((doc) => {
-                tasksData.push({ id: doc.id, ...doc.data() } as Task);
+                const task = { id: doc.id, ...doc.data() } as Task;
+                if (!task.completed) {
+                    tasksData.push(task);
+                }
             });
             setTasks(tasksData);
             setLoading(false);
