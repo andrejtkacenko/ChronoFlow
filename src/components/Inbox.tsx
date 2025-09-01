@@ -56,8 +56,7 @@ export default function Inbox({ userId }: InboxProps) {
 
         const q = query(
             collection(db, "tasks"), 
-            where("userId", "==", userId),
-            orderBy("label")
+            where("userId", "==", userId)
         );
         
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -68,6 +67,7 @@ export default function Inbox({ userId }: InboxProps) {
                     tasksData.push(task);
                 }
             });
+            tasksData.sort((a, b) => a.label.localeCompare(b.label));
             setTasks(tasksData);
             setLoading(false);
         }, (error) => {
