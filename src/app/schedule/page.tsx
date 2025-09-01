@@ -17,9 +17,6 @@ import { ChevronLeft } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
 import { addDays, format, isSameDay } from 'date-fns';
 
-const MINUTE_HEIGHT_PX = 80 / 60;
-const HOUR_HEIGHT_PX = 80;
-
 const hours = Array.from({ length: 24 }, (_, i) => {
     const hour24 = i;
     const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
@@ -30,7 +27,7 @@ const hours = Array.from({ length: 24 }, (_, i) => {
 });
 
 
-const CurrentTimeIndicator = ({ days }: { days: Date[] }) => {
+const CurrentTimeIndicator = ({ days, hourHeight }: { days: Date[], hourHeight: number }) => {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -41,7 +38,8 @@ const CurrentTimeIndicator = ({ days }: { days: Date[] }) => {
     const todayExists = days.some(day => isSameDay(day, currentTime));
     if (!todayExists) return null;
     
-    const top = (currentTime.getHours() * 60 + currentTime.getMinutes()) * MINUTE_HEIGHT_PX;
+    const minuteHeight = hourHeight / 60;
+    const top = (currentTime.getHours() * 60 + currentTime.getMinutes()) * minuteHeight;
 
     return (
         <div className="absolute left-16 right-0" style={{ top: `${top}px`}}>
@@ -62,6 +60,7 @@ export default function SchedulePage() {
   const [isNewEventDialogOpen, setIsNewEventDialogOpen] = useState(false);
   const [newEventData, setNewEventData] = useState<{ date: Date; startTime: string } | null>(null);
   const [numberOfDays, setNumberOfDays] = useState(3);
+  const [hourHeight, setHourHeight] = useState(80);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -87,8 +86,9 @@ export default function SchedulePage() {
       const y = e.clientY - rect.top;
       
       if (y < 0) return;
-
-      const totalMinutes = Math.floor(y / MINUTE_HEIGHT_PX);
+      
+      const minuteHeight = hourHeight / 60;
+      const totalMinutes = Math.floor(y / minuteHeight);
       const hour = Math.floor(totalMinutes / 60);
       const minute = totalMinutes % 60;
       const roundedMinute = Math.round(minute / 15) * 15;
@@ -149,7 +149,7 @@ export default function SchedulePage() {
                   <div className="relative grid" style={{ gridTemplateColumns: `64px repeat(${numberOfDays}, minmax(0, 1fr))`}}>
                     <div className="w-16">
                          {hours.map((hour, index) => (
-                            <div key={hour} className="relative flex h-[--hour-height]" style={{'--hour-height': `${HOUR_HEIGHT_PX}px`} as React.CSSProperties}>
+                            <div key={hour} className="relative flex h-[--hour-height]" style={{'--hour-height': `${hourHeight}px`} as React.CSSProperties}>
                                 <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground -translate-y-2">
                                 {index > 0 && <span className="relative top-px">{hour}</span>}
                                 </div>
@@ -161,7 +161,7 @@ export default function SchedulePage() {
                         <div key={day.toString()} className="min-w-0 border-r relative" onClick={(e) => handleGridClick(e, day)}>
                              <div className="absolute inset-0">
                                 {hours.map((_, index) => (
-                                    <div key={index} className="h-[--hour-height] border-t" style={{'--hour-height': `${HOUR_HEIGHT_PX}px`} as React.CSSProperties} />
+                                    <div key={index} className="h-[--hour-height] border-t" style={{'--hour-height': `${hourHeight}px`} as React.CSSProperties} />
                                 ))}
                             </div>
                             <div className='relative h-full'>
@@ -169,11 +169,12 @@ export default function SchedulePage() {
                                     date={day} 
                                     newEventStartTime={newEventData?.date && newEventData.date.getTime() === day.getTime() ? newEventData.startTime : null}
                                     userId={user.uid}
+                                    hourHeight={hourHeight}
                                 />
                             </div>
                         </div>
                     ))}
-                    <CurrentTimeIndicator days={days} />
+                    <CurrentTimeIndicator days={days} hourHeight={hourHeight} />
                   </div>
               </div>
                <div
@@ -185,6 +186,8 @@ export default function SchedulePage() {
                       isOpen={isRightSidebarOpen}
                       numberOfDays={numberOfDays}
                       onNumberOfDaysChange={setNumberOfDays}
+                      hourHeight={hourHeight}
+                      onHourHeightChange={setHourHeight}
                   />
               </div>
           </main>

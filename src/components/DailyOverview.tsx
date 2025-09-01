@@ -9,12 +9,10 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from "./ui/skeleton";
 
-const HOUR_HEIGHT_PX = 80;
-const MINUTE_HEIGHT_PX = HOUR_HEIGHT_PX / 60;
-
-const EventCard = ({ item }: { item: ScheduleItem }) => {
-  const top = (parseInt(item.startTime.split(":")[0]) * 60 + parseInt(item.startTime.split(":")[1])) * MINUTE_HEIGHT_PX;
-  const height = item.duration * MINUTE_HEIGHT_PX;
+const EventCard = ({ item, hourHeight }: { item: ScheduleItem, hourHeight: number }) => {
+  const minuteHeight = hourHeight / 60;
+  const top = (parseInt(item.startTime.split(":")[0]) * 60 + parseInt(item.startTime.split(":")[1])) * minuteHeight;
+  const height = item.duration * minuteHeight;
   const Icon = iconMap[item.icon] || iconMap.Default;
 
   return (
@@ -40,11 +38,12 @@ const EventCard = ({ item }: { item: ScheduleItem }) => {
   );
 };
 
-const NewEventPlaceholder = ({ startTime }: { startTime: string | null }) => {
+const NewEventPlaceholder = ({ startTime, hourHeight }: { startTime: string | null, hourHeight: number }) => {
     if (!startTime) return null;
 
-    const top = (parseInt(startTime.split(":")[0]) * 60 + parseInt(startTime.split(":")[1])) * MINUTE_HEIGHT_PX;
-    const height = 60 * MINUTE_HEIGHT_PX; // Default 60 min height
+    const minuteHeight = hourHeight / 60;
+    const top = (parseInt(startTime.split(":")[0]) * 60 + parseInt(startTime.split(":")[1])) * minuteHeight;
+    const height = 60 * minuteHeight; // Default 60 min height
 
     return (
         <div 
@@ -61,9 +60,10 @@ interface DailyOverviewProps {
     date: Date;
     newEventStartTime: string | null;
     userId: string;
+    hourHeight: number;
 }
 
-export default function DailyOverview({ date, newEventStartTime, userId }: DailyOverviewProps) {
+export default function DailyOverview({ date, newEventStartTime, userId, hourHeight }: DailyOverviewProps) {
     const [dailySchedule, setDailySchedule] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
       
@@ -112,11 +112,11 @@ export default function DailyOverview({ date, newEventStartTime, userId }: Daily
          ) : (
             <div className="absolute inset-0 top-0 pointer-events-none">
                 {dailySchedule.length > 0 && dailySchedule.map((item) => (
-                    <EventCard key={item.id} item={item} />
+                    <EventCard key={item.id} item={item} hourHeight={hourHeight} />
                 ))}
             </div>
         )}
-         <NewEventPlaceholder startTime={newEventStartTime} />
+         <NewEventPlaceholder startTime={newEventStartTime} hourHeight={hourHeight} />
     </>
   );
 }

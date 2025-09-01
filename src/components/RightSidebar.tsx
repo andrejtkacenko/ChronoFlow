@@ -5,17 +5,22 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "./ui/tooltip";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Slider } from "./ui/slider";
 
 interface RightSidebarProps {
   isOpen: boolean;
   numberOfDays: number;
   onNumberOfDaysChange: (days: number) => void;
+  hourHeight: number;
+  onHourHeightChange: (height: number) => void;
 }
 
 export default function RightSidebar({ 
     isOpen, 
     numberOfDays, 
-    onNumberOfDaysChange 
+    onNumberOfDaysChange,
+    hourHeight,
+    onHourHeightChange
 }: RightSidebarProps) {
   const ActionButton = ({
     icon,
@@ -46,7 +51,7 @@ export default function RightSidebar({
             {isOpen && (
                 <>
                     <h3 className="text-lg font-semibold mb-4">Settings</h3>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                        <div>
                             <Label className="text-sm font-medium">Количество дней</Label>
                             <RadioGroup 
@@ -67,6 +72,17 @@ export default function RightSidebar({
                                     <Label htmlFor="d7">7 дней</Label>
                                 </div>
                             </RadioGroup>
+                       </div>
+                       <div>
+                            <Label className="text-sm font-medium">Масштаб</Label>
+                             <Slider
+                                value={[hourHeight]}
+                                onValueChange={(value) => onHourHeightChange(value[0])}
+                                min={40}
+                                max={160}
+                                step={10}
+                                className="mt-2"
+                            />
                        </div>
                     </div>
                 </>
