@@ -8,9 +8,15 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 interface RightSidebarProps {
   isOpen: boolean;
+  numberOfDays: number;
+  onNumberOfDaysChange: (days: number) => void;
 }
 
-export default function RightSidebar({ isOpen }: RightSidebarProps) {
+export default function RightSidebar({ 
+    isOpen, 
+    numberOfDays, 
+    onNumberOfDaysChange 
+}: RightSidebarProps) {
   const ActionButton = ({
     icon,
     label,
@@ -41,7 +47,27 @@ export default function RightSidebar({ isOpen }: RightSidebarProps) {
                 <>
                     <h3 className="text-lg font-semibold mb-4">Settings</h3>
                     <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">View settings are now automatic based on screen size.</p>
+                       <div>
+                            <Label className="text-sm font-medium">Количество дней</Label>
+                            <RadioGroup 
+                                defaultValue={String(numberOfDays)} 
+                                onValueChange={(value) => onNumberOfDaysChange(Number(value))}
+                                className="mt-2"
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="1" id="d1" />
+                                    <Label htmlFor="d1">1 день</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="3" id="d3" />
+                                    <Label htmlFor="d3">3 дня</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="7" id="d7" />
+                                    <Label htmlFor="d7">7 дней</Label>
+                                </div>
+                            </RadioGroup>
+                       </div>
                     </div>
                 </>
             )}

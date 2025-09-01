@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
 import { addDays, format } from 'date-fns';
-import { useBreakpoint } from '@/hooks/use-breakpoint';
 
 const MINUTE_HEIGHT_PX = 80 / 60;
 
@@ -28,17 +27,6 @@ export default function SchedulePage() {
   const [isNewEventDialogOpen, setIsNewEventDialogOpen] = useState(false);
   const [newEventData, setNewEventData] = useState<{ date: Date; startTime: string } | null>(null);
   const [numberOfDays, setNumberOfDays] = useState(3);
-  const breakpoint = useBreakpoint();
-
-  useEffect(() => {
-    if (breakpoint === 'xl') {
-        setNumberOfDays(3);
-    } else if (breakpoint === 'md' || breakpoint === 'lg') {
-        setNumberOfDays(2);
-    } else {
-        setNumberOfDays(1);
-    }
-  }, [breakpoint]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -143,6 +131,8 @@ export default function SchedulePage() {
                >
                   <RightSidebar
                       isOpen={isRightSidebarOpen}
+                      numberOfDays={numberOfDays}
+                      onNumberOfDaysChange={setNumberOfDays}
                   />
               </div>
           </main>
