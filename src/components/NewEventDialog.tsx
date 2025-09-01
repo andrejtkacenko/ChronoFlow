@@ -143,6 +143,7 @@ export default function NewEventDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0">
         <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="sr-only">Создать событие</DialogTitle>
            <Input
                 id="title"
                 value={title}
