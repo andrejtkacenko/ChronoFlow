@@ -55,7 +55,7 @@ export default function NewEventDialog({
   const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [duration, setDuration] = useState(60); 
+  const [duration, setDuration] = useState(60);
   const [icon, setIcon] = useState('Default');
   const [color, setColor] = useState(eventColors[0]);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +63,12 @@ export default function NewEventDialog({
 
   const [startTime, setStartTime] = useState(eventData.startTime);
   const [endTime, setEndTime] = useState(calculateEndTime(eventData.startTime, duration));
+
+  useEffect(() => {
+    if (eventData.startTime) {
+      setStartTime(eventData.startTime);
+    }
+  }, [eventData.startTime]);
 
   useEffect(() => {
     if (isOpen) {
@@ -75,7 +81,6 @@ export default function NewEventDialog({
       setIsLoading(false);
       setIsAllDay(false);
       setStartTime(eventData.startTime);
-      setEndTime(calculateEndTime(eventData.startTime, 60));
     }
   }, [isOpen, eventData]);
 
@@ -138,7 +143,7 @@ export default function NewEventDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0">
         <DialogHeader>
-            <DialogTitle className="sr-only">New Event</DialogTitle>
+          <DialogTitle className="sr-only">New Event</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="p-6">
@@ -278,3 +283,5 @@ export default function NewEventDialog({
     </Dialog>
   );
 }
+
+    
