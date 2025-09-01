@@ -120,6 +120,7 @@ export default function CalendarPage() {
       
       const q = query(
         collection(db, "scheduleItems"),
+        where("userId", "==", user.uid),
         where("date", ">=", firstDay),
         where("date", "<=", lastDay)
       );

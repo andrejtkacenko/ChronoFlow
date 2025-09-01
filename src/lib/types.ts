@@ -40,6 +40,7 @@ export const eventColors = [
 
 export type ScheduleItem = {
   id: string;
+  userId: string;
   type: "event" | "task";
   title: string;
   startTime: string;

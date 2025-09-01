@@ -1,8 +1,8 @@
 
-'use client';
+'use-client';
 
 import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
@@ -18,6 +18,7 @@ interface Task {
     id: string;
     label: string;
     completed: boolean;
+    userId: string;
 }
 
 const TaskItem = ({ task, onCompletionChange }: { task: Task, onCompletionChange: (id: string, completed: boolean) => void }) => {
@@ -38,7 +39,11 @@ const TaskItem = ({ task, onCompletionChange }: { task: Task, onCompletionChange
     );
 }
 
-export default function Inbox() {
+interface InboxProps {
+    userId: string;
+}
+
+export default function Inbox({ userId }: InboxProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddingTask, setIsAddingTask] = useState(false);
@@ -47,7 +52,14 @@ export default function Inbox() {
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        const q = query(collection(db, "tasks"), orderBy("label"));
+        if (!userId) return;
+
+        const q = query(
+            collection(db, "tasks"), 
+            where("userId", "==", userId),
+            orderBy("label")
+        );
+        
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const tasksData: Task[] = [];
             querySnapshot.forEach((doc) => {
@@ -64,7 +76,7 @@ export default function Inbox() {
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [userId]);
 
     useEffect(() => {
         if (isAddingTask) {
@@ -89,7 +101,7 @@ export default function Inbox() {
         }
 
         try {
-            await addTask(newTaskLabel);
+            await addTask(newTaskLabel, userId);
             setNewTaskLabel('');
             toast({
                 title: "Task Added",

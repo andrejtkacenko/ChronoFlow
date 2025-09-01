@@ -36,6 +36,7 @@ interface NewEventDialogProps {
     date: Date;
     startTime: string;
   } | null;
+  userId: string;
 }
 
 const calculateEndTime = (startTime: string, duration: number): string => {
@@ -51,6 +52,7 @@ export default function NewEventDialog({
   isOpen,
   onOpenChange,
   eventData,
+  userId,
 }: NewEventDialogProps) {
   const { toast } = useToast();
   const [title, setTitle] = useState('');
@@ -66,7 +68,6 @@ export default function NewEventDialog({
 
   useEffect(() => {
     if (isOpen && eventData) {
-      // Reset form state every time the dialog opens
       setTitle('');
       setDescription('');
       setDuration(60);
@@ -101,7 +102,7 @@ export default function NewEventDialog({
     const finalDuration = isAllDay ? 24 * 60 - 1 : duration;
     const finalEndTime = isAllDay ? '23:59' : calculateEndTime(startTime, duration);
 
-    const newEvent: Omit<ScheduleItem, 'id'> = {
+    const newEvent: Omit<ScheduleItem, 'id' | 'userId'> & { userId: string } = {
       title,
       description,
       date: format(eventData.date, 'yyyy-MM-dd'),
@@ -111,6 +112,7 @@ export default function NewEventDialog({
       icon,
       color,
       type: 'event',
+      userId,
     };
 
     try {
@@ -128,7 +130,7 @@ export default function NewEventDialog({
         description: 'Failed to create event. Please try again.',
       });
     } finally {
-      // The isLoading state will be reset by the useEffect when the dialog is re-opened
+      setIsLoading(false);
     }
   };
   

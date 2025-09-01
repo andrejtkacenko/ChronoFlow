@@ -55,7 +55,7 @@ export default function SchedulePage() {
           <main className="flex flex-1 overflow-hidden">
               <div className="w-[250px] flex flex-col border-r">
                   <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
-                      <Inbox />
+                      <Inbox userId={user.uid} />
                   </div>
                   <Separator />
                   <div className="py-4 flex justify-center">
@@ -67,6 +67,7 @@ export default function SchedulePage() {
                     date={currentDate} 
                     onTimeSlotClick={handleTimeSlotClick} 
                     newEventStartTime={newEventData?.startTime}
+                    userId={user.uid}
                   />
               </div>
                <div
@@ -89,11 +90,12 @@ export default function SchedulePage() {
               <ChevronLeft className={cn("h-5 w-5 transition-transform", !isRightSidebarOpen && "rotate-180")} />
           </Button>
       </div>
-      {newEventData && (
+      {newEventData && user && (
         <NewEventDialog
             isOpen={isNewEventDialogOpen}
             onOpenChange={handleDialogClose}
             eventData={newEventData}
+            userId={user.uid}
         />
       )}
     </>

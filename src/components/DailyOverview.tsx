@@ -92,9 +92,10 @@ interface DailyOverviewProps {
     date: Date;
     onTimeSlotClick: (startTime: string) => void;
     newEventStartTime: string | null;
+    userId: string;
 }
 
-export default function DailyOverview({ date, onTimeSlotClick, newEventStartTime }: DailyOverviewProps) {
+export default function DailyOverview({ date, onTimeSlotClick, newEventStartTime, userId }: DailyOverviewProps) {
     const [dailySchedule, setDailySchedule] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentHour, setCurrentHour] = useState(new Date().getHours());
@@ -137,9 +138,14 @@ export default function DailyOverview({ date, onTimeSlotClick, newEventStartTime
     }
       
     useEffect(() => {
+        if (!userId) return;
         setLoading(true);
         const dateString = format(date, 'yyyy-MM-dd');
-        const q = query(collection(db, "scheduleItems"), where("date", "==", dateString));
+        const q = query(
+            collection(db, "scheduleItems"), 
+            where("userId", "==", userId),
+            where("date", "==", dateString)
+        );
 
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const items: ScheduleItem[] = [];
@@ -154,7 +160,7 @@ export default function DailyOverview({ date, onTimeSlotClick, newEventStartTime
         });
 
         return () => unsubscribe();
-    }, [date]);
+    }, [date, userId]);
 
   return (
     <div className="relative h-full" onClick={handleGridClick}>
