@@ -15,9 +15,44 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
-import { addDays, format } from 'date-fns';
+import { addDays, format, isSameDay } from 'date-fns';
 
 const MINUTE_HEIGHT_PX = 80 / 60;
+const HOUR_HEIGHT_PX = 80;
+
+const hours = Array.from({ length: 24 }, (_, i) => {
+    const hour24 = i;
+    const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+    const ampm = hour24 < 12 ? 'AM' : 'PM';
+    if (hour24 === 0) return '12 AM';
+    if (hour24 === 12) return '12 PM';
+    return `${hour12} ${ampm}`;
+});
+
+
+const CurrentTimeIndicator = ({ days }: { days: Date[] }) => {
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
+        return () => clearInterval(timer);
+    }, []);
+
+    const todayExists = days.some(day => isSameDay(day, currentTime));
+    if (!todayExists) return null;
+    
+    const top = (currentTime.getHours() * 60 + currentTime.getMinutes()) * MINUTE_HEIGHT_PX;
+
+    return (
+        <div className="absolute left-16 right-0" style={{ top: `${top}px`}}>
+            <div className="relative h-px w-full">
+                <div className="absolute -left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-primary z-30"></div>
+                <div className="h-[1px] w-full bg-primary z-30"></div>
+            </div>
+        </div>
+    );
+};
+
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
@@ -99,29 +134,46 @@ export default function SchedulePage() {
                   <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
                   </div>
               </div>
-              <div className="flex-1 flex flex-col overflow-y-auto">
-                  <div className="grid" style={{ gridTemplateColumns: `repeat(${numberOfDays}, minmax(0, 1fr))`}}>
+              <div className="flex-1 flex flex-col overflow-auto">
+                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 grid" style={{ gridTemplateColumns: `64px repeat(${numberOfDays}, minmax(0, 1fr))`}}>
+                     <div className="w-16 border-b"></div>
                      {days.map(day => (
-                        <div key={day.toString()} className="min-w-0 border-r">
-                            <div className="p-4 border-b text-center sticky top-0 bg-background/95 backdrop-blur-sm z-20">
+                        <div key={day.toString()} className="min-w-0 border-r border-b">
+                            <div className="p-4 text-center">
                                 <p className="font-semibold">{format(day, 'eeee')}</p>
                                 <p className="text-2xl font-bold">{format(day, 'd')}</p>
                             </div>
                         </div>
                      ))}
                   </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${numberOfDays}, minmax(0, 1fr))`}}>
-                        {days.map(day => (
-                            <div key={day.toString()} className="min-w-0 border-r" onClick={(e) => handleGridClick(e, day)}>
+                  <div className="relative grid" style={{ gridTemplateColumns: `64px repeat(${numberOfDays}, minmax(0, 1fr))`}}>
+                    <div className="w-16">
+                         {hours.map((hour, index) => (
+                            <div key={hour} className="relative flex h-[--hour-height]" style={{'--hour-height': `${HOUR_HEIGHT_PX}px`} as React.CSSProperties}>
+                                <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground -translate-y-2">
+                                {index > 0 && <span className="relative top-px">{hour}</span>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {days.map(day => (
+                        <div key={day.toString()} className="min-w-0 border-r relative" onClick={(e) => handleGridClick(e, day)}>
+                             <div className="absolute inset-0">
+                                {hours.map((_, index) => (
+                                    <div key={index} className="h-[--hour-height] border-t" style={{'--hour-height': `${HOUR_HEIGHT_PX}px`} as React.CSSProperties} />
+                                ))}
+                            </div>
+                            <div className='relative h-full'>
                                 <DailyOverview 
                                     date={day} 
                                     newEventStartTime={newEventData?.date && newEventData.date.getTime() === day.getTime() ? newEventData.startTime : null}
                                     userId={user.uid}
                                 />
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ))}
+                    <CurrentTimeIndicator days={days} />
                   </div>
               </div>
                <div
