@@ -65,11 +65,30 @@ const CurrentTimeIndicator = () => {
     );
 };
 
-export default function DailyOverview({ date }: { date: Date }) {
+interface DailyOverviewProps {
+    date: Date;
+    onTimeSlotClick: (startTime: string) => void;
+}
+
+export default function DailyOverview({ date, onTimeSlotClick }: DailyOverviewProps) {
     const [dailySchedule, setDailySchedule] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
-      
 
+    const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const totalMinutes = Math.floor(y / 1.3333);
+        const hour = Math.floor(totalMinutes / 60);
+        const minute = totalMinutes % 60;
+        const roundedMinute = Math.round(minute / 15) * 15; // Round to nearest 15 minutes
+        
+        const finalHour = hour + Math.floor(roundedMinute / 60);
+        const finalMinute = roundedMinute % 60;
+        
+        const startTime = `${String(finalHour).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
+        onTimeSlotClick(startTime);
+    }
+      
     useEffect(() => {
         setLoading(true);
         const dateString = format(date, 'yyyy-MM-dd');
@@ -122,7 +141,7 @@ export default function DailyOverview({ date }: { date: Date }) {
     }
 
   return (
-    <div className="relative h-full">
+    <div className="relative h-full" onClick={handleGridClick}>
         {isSameDay(date, new Date()) && <CurrentTimeIndicator />}
         <div className="grid grid-cols-1 divide-y divide-border/80">
             {hours.map((hour) => (
@@ -134,7 +153,7 @@ export default function DailyOverview({ date }: { date: Date }) {
             </div>
             ))}
         </div>
-        <div className="absolute inset-0 top-0">
+        <div className="absolute inset-0 top-0 pointer-events-none">
             {dailySchedule.length > 0 ? dailySchedule.map((item) => (
                <EventCard key={item.id} item={item} />
             )) : (

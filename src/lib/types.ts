@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from "lucide-react";
 import {
     Briefcase,
@@ -6,6 +7,7 @@ import {
     Dumbbell,
     Plane,
     Users,
+    PenSquare,
   } from 'lucide-react';
   
 export const iconMap: { [key: string]: LucideIcon } = {
@@ -15,8 +17,18 @@ export const iconMap: { [key: string]: LucideIcon } = {
     Dumbbell,
     Plane,
     Users,
+    PenSquare,
     Default: Briefcase,
 };
+
+export const eventColors = [
+    "hsl(12, 76%, 61%)",   // "Tomato"
+    "hsl(204, 70%, 53%)",  // "Dodger Blue"
+    "hsl(45, 100%, 51%)",  // "Gold"
+    "hsl(145, 63%, 49%)",  // "Medium Sea Green"
+    "hsl(300, 76%, 72%)",  // "Orchid"
+    "hsl(30, 100%, 50%)",  // "Orange"
+];
 
 export type ScheduleItem = {
   id: string;
