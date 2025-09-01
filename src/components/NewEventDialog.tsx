@@ -65,12 +65,6 @@ export default function NewEventDialog({
   const [endTime, setEndTime] = useState(calculateEndTime(eventData.startTime, duration));
 
   useEffect(() => {
-    if (eventData.startTime) {
-      setStartTime(eventData.startTime);
-    }
-  }, [eventData.startTime]);
-
-  useEffect(() => {
     if (isOpen) {
       // Reset form on open
       setTitle('');
@@ -104,7 +98,7 @@ export default function NewEventDialog({
     setIsLoading(true);
 
     const finalStartTime = isAllDay ? '00:00' : startTime;
-    const finalDuration = isAllDay ? 24 * 60 : duration;
+    const finalDuration = isAllDay ? 24 * 60 - 1 : duration; // 23:59
     const finalEndTime = isAllDay ? '23:59' : calculateEndTime(startTime, duration);
 
 
@@ -142,12 +136,9 @@ export default function NewEventDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0">
-        <DialogHeader>
+        <DialogHeader className="p-6 pb-0">
           <DialogTitle className="sr-only">New Event</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="p-6">
-            <Input
+           <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -155,7 +146,10 @@ export default function NewEventDialog({
                 className="text-2xl border-none shadow-none focus-visible:ring-0 h-auto"
                 disabled={isLoading}
             />
-            <div className="pl-2 mt-4">
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="px-6">
+            <div className="pl-2">
                  <Tabs defaultValue="event" className="w-full">
                     <TabsList>
                         <TabsTrigger value="event">Мероприятие</TabsTrigger>
@@ -165,7 +159,7 @@ export default function NewEventDialog({
                  </Tabs>
             </div>
           </div>
-          <div className="px-6 pb-6 space-y-4">
+          <div className="px-6 pb-6 space-y-4 pt-4">
             <div className="flex items-center gap-4">
                 <Clock className="size-5 text-muted-foreground" />
                 <div className="flex items-center gap-2 flex-1">
@@ -283,5 +277,3 @@ export default function NewEventDialog({
     </Dialog>
   );
 }
-
-    
