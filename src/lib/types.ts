@@ -13,6 +13,9 @@ import {
     Clock,
     Video,
     Settings,
+    Palette,
+    Aperture,
+    Bell,
   } from 'lucide-react';
   
 export const iconMap: { [key: string]: LucideIcon } = {
@@ -28,6 +31,9 @@ export const iconMap: { [key: string]: LucideIcon } = {
     Clock,
     Video,
     Settings,
+    Palette,
+    Aperture,
+    Bell,
     Default: Briefcase,
 };
 

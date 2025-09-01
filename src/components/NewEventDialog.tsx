@@ -23,11 +23,12 @@ import { iconMap, eventColors, ScheduleItem } from '@/lib/types';
 import { format, addMinutes } from 'date-fns';
 import { addScheduleItem } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell } from 'lucide-react';
+import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 interface NewEventDialogProps {
   isOpen: boolean;
@@ -136,23 +137,24 @@ export default function NewEventDialog({
   
   if (!eventData) return null;
 
+  const inputStyles = "border-0 border-b border-transparent focus-visible:border-primary focus-visible:ring-0 shadow-none rounded-none px-0";
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="sr-only">New Event</DialogTitle>
+      <DialogContent className="max-w-md p-0">
+        <DialogHeader className="p-6 pb-2">
            <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Добавьте название"
-                className="text-2xl border-none shadow-none focus-visible:ring-0 h-auto"
+                className="text-2xl font-semibold border-none shadow-none focus-visible:ring-0 h-auto p-0"
                 disabled={isLoading}
             />
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="px-6">
-            <div className="pl-2">
+          <div className="px-6 pb-6 space-y-4">
+             <div className="pl-0">
                  <Tabs defaultValue="event" className="w-full">
                     <TabsList>
                         <TabsTrigger value="event">Мероприятие</TabsTrigger>
@@ -161,115 +163,120 @@ export default function NewEventDialog({
                     </TabsList>
                  </Tabs>
             </div>
-          </div>
-          <div className="px-6 pb-6 space-y-4 pt-4">
-            <div className="flex items-center gap-4">
-                <Clock className="size-5 text-muted-foreground" />
-                <div className="flex items-center gap-2 flex-1">
-                    <span className="text-sm">{format(eventData.date, 'eeee, d MMMM')}</span>
-                    {!isAllDay && (
-                        <>
-                            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
-                            <span>-</span>
-                            <Input type="time" value={endTime} disabled className="w-28" />
-                            <Select value={String(duration)} onValueChange={(value) => setDuration(Number(value))}>
-                              <SelectTrigger className="w-[120px]">
-                                <SelectValue placeholder="Duration" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="15">15 min</SelectItem>
-                                <SelectItem value="30">30 min</SelectItem>
-                                <SelectItem value="45">45 min</SelectItem>
-                                <SelectItem value="60">1 hour</SelectItem>
-                                <SelectItem value="90">1.5 hours</SelectItem>
-                                <SelectItem value="120">2 hours</SelectItem>
-                              </SelectContent>
+
+            <div className="space-y-4 pt-2">
+                <div className="flex items-center gap-4">
+                    <Clock className="size-5 text-muted-foreground" />
+                    <div className="flex items-center gap-2 flex-1 flex-wrap">
+                        <span className="text-sm font-medium">{format(eventData.date, 'eeee, d MMMM')}</span>
+                        {!isAllDay && (
+                            <div className='flex items-center gap-2'>
+                                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
+                                <span>-</span>
+                                <Input type="time" value={endTime} disabled className="w-28 bg-transparent" />
+                            </div>
+                        )}
+                        <div className="flex-1 min-w-[20px]"></div>
+                        <div className="flex items-center space-x-2">
+                            <Switch id="all-day" checked={isAllDay} onCheckedChange={setIsAllDay} />
+                            <Label htmlFor="all-day">Весь день</Label>
+                        </div>
+                    </div>
+                </div>
+
+                <Separator />
+                
+                <div className="flex items-start gap-4">
+                    <AlignLeft className="size-5 text-muted-foreground mt-2" />
+                    <Textarea
+                        id="description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Добавить описание или файл с Google Диска"
+                        className={cn(inputStyles, "min-h-[60px]")}
+                        disabled={isLoading}
+                    />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center gap-4">
+                    <Users className="size-5 text-muted-foreground" />
+                    <Input placeholder="Добавьте гостей" className={inputStyles} />
+                </div>
+                <div className="flex items-center gap-4">
+                    <MapPin className="size-5 text-muted-foreground" />
+                    <Input placeholder="Добавить местоположение" className={inputStyles} />
+                </div>
+                <div className="flex items-center gap-4">
+                    <Video className="size-5 text-muted-foreground" />
+                    <Button variant="outline" type="button">Добавить видеоконференцию Google Meet</Button>
+                </div>
+                
+                <Separator />
+
+                <div className="flex items-center gap-4">
+                    <Bell className="size-5 text-muted-foreground" />
+                    <Select defaultValue="30">
+                        <SelectTrigger className="w-auto border-none shadow-none focus:ring-0 px-0">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">За 10 минут</SelectItem>
+                            <SelectItem value="30">За 30 минут</SelectItem>
+                            <SelectItem value="60">За 1 час</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Button variant="link" type="button" className="p-0 h-auto text-muted-foreground">Добавить уведомление</Button>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4 pt-2">
+                     <div className="flex items-start gap-4">
+                        <Palette className="size-5 text-muted-foreground mt-1" />
+                        <div className="flex flex-col gap-2 w-full">
+                           <Label className="text-sm font-medium">Цвет события</Label>
+                           <div className="flex flex-wrap gap-2">
+                            {eventColors.map((c) => (
+                              <Button
+                                key={c}
+                                type="button"
+                                variant="outline"
+                                className={cn(
+                                  'size-8 rounded-full p-0 border-2',
+                                  color === c && 'border-primary ring-2 ring-primary/50'
+                                )}
+                                style={{ backgroundColor: c }}
+                                onClick={() => setColor(c)}
+                                disabled={isLoading}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                    </div>
+                     <div className="flex items-center gap-4">
+                        <Aperture className="size-5 text-muted-foreground" />
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-sm font-medium">Иконка</Label>
+                            <Select value={icon} onValueChange={setIcon}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Icon" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.keys(iconMap).map((iconName) => (
+                                        <SelectItem key={iconName} value={iconName}>
+                                            {iconName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
                             </Select>
-                        </>
-                    )}
-                     <div className="flex-1"></div>
-                    <div className="flex items-center space-x-2">
-                        <Switch id="all-day" checked={isAllDay} onCheckedChange={setIsAllDay} />
-                        <Label htmlFor="all-day">Весь день</Label>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div className="flex items-center gap-4">
-                <Users className="size-5 text-muted-foreground" />
-                <Input placeholder="Добавьте гостей" className="border-none shadow-none focus-visible:ring-0" />
-            </div>
-            <div className="flex items-center gap-4">
-                <Video className="size-5 text-muted-foreground" />
-                <Button variant="outline" type="button" className="text-blue-500 border-blue-200 hover:bg-blue-50">Добавить видеоконференцию Google Meet</Button>
-            </div>
-            <div className="flex items-center gap-4">
-                <MapPin className="size-5 text-muted-foreground" />
-                <Input placeholder="Добавить местоположение" className="border-none shadow-none focus-visible:ring-0" />
-            </div>
-            <div className="flex items-start gap-4">
-                <AlignLeft className="size-5 text-muted-foreground mt-2" />
-                <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Добавить описание или файл с Google Диска"
-                    className="border-none shadow-none focus-visible:ring-0 min-h-[60px]"
-                    disabled={isLoading}
-                />
-            </div>
-            <div className="flex items-center gap-4">
-                <Bell className="size-5 text-muted-foreground" />
-                 <Select defaultValue="30">
-                    <SelectTrigger className="w-[180px] border-none shadow-none focus-visible:ring-0">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="10">За 10 минут</SelectItem>
-                        <SelectItem value="30">За 30 минут</SelectItem>
-                        <SelectItem value="60">За 1 час</SelectItem>
-                    </SelectContent>
-                </Select>
-                 <Button variant="link" type="button" className="p-0 h-auto">Добавить уведомление</Button>
-            </div>
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {eventColors.map((c) => (
-                  <Button
-                    key={c}
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      'size-8 rounded-full p-0 border-2',
-                      color === c && 'border-ring'
-                    )}
-                    style={{ backgroundColor: c }}
-                    onClick={() => setColor(c)}
-                    disabled={isLoading}
-                  />
-                ))}
-              </div>
-            </div>
-             <div className="space-y-2">
-              <Label>Icon</Label>
-                <Select value={icon} onValueChange={setIcon}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Icon" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {Object.keys(iconMap).map((iconName) => (
-                            <SelectItem key={iconName} value={iconName}>
-                                {iconName}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
           </div>
-          <DialogFooter className="bg-muted p-4 flex justify-between w-full">
-            <Button type="button" variant="ghost" disabled={isLoading}>
-                Другие параметры
-            </Button>
+          <DialogFooter className="bg-muted p-4">
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Сохранить
