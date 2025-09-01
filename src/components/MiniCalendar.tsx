@@ -28,6 +28,10 @@ export default function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
                 classNames={{
                     day_selected: "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90",
                     day_today: "bg-accent text-accent-foreground",
+                    head_cell: "w-8",
+                    cell: "h-8 w-8 text-xs",
+                    day: "h-8 w-8 text-xs",
+                    nav_button: "h-6 w-6"
                 }}
             />
         </div>
