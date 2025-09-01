@@ -90,12 +90,11 @@ const NewEventPlaceholder = ({ startTime }: { startTime: string | null }) => {
 
 interface DailyOverviewProps {
     date: Date;
-    onTimeSlotClick: (startTime: string) => void;
     newEventStartTime: string | null;
     userId: string;
 }
 
-export default function DailyOverview({ date, onTimeSlotClick, newEventStartTime, userId }: DailyOverviewProps) {
+export default function DailyOverview({ date, newEventStartTime, userId }: DailyOverviewProps) {
     const [dailySchedule, setDailySchedule] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentHour, setCurrentHour] = useState(new Date().getHours());
@@ -111,31 +110,6 @@ export default function DailyOverview({ date, onTimeSlotClick, newEventStartTime
         return () => clearInterval(timer);
     }, [date]);
 
-    const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        const grid = e.currentTarget.querySelector('#schedule-grid');
-        if (!grid) return;
-
-        const rect = grid.getBoundingClientRect();
-        const y = e.clientY - rect.top;
-        
-        if (y < 0) return;
-
-        const totalMinutes = Math.floor(y / MINUTE_HEIGHT_PX);
-        const hour = Math.floor(totalMinutes / 60);
-        const minute = totalMinutes % 60;
-        const roundedMinute = Math.round(minute / 15) * 15;
-        
-        let finalHour = hour + Math.floor(roundedMinute / 60);
-        let finalMinute = roundedMinute % 60;
-
-        if (finalHour >= 24) {
-            finalHour = 23;
-            finalMinute = 45;
-        }
-        
-        const startTime = `${String(finalHour).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
-        onTimeSlotClick(startTime);
-    }
       
     useEffect(() => {
         if (!userId) return;
@@ -163,52 +137,50 @@ export default function DailyOverview({ date, onTimeSlotClick, newEventStartTime
     }, [date, userId]);
 
   return (
-    <div className="relative h-full" onClick={handleGridClick}>
-        <div id="schedule-grid" className='relative'>
-            <CurrentTimeIndicator date={date} />
-            <div className="grid grid-cols-1">
-                {hours.map((hour, index) => (
-                    <div key={hour} className={cn(
-                        "relative flex h-[--hour-height]",
-                        index === currentHour && "bg-primary/5"
-                        )}
-                        style={{'--hour-height': `${HOUR_HEIGHT_PX}px`} as React.CSSProperties}
-                    >
-                        <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground -translate-y-2">
-                           {index > 0 && <span className="relative top-px">{hour}</span>}
-                        </div>
-                        <div className="flex-1 border-t border-border/80"></div>
-                    </div>
-                ))}
-            </div>
-             {loading ? (
-                 <div className="absolute inset-0 top-0 pointer-events-none">
-                    <Skeleton
-                        className="absolute left-[4.5rem] right-0 rounded-lg mr-4"
-                        style={{ top: '760px', height: '80px' }}
-                    />
-                    <Skeleton
-                        className="absolute left-[4.5rem] right-0 rounded-lg mr-4"
-                        style={{ top: '960px', height: '120px' }}
-                    />
-                    <Skeleton
-                        className="absolute left-[4.5rem] right-0 rounded-lg mr-4"
-                        style={{ top: '1200px', height: '60px' }}
-                    />
-                </div>
-             ) : (
-                <div className="absolute inset-0 top-0 pointer-events-none">
-                    {dailySchedule.length > 0 ? dailySchedule.map((item) => (
-                        <EventCard key={item.id} item={item} />
-                    )) : (
-                        <div className="flex items-center justify-center h-full pt-20">
-                            <p className="text-muted-foreground text-sm">No events scheduled.</p>
-                        </div>
+    <div className='relative h-full'>
+        <CurrentTimeIndicator date={date} />
+        <div className="grid grid-cols-1">
+            {hours.map((hour, index) => (
+                <div key={hour} className={cn(
+                    "relative flex h-[--hour-height]",
+                    index === currentHour && "bg-primary/5"
                     )}
+                    style={{'--hour-height': `${HOUR_HEIGHT_PX}px`} as React.CSSProperties}
+                >
+                    <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground -translate-y-2">
+                       {index > 0 && <span className="relative top-px">{hour}</span>}
+                    </div>
+                    <div className="flex-1 border-t border-border/80"></div>
                 </div>
-            )}
-             <NewEventPlaceholder startTime={newEventStartTime} />
+            ))}
         </div>
+         {loading ? (
+             <div className="absolute inset-0 top-0 pointer-events-none">
+                <Skeleton
+                    className="absolute left-[4.5rem] right-0 rounded-lg mr-4"
+                    style={{ top: '760px', height: '80px' }}
+                />
+                <Skeleton
+                    className="absolute left-[4.5rem] right-0 rounded-lg mr-4"
+                    style={{ top: '960px', height: '120px' }}
+                />
+                <Skeleton
+                    className="absolute left-[4.5rem] right-0 rounded-lg mr-4"
+                    style={{ top: '1200px', height: '60px' }}
+                />
+            </div>
+         ) : (
+            <div className="absolute inset-0 top-0 pointer-events-none">
+                {dailySchedule.length > 0 ? dailySchedule.map((item) => (
+                    <EventCard key={item.id} item={item} />
+                )) : (
+                    <div className="flex items-center justify-center h-full pt-20">
+                        <p className="text-muted-foreground text-sm">No events scheduled for this day.</p>
+                    </div>
+                )}
+            </div>
+        )}
+         <NewEventPlaceholder startTime={newEventStartTime} />
     </div>
   );
 }

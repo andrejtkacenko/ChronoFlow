@@ -17,6 +17,8 @@ import { ChevronLeft } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
 import { addDays, format } from 'date-fns';
 
+const MINUTE_HEIGHT_PX = 80 / 60;
+
 export default function SchedulePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -37,6 +39,32 @@ export default function SchedulePage() {
     setIsNewEventDialogOpen(true);
   };
   
+  const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
+      const grid = e.currentTarget;
+      if (!grid) return;
+
+      const rect = grid.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      
+      if (y < 0) return;
+
+      const totalMinutes = Math.floor(y / MINUTE_HEIGHT_PX);
+      const hour = Math.floor(totalMinutes / 60);
+      const minute = totalMinutes % 60;
+      const roundedMinute = Math.round(minute / 15) * 15;
+      
+      let finalHour = hour + Math.floor(roundedMinute / 60);
+      let finalMinute = roundedMinute % 60;
+
+      if (finalHour >= 24) {
+          finalHour = 23;
+          finalMinute = 45;
+      }
+      
+      const startTime = `${String(finalHour).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
+      handleTimeSlotClick(day, startTime);
+  }
+
   const handleDialogClose = () => {
     setIsNewEventDialogOpen(false);
     setNewEventData(null);
@@ -66,24 +94,29 @@ export default function SchedulePage() {
                   <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
                   </div>
               </div>
-              <div className="flex-1 flex overflow-x-auto">
-                  <div className="flex flex-1">
-                    {days.map(day => (
+              <div className="flex-1 flex flex-col overflow-y-auto">
+                  <div className="flex">
+                     {days.map(day => (
                         <div key={day.toString()} className="flex-1 min-w-[300px] lg:min-w-[400px] border-r">
-                            <div className="p-4 border-b text-center">
+                            <div className="p-4 border-b text-center sticky top-0 bg-background/95 backdrop-blur-sm z-20">
                                 <p className="font-semibold">{format(day, 'eeee')}</p>
                                 <p className="text-2xl font-bold">{format(day, 'd')}</p>
                             </div>
-                             <div className="h-full overflow-y-auto">
+                        </div>
+                     ))}
+                  </div>
+                  <div className="flex flex-1 overflow-x-auto">
+                      <div className="flex flex-1">
+                        {days.map(day => (
+                            <div key={day.toString()} className="flex-1 min-w-[300px] lg:min-w-[400px] border-r" onClick={(e) => handleGridClick(e, day)}>
                                 <DailyOverview 
                                     date={day} 
-                                    onTimeSlotClick={(startTime) => handleTimeSlotClick(day, startTime)}
                                     newEventStartTime={newEventData?.date && newEventData.date.getTime() === day.getTime() ? newEventData.startTime : null}
                                     userId={user.uid}
                                 />
-                             </div>
-                        </div>
-                    ))}
+                            </div>
+                        ))}
+                      </div>
                   </div>
               </div>
                <div
