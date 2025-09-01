@@ -34,6 +34,11 @@ export default function SchedulePage() {
     setNewEventData({ date: currentDate, startTime });
     setIsNewEventDialogOpen(true);
   };
+  
+  const handleDialogClose = () => {
+    setIsNewEventDialogOpen(false);
+    setNewEventData(null);
+  }
 
   if (loading || !user) {
     return (
@@ -57,8 +62,12 @@ export default function SchedulePage() {
                   <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
                   </div>
               </div>
-              <div className="flex-1 h-full overflow-y-auto">
-                  <DailyOverview date={currentDate} onTimeSlotClick={handleTimeSlotClick} />
+              <div className="flex-1 h-full overflow-y-auto py-4">
+                  <DailyOverview 
+                    date={currentDate} 
+                    onTimeSlotClick={handleTimeSlotClick} 
+                    newEventStartTime={newEventData?.startTime}
+                  />
               </div>
                <div
                   className={cn("transition-all duration-300 ease-in-out bg-card border-l",
@@ -83,7 +92,7 @@ export default function SchedulePage() {
       {newEventData && (
         <NewEventDialog
             isOpen={isNewEventDialogOpen}
-            onOpenChange={setIsNewEventDialogOpen}
+            onOpenChange={handleDialogClose}
             eventData={newEventData}
         />
       )}
