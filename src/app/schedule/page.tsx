@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
 import { addDays, format } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const MINUTE_HEIGHT_PX = 80 / 60;
 
@@ -27,6 +28,13 @@ export default function SchedulePage() {
   const [isNewEventDialogOpen, setIsNewEventDialogOpen] = useState(false);
   const [newEventData, setNewEventData] = useState<{ date: Date; startTime: string } | null>(null);
   const [numberOfDays, setNumberOfDays] = useState(1);
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (isMobile) {
+      setNumberOfDays(1);
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -42,6 +50,11 @@ export default function SchedulePage() {
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
       const grid = e.currentTarget;
       if (!grid) return;
+      
+      const relativeTarget = e.target as HTMLElement;
+      if (relativeTarget.closest('[data-no-grid-click]')) {
+        return;
+      }
 
       const rect = grid.getBoundingClientRect();
       const y = e.clientY - rect.top;
@@ -85,7 +98,7 @@ export default function SchedulePage() {
       <div className="flex h-svh flex-col relative overflow-hidden">
           <Header />
           <main className="flex flex-1 overflow-hidden">
-              <div className="w-[250px] flex flex-col border-r">
+              <div className="w-[250px] flex-col border-r hidden md:flex">
                   <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
                       <Inbox userId={user.uid} />
                   </div>
@@ -95,9 +108,9 @@ export default function SchedulePage() {
                   </div>
               </div>
               <div className="flex-1 flex flex-col overflow-y-auto">
-                  <div className="flex">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                      {days.map(day => (
-                        <div key={day.toString()} className="flex-1 min-w-[300px] lg:min-w-[400px] border-r">
+                        <div key={day.toString()} className="min-w-0 border-r">
                             <div className="p-4 border-b text-center sticky top-0 bg-background/95 backdrop-blur-sm z-20">
                                 <p className="font-semibold">{format(day, 'eeee')}</p>
                                 <p className="text-2xl font-bold">{format(day, 'd')}</p>
@@ -105,10 +118,10 @@ export default function SchedulePage() {
                         </div>
                      ))}
                   </div>
-                  <div className="flex flex-1 overflow-x-auto">
-                      <div className="flex flex-1">
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 h-full">
                         {days.map(day => (
-                            <div key={day.toString()} className="flex-1 min-w-[300px] lg:min-w-[400px] border-r" onClick={(e) => handleGridClick(e, day)}>
+                            <div key={day.toString()} className="min-w-0 border-r" onClick={(e) => handleGridClick(e, day)}>
                                 <DailyOverview 
                                     date={day} 
                                     newEventStartTime={newEventData?.date && newEventData.date.getTime() === day.getTime() ? newEventData.startTime : null}
@@ -116,7 +129,7 @@ export default function SchedulePage() {
                                 />
                             </div>
                         ))}
-                      </div>
+                    </div>
                   </div>
               </div>
                <div
@@ -128,6 +141,7 @@ export default function SchedulePage() {
                       isOpen={isRightSidebarOpen}
                       numberOfDays={numberOfDays}
                       onNumberOfDaysChange={setNumberOfDays}
+                      isMobile={isMobile}
                   />
               </div>
           </main>

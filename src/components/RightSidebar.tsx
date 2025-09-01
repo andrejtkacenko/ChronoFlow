@@ -10,9 +10,10 @@ interface RightSidebarProps {
   isOpen: boolean;
   numberOfDays: number;
   onNumberOfDaysChange: (days: number) => void;
+  isMobile: boolean;
 }
 
-export default function RightSidebar({ isOpen, numberOfDays, onNumberOfDaysChange }: RightSidebarProps) {
+export default function RightSidebar({ isOpen, numberOfDays, onNumberOfDaysChange, isMobile }: RightSidebarProps) {
   const ActionButton = ({
     icon,
     label,
@@ -45,11 +46,14 @@ export default function RightSidebar({ isOpen, numberOfDays, onNumberOfDaysChang
                     <div className="space-y-4">
                         <div>
                            <Label className="text-sm font-medium">View Layout</Label>
-                            <RadioGroup 
+                           {isMobile ? (
+                             <p className="text-xs text-muted-foreground mt-2">Multi-day view is disabled on mobile.</p>
+                           ) : (
+                             <RadioGroup 
                                 defaultValue={String(numberOfDays)} 
                                 onValueChange={(value) => onNumberOfDaysChange(Number(value))}
                                 className="mt-2"
-                            >
+                              >
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="1" id="d1" />
                                     <Label htmlFor="d1">1 Day</Label>
@@ -63,6 +67,7 @@ export default function RightSidebar({ isOpen, numberOfDays, onNumberOfDaysChang
                                     <Label htmlFor="d7">7 Days</Label>
                                 </div>
                             </RadioGroup>
+                           )}
                         </div>
                     </div>
                 </>
