@@ -136,7 +136,7 @@ export default function SchedulePage() {
               </div>
               <div className="flex-1 flex flex-col overflow-auto">
                   <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 grid" style={{ gridTemplateColumns: `64px repeat(${numberOfDays}, minmax(0, 1fr))`}}>
-                     <div className="w-16 border-b"></div>
+                     <div className="w-16 border-b border-r"></div>
                      {days.map(day => (
                         <div key={day.toString()} className="min-w-0 border-r border-b">
                             <div className="p-4 text-center">
@@ -147,7 +147,7 @@ export default function SchedulePage() {
                      ))}
                   </div>
                   <div className="relative grid" style={{ gridTemplateColumns: `64px repeat(${numberOfDays}, minmax(0, 1fr))`}}>
-                    <div className="w-16">
+                    <div className="w-16 border-r">
                          {hours.map((hour, index) => (
                             <div key={hour} className="relative flex h-[--hour-height]" style={{'--hour-height': `${hourHeight}px`} as React.CSSProperties}>
                                 <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground -translate-y-2">
