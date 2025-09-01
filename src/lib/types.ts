@@ -12,6 +12,7 @@ import {
     AlignLeft,
     Clock,
     Video,
+    Settings,
   } from 'lucide-react';
   
 export const iconMap: { [key: string]: LucideIcon } = {
@@ -26,6 +27,7 @@ export const iconMap: { [key: string]: LucideIcon } = {
     AlignLeft,
     Clock,
     Video,
+    Settings,
     Default: Briefcase,
 };
 

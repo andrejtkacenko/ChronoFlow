@@ -201,8 +201,8 @@ export default function DailyOverview({ date, onTimeSlotClick, newEventStartTime
                     {dailySchedule.length > 0 ? dailySchedule.map((item) => (
                         <EventCard key={item.id} item={item} />
                     )) : (
-                        <div className="flex items-center justify-center h-full">
-                            <p className="text-muted-foreground">No events scheduled for this day.</p>
+                        <div className="flex items-center justify-center h-full pt-20">
+                            <p className="text-muted-foreground text-sm">No events scheduled.</p>
                         </div>
                     )}
                 </div>

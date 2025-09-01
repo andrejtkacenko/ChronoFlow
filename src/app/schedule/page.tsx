@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
+import { addDays, format } from 'date-fns';
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
@@ -23,6 +24,7 @@ export default function SchedulePage() {
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isNewEventDialogOpen, setIsNewEventDialogOpen] = useState(false);
   const [newEventData, setNewEventData] = useState<{ date: Date; startTime: string } | null>(null);
+  const [numberOfDays, setNumberOfDays] = useState(1);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -30,8 +32,8 @@ export default function SchedulePage() {
     }
   }, [user, loading, router]);
 
-  const handleTimeSlotClick = (startTime: string) => {
-    setNewEventData({ date: currentDate, startTime });
+  const handleTimeSlotClick = (date: Date, startTime: string) => {
+    setNewEventData({ date, startTime });
     setIsNewEventDialogOpen(true);
   };
   
@@ -39,6 +41,8 @@ export default function SchedulePage() {
     setIsNewEventDialogOpen(false);
     setNewEventData(null);
   }
+
+  const days = Array.from({ length: numberOfDays }, (_, i) => addDays(currentDate, i));
 
   if (loading || !user) {
     return (
@@ -62,21 +66,35 @@ export default function SchedulePage() {
                   <MiniCalendar onDateSelect={(date) => setCurrentDate(date)} />
                   </div>
               </div>
-              <div className="flex-1 h-full overflow-y-auto py-4">
-                  <DailyOverview 
-                    date={currentDate} 
-                    onTimeSlotClick={handleTimeSlotClick} 
-                    newEventStartTime={newEventData?.startTime}
-                    userId={user.uid}
-                  />
+              <div className="flex-1 flex overflow-x-auto">
+                  <div className="flex flex-1">
+                    {days.map(day => (
+                        <div key={day.toString()} className="flex-1 min-w-[300px] lg:min-w-[400px] border-r">
+                            <div className="p-4 border-b text-center">
+                                <p className="font-semibold">{format(day, 'eeee')}</p>
+                                <p className="text-2xl font-bold">{format(day, 'd')}</p>
+                            </div>
+                             <div className="h-full overflow-y-auto">
+                                <DailyOverview 
+                                    date={day} 
+                                    onTimeSlotClick={(startTime) => handleTimeSlotClick(day, startTime)}
+                                    newEventStartTime={newEventData?.date && newEventData.date.getTime() === day.getTime() ? newEventData.startTime : null}
+                                    userId={user.uid}
+                                />
+                             </div>
+                        </div>
+                    ))}
+                  </div>
               </div>
                <div
                   className={cn("transition-all duration-300 ease-in-out bg-card border-l",
-                      isRightSidebarOpen ? "w-[64px]" : "w-0"
+                      isRightSidebarOpen ? "w-[250px]" : "w-0"
                   )}
                >
                   <RightSidebar
                       isOpen={isRightSidebarOpen}
+                      numberOfDays={numberOfDays}
+                      onNumberOfDaysChange={setNumberOfDays}
                   />
               </div>
           </main>
