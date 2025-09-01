@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI agent to suggest optimal time slots for new tasks, considering existing schedule.
@@ -20,16 +21,22 @@ export type SuggestOptimalTimeSlotsInput = z.infer<
   typeof SuggestOptimalTimeSlotsInputSchema
 >;
 
+const SuggestedSlotSchema = z.object({
+    task: z.string().describe("The name of the task to be scheduled."),
+    date: z.string().describe("The suggested date for the task in 'YYYY-MM-DD' format."),
+    startTime: z.string().describe("The suggested start time for the task in 'HH:mm' format."),
+    endTime: z.string().describe("The suggested end time for the task in 'HH:mm' format."),
+    duration: z.number().describe("The duration of the task in minutes."),
+});
+
 const SuggestOptimalTimeSlotsOutputSchema = z.object({
-  suggestedTimeSlots: z
-    .string()
-    .describe(
-      'Suggested time slots for the tasks, considering the existing schedule, in JSON format.'
-    ),
+  suggestions: z.array(SuggestedSlotSchema).describe("A list of suggested time slots for the tasks."),
 });
 export type SuggestOptimalTimeSlotsOutput = z.infer<
   typeof SuggestOptimalTimeSlotsOutputSchema
 >;
+export type SuggestedSlot = z.infer<typeof SuggestedSlotSchema>;
+
 
 export async function suggestOptimalTimeSlots(
   input: SuggestOptimalTimeSlotsInput
@@ -44,14 +51,12 @@ const prompt = ai.definePrompt({
   prompt: `You are a scheduling assistant who analyzes a user's schedule and suggests optimal time slots for new tasks.
 
   Analyze the following schedule and tasks to find the best time slots without conflicts.
+  The current date is ${new Date().toISOString().split('T')[0]}. Find slots on or after this date.
 
   Schedule: {{{schedule}}}
   Tasks: {{{tasks}}}
 
-  Return the suggested time slots as a JSON object with the following structure:
-  {
-    "suggestedTimeSlots": "string" // Suggested time slots for the tasks, considering the existing schedule.
-  }
+  Return the suggested time slots as a JSON object.
   `,
 });
 
