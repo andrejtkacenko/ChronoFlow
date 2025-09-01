@@ -113,9 +113,9 @@ export default function DailyOverview({ date, onTimeSlotClick }: DailyOverviewPr
         return (
             <div className="relative h-full">
                 <div className="grid grid-cols-1 divide-y divide-border/80">
-                    {hours.map((hour) => (
+                    {hours.map((hour, index) => (
                     <div key={hour} className="relative flex h-[80px]">
-                        <div className="w-16 flex-shrink-0 -translate-y-2 pr-2 text-right text-xs text-muted-foreground">
+                        <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground" style={{ marginTop: '-0.5rem' }}>
                         <span className="relative top-px">{hour}</span>
                         </div>
                         <div className="flex-1"></div>
@@ -144,9 +144,9 @@ export default function DailyOverview({ date, onTimeSlotClick }: DailyOverviewPr
     <div className="relative h-full" onClick={handleGridClick}>
         {isSameDay(date, new Date()) && <CurrentTimeIndicator />}
         <div className="grid grid-cols-1 divide-y divide-border/80">
-            {hours.map((hour) => (
+            {hours.map((hour, index) => (
             <div key={hour} className="relative flex h-[80px]">
-                <div className="w-16 flex-shrink-0 -translate-y-2 pr-2 text-right text-xs text-muted-foreground">
+                <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground" style={{ marginTop: '-0.5rem' }}>
                 <span className="relative top-px">{hour}</span>
                 </div>
                 <div className="flex-1"></div>
