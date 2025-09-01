@@ -5,13 +5,10 @@ import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -24,8 +21,11 @@ import { iconMap, eventColors, ScheduleItem } from '@/lib/types';
 import { format, addMinutes } from 'date-fns';
 import { addScheduleItem } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface NewEventDialogProps {
   isOpen: boolean;
@@ -53,10 +53,14 @@ export default function NewEventDialog({
   const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [duration, setDuration] = useState(60); // Default duration 60 minutes
+  const [duration, setDuration] = useState(60); 
   const [icon, setIcon] = useState('Default');
   const [color, setColor] = useState(eventColors[0]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAllDay, setIsAllDay] = useState(false);
+
+  const [startTime, setStartTime] = useState(eventData.startTime);
+  const [endTime, setEndTime] = useState(calculateEndTime(eventData.startTime, duration));
 
   useEffect(() => {
     if (isOpen) {
@@ -67,10 +71,17 @@ export default function NewEventDialog({
       setIcon('Default');
       setColor(eventColors[0]);
       setIsLoading(false);
+      setIsAllDay(false);
+      setStartTime(eventData.startTime);
+      setEndTime(calculateEndTime(eventData.startTime, 60));
     }
-  }, [isOpen]);
-  
-  const IconKeys = Object.keys(iconMap).filter(key => key !== 'Default');
+  }, [isOpen, eventData]);
+
+  useEffect(() => {
+    if (!isAllDay) {
+        setEndTime(calculateEndTime(startTime, duration));
+    }
+  }, [startTime, duration, isAllDay]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,9 +98,9 @@ export default function NewEventDialog({
       title,
       description,
       date: format(eventData.date, 'yyyy-MM-dd'),
-      startTime: eventData.startTime,
-      duration,
-      endTime: calculateEndTime(eventData.startTime, duration),
+      startTime: isAllDay ? '00:00' : startTime,
+      duration: isAllDay ? 24 * 60 : duration,
+      endTime: isAllDay ? '23:59' : endTime,
       icon,
       color,
       type: 'event',
@@ -116,76 +127,82 @@ export default function NewEventDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create New Event</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl p-0">
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input
+          <div className="p-6">
+            <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Team Meeting"
+                placeholder="Добавьте название"
+                className="text-2xl border-none shadow-none focus-visible:ring-0 h-auto"
                 disabled={isLoading}
-              />
+            />
+            <div className="pl-2 mt-4">
+                 <Tabs defaultValue="event" className="w-full">
+                    <TabsList>
+                        <TabsTrigger value="event">Мероприятие</TabsTrigger>
+                        <TabsTrigger value="task" disabled>Задача</TabsTrigger>
+                        <TabsTrigger value="appointment" disabled>Расписание встреч</TabsTrigger>
+                    </TabsList>
+                 </Tabs>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g., Discuss project milestones"
-                disabled={isLoading}
-              />
+          </div>
+          <div className="px-6 pb-6 space-y-4">
+            <div className="flex items-center gap-4">
+                <Clock className="size-5 text-muted-foreground" />
+                <div className="flex items-center gap-2 flex-1">
+                    <span className="text-sm">{format(eventData.date, 'eeee, d MMMM')}</span>
+                    {!isAllDay && (
+                        <>
+                            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
+                            <span>-</span>
+                            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-28" />
+                        </>
+                    )}
+                     <div className="flex-1"></div>
+                    <div className="flex items-center space-x-2">
+                        <Switch id="all-day" checked={isAllDay} onCheckedChange={setIsAllDay} />
+                        <Label htmlFor="all-day">Весь день</Label>
+                    </div>
+                </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Date</Label>
-                <Input value={format(eventData.date, 'PPP')} disabled />
-              </div>
-              <div className="space-y-2">
-                <Label>Start Time</Label>
-                <Input value={eventData.startTime} disabled />
-              </div>
+            <div className="flex items-center gap-4">
+                <Users className="size-5 text-muted-foreground" />
+                <Input placeholder="Добавьте гостей" className="border-none shadow-none focus-visible:ring-0" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes)</Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  value={duration}
-                  onChange={(e) => setDuration(parseInt(e.target.value, 10) || 0)}
-                  min="15"
-                  step="15"
-                  disabled={isLoading}
+            <div className="flex items-center gap-4">
+                <Video className="size-5 text-muted-foreground" />
+                <Button variant="outline" type="button" className="text-blue-500 border-blue-200 hover:bg-blue-50">Добавить видеоконференцию Google Meet</Button>
+            </div>
+            <div className="flex items-center gap-4">
+                <MapPin className="size-5 text-muted-foreground" />
+                <Input placeholder="Добавить местоположение" className="border-none shadow-none focus-visible:ring-0" />
+            </div>
+            <div className="flex items-start gap-4">
+                <AlignLeft className="size-5 text-muted-foreground mt-2" />
+                <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Добавить описание или файл с Google Диска"
+                    className="border-none shadow-none focus-visible:ring-0 min-h-[60px]"
+                    disabled={isLoading}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="icon">Icon</Label>
-                <Select value={icon} onValueChange={setIcon} disabled={isLoading}>
-                  <SelectTrigger id="icon">
-                    <SelectValue placeholder="Select an icon" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {IconKeys.map((key) => {
-                      const IconComponent = iconMap[key];
-                      return (
-                        <SelectItem key={key} value={key}>
-                          <div className="flex items-center gap-2">
-                            <IconComponent className="size-4" />
-                            {key}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
+            </div>
+            <div className="flex items-center gap-4">
+                <Bell className="size-5 text-muted-foreground" />
+                 <Select defaultValue="30">
+                    <SelectTrigger className="w-[180px] border-none shadow-none focus-visible:ring-0">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="10">За 10 минут</SelectItem>
+                        <SelectItem value="30">За 30 минут</SelectItem>
+                        <SelectItem value="60">За 1 час</SelectItem>
+                    </SelectContent>
                 </Select>
-              </div>
+                 <Button variant="link" type="button" className="p-0 h-auto">Добавить уведомление</Button>
             </div>
             <div className="space-y-2">
               <Label>Color</Label>
@@ -207,13 +224,13 @@ export default function NewEventDialog({
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isLoading}>
-              Cancel
+          <DialogFooter className="bg-muted p-4 flex justify-between w-full">
+            <Button type="button" variant="ghost" disabled={isLoading}>
+                Другие параметры
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Event
+              Сохранить
             </Button>
           </DialogFooter>
         </form>

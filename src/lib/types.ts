@@ -8,6 +8,10 @@ import {
     Plane,
     Users,
     PenSquare,
+    MapPin,
+    AlignLeft,
+    Clock,
+    Video,
   } from 'lucide-react';
   
 export const iconMap: { [key: string]: LucideIcon } = {
@@ -18,6 +22,10 @@ export const iconMap: { [key: string]: LucideIcon } = {
     Plane,
     Users,
     PenSquare,
+    MapPin,
+    AlignLeft,
+    Clock,
+    Video,
     Default: Briefcase,
 };
 
