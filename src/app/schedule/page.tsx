@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
 import { addDays, format, isSameDay } from 'date-fns';
+import type { ScheduleItem } from '@/lib/types';
 
 const hours = Array.from({ length: 24 }, (_, i) => {
     const hour24 = i;
@@ -57,8 +58,13 @@ export default function SchedulePage() {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
-  const [isNewEventDialogOpen, setIsNewEventDialogOpen] = useState(false);
-  const [newEventData, setNewEventData] = useState<{ date: Date; startTime: string } | null>(null);
+  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
+  
+  // For creating new events
+  const [newEventTime, setNewEventTime] = useState<{ date: Date; startTime: string } | null>(null);
+  // For editing existing events
+  const [editingEvent, setEditingEvent] = useState<ScheduleItem | null>(null);
+
   const [numberOfDays, setNumberOfDays] = useState(3);
   const [hourHeight, setHourHeight] = useState(60);
 
@@ -79,10 +85,17 @@ export default function SchedulePage() {
     localStorage.setItem('numberOfDays', String(numberOfDays));
   }, [numberOfDays]);
 
-  const handleTimeSlotClick = (date: Date, startTime: string) => {
-    setNewEventData({ date, startTime });
-    setIsNewEventDialogOpen(true);
+  const handleCreateNewEvent = (date: Date, startTime: string) => {
+    setNewEventTime({ date, startTime });
+    setEditingEvent(null);
+    setIsEventDialogOpen(true);
   };
+
+  const handleEditEvent = (event: ScheduleItem) => {
+    setEditingEvent(event);
+    setNewEventTime(null);
+    setIsEventDialogOpen(true);
+  }
   
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
       const grid = e.currentTarget;
@@ -113,12 +126,13 @@ export default function SchedulePage() {
       }
       
       const startTime = `${String(finalHour).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
-      handleTimeSlotClick(day, startTime);
+      handleCreateNewEvent(day, startTime);
   }
 
   const handleDialogClose = () => {
-    setIsNewEventDialogOpen(false);
-    setNewEventData(null);
+    setIsEventDialogOpen(false);
+    setNewEventTime(null);
+    setEditingEvent(null);
   }
 
   const days = Array.from({ length: numberOfDays }, (_, i) => addDays(currentDate, i));
@@ -178,9 +192,10 @@ export default function SchedulePage() {
                             <div className='relative h-full'>
                                 <DailyOverview 
                                     date={day} 
-                                    newEventStartTime={newEventData?.date && newEventData.date.getTime() === day.getTime() ? newEventData.startTime : null}
+                                    newEventStartTime={newEventTime?.date && isSameDay(newEventTime.date, day) ? newEventTime.startTime : null}
                                     userId={user.uid}
                                     hourHeight={hourHeight}
+                                    onEventClick={handleEditEvent}
                                 />
                             </div>
                         </div>
@@ -212,11 +227,12 @@ export default function SchedulePage() {
               <ChevronLeft className={cn("h-5 w-5 transition-transform", !isRightSidebarOpen && "rotate-180")} />
           </Button>
       </div>
-      {newEventData && user && (
+      {(newEventTime || editingEvent) && user && (
         <NewEventDialog
-            isOpen={isNewEventDialogOpen}
+            isOpen={isEventDialogOpen}
             onOpenChange={handleDialogClose}
-            eventData={newEventData}
+            newEventTime={newEventTime}
+            existingEvent={editingEvent}
             userId={user.uid}
         />
       )}

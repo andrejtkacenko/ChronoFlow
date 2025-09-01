@@ -20,23 +20,32 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { iconMap, eventColors, ScheduleItem } from '@/lib/types';
-import { format, addMinutes } from 'date-fns';
-import { addScheduleItem } from '@/lib/client-actions';
+import { format, addMinutes, parse } from 'date-fns';
+import { addScheduleItem, updateScheduleItem, deleteScheduleItem } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture } from 'lucide-react';
+import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface NewEventDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  eventData: {
-    date: Date;
-    startTime: string;
-  } | null;
+  newEventTime: { date: Date; startTime: string; } | null;
+  existingEvent: ScheduleItem | null;
   userId: string;
 }
 
@@ -52,7 +61,8 @@ const calculateEndTime = (startTime: string, duration: number): string => {
 export default function NewEventDialog({
   isOpen,
   onOpenChange,
-  eventData,
+  newEventTime,
+  existingEvent,
   userId,
 }: NewEventDialogProps) {
   const { toast } = useToast();
@@ -64,21 +74,38 @@ export default function NewEventDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [isAllDay, setIsAllDay] = useState(false);
 
-  const [startTime, setStartTime] = useState(eventData?.startTime ?? '00:00');
-  const [endTime, setEndTime] = useState(calculateEndTime(startTime, duration));
+  const [date, setDate] = useState(new Date());
+  const [startTime, setStartTime] = useState('00:00');
+  const [endTime, setEndTime] = useState('00:00');
+
+  const isEditing = !!existingEvent;
 
   useEffect(() => {
-    if (isOpen && eventData) {
-      setTitle('');
-      setDescription('');
-      setDuration(60);
-      setIcon('Default');
-      setColor(eventColors[0]);
+    if (isOpen) {
+      if (existingEvent) {
+        // Edit mode
+        setTitle(existingEvent.title);
+        setDescription(existingEvent.description ?? '');
+        setDuration(existingEvent.duration);
+        setIcon(existingEvent.icon);
+        setColor(existingEvent.color);
+        setStartTime(existingEvent.startTime);
+        setDate(parse(existingEvent.date, 'yyyy-MM-dd', new Date()));
+        setIsAllDay(existingEvent.startTime === '00:00' && existingEvent.endTime === '23:59');
+      } else if (newEventTime) {
+        // Create mode
+        setTitle('');
+        setDescription('');
+        setDuration(60);
+        setIcon('Default');
+        setColor(eventColors[0]);
+        setStartTime(newEventTime.startTime);
+        setDate(newEventTime.date);
+        setIsAllDay(false);
+      }
       setIsLoading(false);
-      setIsAllDay(false);
-      setStartTime(eventData.startTime);
     }
-  }, [isOpen, eventData]);
+  }, [isOpen, existingEvent, newEventTime]);
 
   useEffect(() => {
     if (!isAllDay) {
@@ -90,11 +117,8 @@ export default function NewEventDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !eventData) {
-      toast({
-        variant: 'destructive',
-        title: 'Title is required',
-      });
+    if (!title.trim()) {
+      toast({ variant: 'destructive', title: 'Title is required' });
       return;
     }
     setIsLoading(true);
@@ -103,39 +127,51 @@ export default function NewEventDialog({
     const finalDuration = isAllDay ? 24 * 60 - 1 : duration;
     const finalEndTime = isAllDay ? '23:59' : calculateEndTime(startTime, duration);
 
-    const newEvent: Omit<ScheduleItem, 'id' | 'userId'> & { userId: string } = {
+    const eventData: Omit<ScheduleItem, 'id' | 'userId'> = {
       title,
       description,
-      date: format(eventData.date, 'yyyy-MM-dd'),
+      date: format(date, 'yyyy-MM-dd'),
       startTime: finalStartTime,
       endTime: finalEndTime,
       duration: finalDuration,
       icon,
       color,
       type: 'event',
-      userId,
     };
 
     try {
-      await addScheduleItem(newEvent);
-      toast({
-        title: 'Event Created',
-        description: `"${title}" has been added to your schedule.`,
-      });
+      if (isEditing) {
+        await updateScheduleItem(existingEvent.id, { ...eventData });
+        toast({ title: 'Event Updated', description: `"${title}" has been updated.` });
+      } else {
+        await addScheduleItem({ ...eventData, userId });
+        toast({ title: 'Event Created', description: `"${title}" has been added.` });
+      }
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to create event:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to create event. Please try again.',
-      });
+      console.error('Failed to save event:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save event.' });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!existingEvent) return;
+    setIsLoading(true);
+    try {
+      await deleteScheduleItem(existingEvent.id);
+      toast({ title: 'Event Deleted', description: `"${existingEvent.title}" has been removed.` });
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete event.' });
+    } finally {
+      setIsLoading(false);
+    }
+  }
   
-  if (!eventData) return null;
+  if (!isOpen) return null;
 
   const inputStyles = "border-0 border-b border-transparent focus-visible:border-primary focus-visible:ring-0 shadow-none rounded-none px-0";
 
@@ -143,7 +179,7 @@ export default function NewEventDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0">
         <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="sr-only">Создать событие</DialogTitle>
+           <DialogTitle className="sr-only">{isEditing ? 'Edit event' : 'Create event'}</DialogTitle>
            <Input
                 id="title"
                 value={title}
@@ -169,7 +205,7 @@ export default function NewEventDialog({
                 <div className="flex items-center gap-4">
                     <Clock className="size-5 text-muted-foreground" />
                     <div className="flex items-center gap-2 flex-1 flex-wrap">
-                        <span className="text-sm font-medium">{format(eventData.date, 'eeee, d MMMM')}</span>
+                        <span className="text-sm font-medium">{format(date, 'eeee, d MMMM')}</span>
                         {!isAllDay && (
                             <div className='flex items-center gap-2'>
                                 <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
@@ -277,7 +313,29 @@ export default function NewEventDialog({
                 </div>
             </div>
           </div>
-          <DialogFooter className="bg-muted p-4">
+          <DialogFooter className="bg-muted p-4 flex justify-between">
+            {isEditing ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" type="button" disabled={isLoading}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Удалить
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Это действие нельзя будет отменить. Событие будет навсегда удалено с серверов.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Удалить</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : <div></div>}
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Сохранить

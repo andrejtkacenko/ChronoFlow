@@ -9,7 +9,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from "./ui/skeleton";
 
-const EventCard = ({ item, hourHeight }: { item: ScheduleItem, hourHeight: number }) => {
+const EventCard = ({ item, hourHeight, onClick }: { item: ScheduleItem, hourHeight: number, onClick: () => void }) => {
   const minuteHeight = hourHeight / 60;
   const top = (parseInt(item.startTime.split(":")[0]) * 60 + parseInt(item.startTime.split(":")[1])) * minuteHeight;
   const height = item.duration * minuteHeight;
@@ -17,7 +17,7 @@ const EventCard = ({ item, hourHeight }: { item: ScheduleItem, hourHeight: numbe
 
   return (
     <div
-      className="absolute left-2 right-2 rounded-lg p-3 transition-all ease-in-out mr-4 z-10"
+      className="absolute left-2 right-2 rounded-lg p-3 transition-all ease-in-out mr-4 z-10 cursor-pointer hover:opacity-80"
       style={{
         top: `${top}px`,
         height: `${height}px`,
@@ -25,6 +25,7 @@ const EventCard = ({ item, hourHeight }: { item: ScheduleItem, hourHeight: numbe
         borderLeft: `3px solid ${item.color}`
       }}
       data-no-grid-click="true"
+      onClick={onClick}
     >
       <div className="flex h-full flex-col overflow-hidden">
         <div className="flex items-center gap-2">
@@ -61,9 +62,10 @@ interface DailyOverviewProps {
     newEventStartTime: string | null;
     userId: string;
     hourHeight: number;
+    onEventClick: (event: ScheduleItem) => void;
 }
 
-export default function DailyOverview({ date, newEventStartTime, userId, hourHeight }: DailyOverviewProps) {
+export default function DailyOverview({ date, newEventStartTime, userId, hourHeight, onEventClick }: DailyOverviewProps) {
     const [dailySchedule, setDailySchedule] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
       
@@ -112,7 +114,7 @@ export default function DailyOverview({ date, newEventStartTime, userId, hourHei
          ) : (
             <div className="absolute inset-0 top-0 pointer-events-none">
                 {dailySchedule.length > 0 && dailySchedule.map((item) => (
-                    <EventCard key={item.id} item={item} hourHeight={hourHeight} />
+                    <EventCard key={item.id} item={item} hourHeight={hourHeight} onClick={() => onEventClick(item)} />
                 ))}
             </div>
         )}
