@@ -75,15 +75,27 @@ export default function DailyOverview({ date, onTimeSlotClick }: DailyOverviewPr
     const [loading, setLoading] = useState(true);
 
     const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        const rect = e.currentTarget.getBoundingClientRect();
+        const grid = e.currentTarget.querySelector('#schedule-grid');
+        if (!grid) return;
+
+        const rect = grid.getBoundingClientRect();
         const y = e.clientY - rect.top;
+        
+        // Ensure y is not negative
+        if (y < 0) return;
+
         const totalMinutes = Math.floor(y / 1.3333);
         const hour = Math.floor(totalMinutes / 60);
         const minute = totalMinutes % 60;
         const roundedMinute = Math.round(minute / 15) * 15; // Round to nearest 15 minutes
         
-        const finalHour = hour + Math.floor(roundedMinute / 60);
-        const finalMinute = roundedMinute % 60;
+        let finalHour = hour + Math.floor(roundedMinute / 60);
+        let finalMinute = roundedMinute % 60;
+
+        if (finalHour >= 24) {
+            finalHour = 23;
+            finalMinute = 45;
+        }
         
         const startTime = `${String(finalHour).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
         onTimeSlotClick(startTime);
@@ -111,18 +123,18 @@ export default function DailyOverview({ date, onTimeSlotClick }: DailyOverviewPr
 
     if (loading) {
         return (
-            <div className="relative h-full">
+            <div className="relative h-full py-4">
                 <div className="grid grid-cols-1 divide-y divide-border/80">
                     {hours.map((hour, index) => (
                     <div key={hour} className="relative flex h-[80px]">
-                        <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground" style={{ marginTop: '-0.5rem' }}>
-                        <span className="relative top-px">{hour}</span>
+                        <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground -translate-y-2">
+                            <span className="relative top-px">{hour}</span>
                         </div>
                         <div className="flex-1"></div>
                     </div>
                     ))}
                 </div>
-                <div className="absolute inset-0 top-0 mr-4">
+                <div className="absolute inset-0 top-4 mr-4">
                     <Skeleton
                         className="absolute left-[4.5rem] right-0 rounded-lg"
                         style={{ top: '760px', height: '80px' }}
@@ -141,28 +153,30 @@ export default function DailyOverview({ date, onTimeSlotClick }: DailyOverviewPr
     }
 
   return (
-    <div className="relative h-full" onClick={handleGridClick}>
-        {isSameDay(date, new Date()) && <CurrentTimeIndicator />}
-        <div className="grid grid-cols-1 divide-y divide-border/80">
-            {hours.map((hour, index) => (
-            <div key={hour} className="relative flex h-[80px]">
-                <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground" style={{ marginTop: '-0.5rem' }}>
-                <span className="relative top-px">{hour}</span>
+    <div className="relative h-full py-4" onClick={handleGridClick}>
+        <div id="schedule-grid" className='relative'>
+            {isSameDay(date, new Date()) && <CurrentTimeIndicator />}
+            <div className="grid grid-cols-1 divide-y divide-border/80">
+                {hours.map((hour, index) => (
+                <div key={hour} className="relative flex h-[80px]">
+                    <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground -translate-y-2">
+                        <span className="relative top-px">{hour}</span>
+                    </div>
+                    <div className="flex-1"></div>
                 </div>
-                <div className="flex-1"></div>
+                ))}
             </div>
-            ))}
-        </div>
-        <div className="absolute inset-0 top-0 pointer-events-none">
-            {dailySchedule.length > 0 ? dailySchedule.map((item) => (
-               <EventCard key={item.id} item={item} />
-            )) : (
-              !loading && (
-                <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground">No events scheduled for this day.</p>
-                </div>
-              )
-            )}
+            <div className="absolute inset-0 top-0 pointer-events-none">
+                {dailySchedule.length > 0 ? dailySchedule.map((item) => (
+                <EventCard key={item.id} item={item} />
+                )) : (
+                !loading && (
+                    <div className="flex items-center justify-center h-full">
+                        <p className="text-muted-foreground">No events scheduled for this day.</p>
+                    </div>
+                )
+                )}
+            </div>
         </div>
     </div>
   );
