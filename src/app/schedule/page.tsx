@@ -60,13 +60,24 @@ export default function SchedulePage() {
   const [isNewEventDialogOpen, setIsNewEventDialogOpen] = useState(false);
   const [newEventData, setNewEventData] = useState<{ date: Date; startTime: string } | null>(null);
   const [numberOfDays, setNumberOfDays] = useState(3);
-  const [hourHeight, setHourHeight] = useState(80);
+  const [hourHeight, setHourHeight] = useState(60);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
+  
+  useEffect(() => {
+    const savedDays = localStorage.getItem('numberOfDays');
+    if (savedDays) {
+      setNumberOfDays(parseInt(savedDays, 10));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('numberOfDays', String(numberOfDays));
+  }, [numberOfDays]);
 
   const handleTimeSlotClick = (date: Date, startTime: string) => {
     setNewEventData({ date, startTime });
