@@ -64,6 +64,8 @@ export default function SchedulePage() {
   const [newEventTime, setNewEventTime] = useState<{ date: Date; startTime: string } | null>(null);
   // For editing existing events
   const [editingEvent, setEditingEvent] = useState<ScheduleItem | null>(null);
+  // For creating a new task from inbox
+  const [isNewTask, setIsNewTask] = useState(false);
 
   const [numberOfDays, setNumberOfDays] = useState(3);
   const [hourHeight, setHourHeight] = useState(60);
@@ -88,12 +90,21 @@ export default function SchedulePage() {
   const handleCreateNewEvent = (date: Date, startTime: string) => {
     setNewEventTime({ date, startTime });
     setEditingEvent(null);
+    setIsNewTask(false);
     setIsEventDialogOpen(true);
   };
 
   const handleEditEvent = (event: ScheduleItem) => {
     setEditingEvent(event);
     setNewEventTime(null);
+    setIsNewTask(false);
+    setIsEventDialogOpen(true);
+  }
+
+  const handleCreateNewTask = () => {
+    setEditingEvent(null);
+    setNewEventTime(null);
+    setIsNewTask(true);
     setIsEventDialogOpen(true);
   }
   
@@ -128,6 +139,7 @@ export default function SchedulePage() {
     setIsEventDialogOpen(false);
     setNewEventTime(null);
     setEditingEvent(null);
+    setIsNewTask(false);
   }
 
   const days = Array.from({ length: numberOfDays }, (_, i) => addDays(currentDate, i));
@@ -147,7 +159,7 @@ export default function SchedulePage() {
           <main className="flex flex-1 overflow-hidden">
               <div className="w-[250px] flex-col border-r hidden md:flex">
                   <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
-                      <Inbox userId={user.uid} />
+                      <Inbox userId={user.uid} onNewTask={handleCreateNewTask} onEditTask={handleEditEvent}/>
                   </div>
                   <Separator />
                   <div className="py-4 flex justify-center">
@@ -156,7 +168,7 @@ export default function SchedulePage() {
               </div>
               <div className="flex-1 flex flex-col overflow-auto">
                   <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 grid" style={{ gridTemplateColumns: `64px repeat(${numberOfDays}, minmax(0, 1fr))`}}>
-                     <div className="w-16 border-b border-r"></div>
+                     <div className="w-16 border-r border-b"></div>
                      {days.map(day => (
                         <div key={day.toString()} className="min-w-0 border-r border-b">
                             <div className="p-4 text-center">
@@ -187,7 +199,6 @@ export default function SchedulePage() {
                             <div className='relative h-full'>
                                 <DailyOverview 
                                     date={day} 
-                                    newEventStartTime={newEventTime?.date && isSameDay(newEventTime.date, day) ? newEventTime.startTime : null}
                                     userId={user.uid}
                                     hourHeight={hourHeight}
                                     onEventClick={handleEditEvent}
@@ -222,12 +233,13 @@ export default function SchedulePage() {
               <ChevronLeft className={cn("h-5 w-5 transition-transform", !isRightSidebarOpen && "rotate-180")} />
           </Button>
       </div>
-      {(newEventTime || editingEvent) && user && (
+      {(isEventDialogOpen) && user && (
         <NewEventDialog
             isOpen={isEventDialogOpen}
             onOpenChange={handleDialogClose}
             newEventTime={newEventTime}
             existingEvent={editingEvent}
+            isNewTask={isNewTask}
             userId={user.uid}
         />
       )}

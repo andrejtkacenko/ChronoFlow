@@ -23,7 +23,7 @@ import { iconMap, eventColors, ScheduleItem } from '@/lib/types';
 import { format, addMinutes, parse } from 'date-fns';
 import { addScheduleItem, updateScheduleItem, deleteScheduleItem } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2 } from 'lucide-react';
+import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2, Sparkles, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -40,12 +40,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Calendar } from './ui/calendar';
+import SmartScheduler from './SmartScheduler';
 
 interface NewEventDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   newEventTime: { date: Date; startTime: string; } | null;
   existingEvent: ScheduleItem | null;
+  isNewTask: boolean;
   userId: string;
 }
 
@@ -63,6 +67,7 @@ export default function NewEventDialog({
   onOpenChange,
   newEventTime,
   existingEvent,
+  isNewTask,
   userId,
 }: NewEventDialogProps) {
   const { toast } = useToast();
@@ -75,48 +80,65 @@ export default function NewEventDialog({
   const [isAllDay, setIsAllDay] = useState(false);
   const [itemType, setItemType] = useState<'event' | 'task'>('event');
 
-  const [date, setDate] = useState(new Date());
-  const [startTime, setStartTime] = useState('00:00');
-  const [endTime, setEndTime] = useState('00:00');
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
+  const [isSmartSchedulerOpen, setIsSmartSchedulerOpen] = useState(false);
 
   const isEditing = !!existingEvent;
 
   useEffect(() => {
     if (isOpen) {
-      if (existingEvent) {
-        // Edit mode
+      if (existingEvent) { // Edit mode
+        setItemType(existingEvent.type);
         setTitle(existingEvent.title);
         setDescription(existingEvent.description ?? '');
-        setDuration(existingEvent.duration);
-        setIcon(existingEvent.icon);
-        setColor(existingEvent.color);
-        setStartTime(existingEvent.startTime);
-        setDate(parse(existingEvent.date, 'yyyy-MM-dd', new Date()));
-        setIsAllDay(existingEvent.startTime === '00:00' && existingEvent.endTime === '23:59');
-        setItemType(existingEvent.type);
-      } else if (newEventTime) {
-        // Create mode
+        setDuration(existingEvent.duration ?? 60);
+        setIcon(existingEvent.icon ?? 'Default');
+        setColor(existingEvent.color ?? eventColors[0]);
+        setDate(existingEvent.date ? parse(existingEvent.date, 'yyyy-MM-dd', new Date()) : undefined);
+        setStartTime(existingEvent.startTime ?? '09:00');
+        if (existingEvent.startTime === '00:00' && existingEvent.endTime === '23:59') {
+          setIsAllDay(true);
+        } else {
+          setIsAllDay(false);
+        }
+      } else if (newEventTime) { // Create event from grid
+        setItemType('event');
         setTitle('');
         setDescription('');
         setDuration(60);
         setIcon('Default');
         setColor(eventColors[0]);
-        setStartTime(newEventTime.startTime);
         setDate(newEventTime.date);
+        setStartTime(newEventTime.startTime);
         setIsAllDay(false);
-        setItemType('event');
+      } else if (isNewTask) { // Create task from Inbox
+        setItemType('task');
+        setTitle('');
+        setDescription('');
+        setDuration(60);
+        setIcon('BrainCircuit');
+        setColor(eventColors[1]);
+        setDate(undefined);
+        setStartTime('09:00');
+        setIsAllDay(false);
       }
       setIsLoading(false);
     }
-  }, [isOpen, existingEvent, newEventTime]);
+  }, [isOpen, existingEvent, newEventTime, isNewTask]);
 
   useEffect(() => {
+    if (!date) {
+        setEndTime('');
+        return;
+    }
     if (!isAllDay) {
         setEndTime(calculateEndTime(startTime, duration));
     } else {
         setEndTime('23:59');
     }
-  }, [startTime, duration, isAllDay]);
+  }, [startTime, duration, isAllDay, date]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,20 +148,32 @@ export default function NewEventDialog({
     }
     setIsLoading(true);
 
-    const finalStartTime = isAllDay ? '00:00' : startTime;
-    const finalDuration = isAllDay ? 24 * 60 - 1 : duration;
-    const finalEndTime = isAllDay ? '23:59' : calculateEndTime(startTime, duration);
+    let finalStartTime: string | undefined = startTime;
+    let finalDuration: number | undefined = duration;
+    let finalEndTime: string | undefined = endTime;
+
+    if (!date) { // Unscheduled task
+      finalStartTime = undefined;
+      finalEndTime = undefined;
+      finalDuration = undefined;
+    } else if (isAllDay) {
+        finalStartTime = '00:00';
+        finalDuration = 24 * 60 -1;
+        finalEndTime = '23:59';
+    }
+
 
     const eventData: Omit<ScheduleItem, 'id' | 'userId'> = {
       title,
       description,
-      date: format(date, 'yyyy-MM-dd'),
+      date: date ? format(date, 'yyyy-MM-dd') : undefined,
       startTime: finalStartTime,
       endTime: finalEndTime,
       duration: finalDuration,
       icon,
       color,
       type: itemType,
+      completed: existingEvent?.completed ?? false,
     };
 
     try {
@@ -173,16 +207,40 @@ export default function NewEventDialog({
       setIsLoading(false);
     }
   }
+
+  const handleScheduleWithAI = () => {
+    // This will just close the current dialog and open the smart scheduler
+    // We pass the task title to the smart scheduler
+    onOpenChange(false); // Close current dialog
+    // A bit of a hack: use a timeout to ensure the main smart scheduler opens
+    setTimeout(() => {
+        document.getElementById('smart-scheduler-trigger')?.click();
+        // And maybe populate the textarea
+        const textarea = document.getElementById('tasks-input') as HTMLTextAreaElement;
+        if (textarea) {
+            textarea.value = `${title} (${duration/60} hours)`;
+        }
+    }, 100);
+  }
+
+  const handleDateSelect = (selectedDate?: Date) => {
+    setDate(selectedDate);
+    if (selectedDate && !isEditing) { // If it's a new item, set a default time
+        setStartTime('09:00');
+    }
+  }
   
   if (!isOpen) return null;
 
   const inputStyles = "border-0 border-b border-transparent focus-visible:border-primary focus-visible:ring-0 shadow-none rounded-none px-0";
+  const isScheduled = !!date;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={isOpen} onOpenChange={(open) => !isSmartSchedulerOpen && onOpenChange(open)}>
       <DialogContent className="max-w-md p-0">
         <DialogHeader className="p-6 pb-2">
-           <DialogTitle className="sr-only">{isEditing ? 'Edit item' : 'Create item'}</DialogTitle>
+           <DialogTitle className="sr-only">{isEditing ? `Edit ${itemType}` : `Create ${itemType}`}</DialogTitle>
            <Input
                 id="title"
                 value={title}
@@ -194,7 +252,7 @@ export default function NewEventDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="px-6 pb-6 space-y-4">
-             <div className="pl-0">
+            <div className="pl-0">
                  <Tabs 
                     value={itemType} 
                     onValueChange={(value) => setItemType(value as 'event' | 'task')}
@@ -203,7 +261,6 @@ export default function NewEventDialog({
                     <TabsList>
                         <TabsTrigger value="event">Мероприятие</TabsTrigger>
                         <TabsTrigger value="task">Задача</TabsTrigger>
-                        <TabsTrigger value="appointment" disabled>Расписание встреч</TabsTrigger>
                     </TabsList>
                  </Tabs>
             </div>
@@ -211,21 +268,45 @@ export default function NewEventDialog({
             <div className="space-y-4 pt-2">
                 <div className="flex items-center gap-4">
                     <Clock className="size-5 text-muted-foreground" />
-                    <div className="flex items-center gap-2 flex-1 flex-wrap">
-                        <span className="text-sm font-medium">{format(date, 'eeee, d MMMM')}</span>
-                        {!isAllDay && (
-                            <div className='flex items-center gap-2'>
-                                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
-                                <span>-</span>
-                                <Input type="time" value={endTime} disabled className="w-28 bg-transparent" />
+                    {isScheduled ? (
+                        <div className="flex items-center gap-2 flex-1 flex-wrap">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" className="px-2 py-1 h-auto text-sm font-medium">{format(date!, 'eeee, d MMMM')}</Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={date} onSelect={handleDateSelect} initialFocus />
+                                </PopoverContent>
+                            </Popover>
+                            {!isAllDay && (
+                                <div className='flex items-center gap-2'>
+                                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
+                                    <span>-</span>
+                                    <Input type="time" value={endTime} disabled className="w-28 bg-transparent" />
+                                </div>
+                            )}
+                            <div className="flex-1 min-w-[20px]"></div>
+                            <div className="flex items-center space-x-2">
+                                <Switch id="all-day" checked={isAllDay} onCheckedChange={setIsAllDay} />
+                                <Label htmlFor="all-day">Весь день</Label>
                             </div>
-                        )}
-                        <div className="flex-1 min-w-[20px]"></div>
-                        <div className="flex items-center space-x-2">
-                            <Switch id="all-day" checked={isAllDay} onCheckedChange={setIsAllDay} />
-                            <Label htmlFor="all-day">Весь день</Label>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex items-center gap-2 flex-1">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline">Назначить дату</Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={date} onSelect={handleDateSelect} initialFocus />
+                                </PopoverContent>
+                            </Popover>
+                            <Button variant="outline" onClick={handleScheduleWithAI}>
+                                <Wand2 className="mr-2 h-4 w-4"/>
+                                Найти время
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <Separator />
@@ -242,7 +323,7 @@ export default function NewEventDialog({
                     />
                 </div>
 
-                {itemType === 'event' && (
+                {itemType === 'event' && isScheduled && (
                   <>
                     <Separator />
                     <div className="flex items-center gap-4">
@@ -264,8 +345,8 @@ export default function NewEventDialog({
 
                 <div className="flex items-center gap-4">
                     <Bell className="size-5 text-muted-foreground" />
-                    <Select defaultValue="30">
-                        <SelectTrigger className="w-auto border-none shadow-none focus:ring-0 px-0">
+                    <Select defaultValue="30" disabled={!isScheduled}>
+                        <SelectTrigger className="w-auto border-none shadow-none focus:ring-0 px-0 disabled:opacity-100 disabled:cursor-not-allowed">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -274,7 +355,7 @@ export default function NewEventDialog({
                             <SelectItem value="60">За 1 час</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button variant="link" type="button" className="p-0 h-auto text-muted-foreground">Добавить уведомление</Button>
+                     <Button variant="link" type="button" className="p-0 h-auto text-muted-foreground" disabled={!isScheduled}>Добавить уведомление</Button>
                 </div>
 
                 <Separator />
@@ -354,5 +435,6 @@ export default function NewEventDialog({
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

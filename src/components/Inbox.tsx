@@ -1,106 +1,86 @@
 
-'use-client';
+'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { collection, onSnapshot, query, where, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from './ui/skeleton';
-import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
-import { addTask, updateTask } from '@/lib/client-actions';
-import { useToast } from '@/hooks/use-toast';
+import type { ScheduleItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-interface Task {
-    id: string;
-    label: string;
-    completed: boolean;
-    userId: string;
+
+interface TaskItemProps { 
+    task: ScheduleItem, 
+    onCompletionChange: (id: string, completed: boolean) => void,
+    onTaskClick: (task: ScheduleItem) => void
 }
 
-const TaskItem = ({ task, onCompletionChange, onLabelUpdate }: { task: Task, onCompletionChange: (id: string, completed: boolean) => void, onLabelUpdate: (id: string, label: string) => void }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [label, setLabel] = useState(task.label);
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        if (isEditing) {
-            inputRef.current?.focus();
-            inputRef.current?.select();
-        }
-    }, [isEditing]);
+const TaskItem = ({ task, onCompletionChange, onTaskClick }: TaskItemProps) => {
     
-    const handleLabelUpdate = () => {
-        setIsEditing(false);
-        if (label.trim() && label.trim() !== task.label) {
-            onLabelUpdate(task.id, label.trim());
-        } else {
-            setLabel(task.label); // Revert if empty or unchanged
-        }
+    const handleCheckboxClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onCompletionChange(task.id, !task.completed);
     }
 
     return (
-        <div className="flex items-center space-x-3 bg-card p-2 rounded-md group">
+        <div 
+            className="flex items-center space-x-3 bg-card p-2 rounded-md group cursor-pointer hover:bg-muted/80"
+            onClick={() => onTaskClick(task)}
+        >
             <Checkbox
                 id={task.id}
                 checked={task.completed}
                 onCheckedChange={(checked) => onCompletionChange(task.id, !!checked)}
+                onClick={(e) => e.stopPropagation()} // prevent click from bubbling to the div
             />
-            {isEditing ? (
-                 <form action={handleLabelUpdate} className="flex-1">
-                    <Input
-                        ref={inputRef}
-                        value={label}
-                        onChange={(e) => setLabel(e.target.value)}
-                        onBlur={handleLabelUpdate}
-                        className="h-7 text-sm"
-                    />
-                 </form>
-            ) : (
-                <label
-                    htmlFor={task.id}
-                    className={`flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer ${task.completed ? 'line-through text-muted-foreground' : ''}`}
-                    onClick={() => setIsEditing(true)}
-                >
-                    {task.label}
-                </label>
-            )}
+            <label
+                htmlFor={task.id}
+                className={cn(
+                    "flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer",
+                    task.completed && 'line-through text-muted-foreground'
+                )}
+            >
+                {task.title}
+            </label>
         </div>
     );
 }
 
 interface InboxProps {
     userId: string;
+    onNewTask: () => void;
+    onEditTask: (task: ScheduleItem) => void;
 }
 
-export default function Inbox({ userId }: InboxProps) {
-    const [tasks, setTasks] = useState<Task[]>([]);
+export default function Inbox({ userId, onNewTask, onEditTask }: InboxProps) {
+    const [tasks, setTasks] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isAddingTask, setIsAddingTask] = useState(false);
-    const [newTaskLabel, setNewTaskLabel] = useState('');
-    const { toast } = useToast();
-    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!userId) return;
 
         const q = query(
-            collection(db, "tasks"), 
-            where("userId", "==", userId)
+            collection(db, "scheduleItems"), 
+            where("userId", "==", userId),
+            where("date", "==", null) // This is how we identify unscheduled tasks
         );
         
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const tasksData: Task[] = [];
+            const tasksData: ScheduleItem[] = [];
             querySnapshot.forEach((doc) => {
-                const task = { id: doc.id, ...doc.data() } as Task;
-                if (!task.completed) {
-                    tasksData.push(task);
-                }
+                tasksData.push({ id: doc.id, ...doc.data() } as ScheduleItem);
             });
-            tasksData.sort((a, b) => a.label.localeCompare(b.label));
+            // Show uncompleted tasks first, then sort alphabetically
+            tasksData.sort((a, b) => {
+                if (a.completed !== b.completed) {
+                    return a.completed ? 1 : -1;
+                }
+                return a.title.localeCompare(b.title);
+            });
             setTasks(tasksData);
             setLoading(false);
         }, (error) => {
@@ -111,62 +91,14 @@ export default function Inbox({ userId }: InboxProps) {
         return () => unsubscribe();
     }, [userId]);
 
-    useEffect(() => {
-        if (isAddingTask) {
-            inputRef.current?.focus();
-        }
-    }, [isAddingTask]);
-
     const handleTaskCompletion = async (taskId: string, completed: boolean) => {
-        const taskRef = doc(db, "tasks", taskId);
+        const taskRef = doc(db, "scheduleItems", taskId);
         try {
             await updateDoc(taskRef, { completed });
         } catch (error) {
-            console.error("Error updating task: ", error);
+            console.error("Error updating task completion: ", error);
         }
     };
-    
-    const handleTaskUpdate = async (taskId: string, newLabel: string) => {
-        try {
-            await updateTask(taskId, newLabel);
-            toast({
-                title: "Task Updated",
-                description: "Your task has been successfully updated.",
-            });
-        } catch (error) {
-             toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to update task.",
-            });
-        }
-    }
-
-    const handleAddTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newTaskLabel.trim()) {
-            setIsAddingTask(false);
-            return;
-        }
-
-        try {
-            await addTask(newTaskLabel, userId);
-            setNewTaskLabel('');
-            toast({
-                title: "Task Added",
-                description: `"${newTaskLabel}" has been added to your inbox.`,
-            });
-        } catch (error) {
-            console.error("Error adding task: ", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to add task. Please try again.",
-            });
-        } finally {
-            setIsAddingTask(false);
-        }
-    }
 
     if (loading) {
         return (
@@ -174,26 +106,12 @@ export default function Inbox({ userId }: InboxProps) {
                 <h2 className="text-xl font-semibold mb-4 px-4">Inbox</h2>
                 <div className="flex-1 overflow-hidden">
                     <div className="space-y-4 px-4">
-                        <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4 rounded-sm" />
-                            <Skeleton className="h-4 w-[250px]" />
-                        </div>
-                         <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4 rounded-sm" />
-                            <Skeleton className="h-4 w-[200px]" />
-                        </div>
-                         <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4 rounded-sm" />
-                            <Skeleton className="h-4 w-[280px]" />
-                        </div>
-                         <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4 rounded-sm" />
-                            <Skeleton className="h-4 w-[220px]" />
-                        </div>
-                         <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4 rounded-sm" />
-                            <Skeleton className="h-4 w-[180px]" />
-                        </div>
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className="flex items-center space-x-3">
+                              <Skeleton className="h-4 w-4 rounded-sm" />
+                              <Skeleton className="h-4 w-full" style={{width: `${Math.random() * 50 + 40}%`}} />
+                          </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -205,44 +123,20 @@ export default function Inbox({ userId }: InboxProps) {
             <div className="px-4">
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-xl font-semibold">Inbox</h2>
-                    <Button variant="ghost" size="icon" onClick={() => setIsAddingTask(true)} className={cn("h-8 w-8", isAddingTask && "hidden")}>
+                    <Button variant="ghost" size="icon" onClick={onNewTask} className="h-8 w-8">
                         <Plus className="h-4 w-4" />
                     </Button>
                 </div>
-                {isAddingTask && (
-                     <form onSubmit={handleAddTask} className="flex items-center gap-2 mb-4">
-                        <Input 
-                            ref={inputRef}
-                            value={newTaskLabel}
-                            onChange={(e) => setNewTaskLabel(e.target.value)}
-                            placeholder="Add a new task..."
-                            className="h-9"
-                            onBlur={(e) => {
-                                // Only submit on blur if there is text, otherwise just close
-                                if (!e.relatedTarget) { // To prevent blur when clicking submit
-                                    if(newTaskLabel.trim()) {
-                                        handleAddTask(e);
-                                    } else {
-                                        setIsAddingTask(false);
-                                    }
-                                }
-                            }}
-                        />
-                         <Button type="submit" size="icon" className="h-9 w-9 shrink-0">
-                            <Plus className="h-4 w-4" />
-                        </Button>
-                    </form>
-                )}
             </div>
             <div className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full pr-4">
-                    <div className="space-y-4 px-4">
+                    <div className="space-y-2 px-4">
                         {tasks.length > 0 ? tasks.map(task => (
                            <TaskItem 
                                 key={task.id} 
                                 task={task} 
-                                onCompletionChange={handleTaskCompletion} 
-                                onLabelUpdate={handleTaskUpdate}
+                                onCompletionChange={handleTaskCompletion}
+                                onTaskClick={onEditTask}
                             />
                         )) : (
                             <p className="text-sm text-muted-foreground text-center py-4">No tasks in your inbox.</p>

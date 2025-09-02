@@ -4,16 +4,17 @@
 import type { ScheduleItem } from "@/lib/types";
 import { iconMap } from "@/lib/types";
 import { useEffect, useState } from "react";
-import { format, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from "./ui/skeleton";
 
 const EventCard = ({ item, hourHeight, onClick }: { item: ScheduleItem, hourHeight: number, onClick: (e: React.MouseEvent) => void }) => {
+  if (!item.startTime || !item.duration) return null; // Don't render unscheduled tasks
   const minuteHeight = hourHeight / 60;
   const top = (parseInt(item.startTime.split(":")[0]) * 60 + parseInt(item.startTime.split(":")[1])) * minuteHeight;
   const height = item.duration * minuteHeight;
-  const Icon = iconMap[item.icon] || iconMap.Default;
+  const Icon = iconMap[item.icon || 'Default'] || iconMap.Default;
 
   return (
     <div
@@ -21,8 +22,8 @@ const EventCard = ({ item, hourHeight, onClick }: { item: ScheduleItem, hourHeig
       style={{
         top: `${top}px`,
         height: `${height}px`,
-        backgroundColor: item.color.replace(')', ', 0.2)').replace('hsl', 'hsla'),
-        borderLeft: `3px solid ${item.color}`
+        backgroundColor: item.color ? item.color.replace(')', ', 0.2)').replace('hsl', 'hsla') : undefined,
+        borderLeft: `3px solid ${item.color || 'transparent'}`
       }}
       onClick={onClick}
     >
@@ -38,33 +39,14 @@ const EventCard = ({ item, hourHeight, onClick }: { item: ScheduleItem, hourHeig
   );
 };
 
-const NewEventPlaceholder = ({ startTime, hourHeight }: { startTime: string | null, hourHeight: number }) => {
-    if (!startTime) return null;
-
-    const minuteHeight = hourHeight / 60;
-    const top = (parseInt(startTime.split(":")[0]) * 60 + parseInt(startTime.split(":")[1])) * minuteHeight;
-    const height = 60 * minuteHeight; // Default 60 min height
-
-    return (
-        <div 
-            className="absolute left-2 right-2 rounded-lg bg-primary/10 border-2 border-dashed border-primary/50 mr-4 z-20"
-            style={{
-                top: `${top}px`,
-                height: `${height}px`,
-            }}
-        />
-    )
-}
-
 interface DailyOverviewProps {
     date: Date;
-    newEventStartTime: string | null;
     userId: string;
     hourHeight: number;
     onEventClick: (event: ScheduleItem) => void;
 }
 
-export default function DailyOverview({ date, newEventStartTime, userId, hourHeight, onEventClick }: DailyOverviewProps) {
+export default function DailyOverview({ date, userId, hourHeight, onEventClick }: DailyOverviewProps) {
     const [dailySchedule, setDailySchedule] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
       
@@ -83,7 +65,7 @@ export default function DailyOverview({ date, newEventStartTime, userId, hourHei
             querySnapshot.forEach((doc) => {
                 items.push({ id: doc.id, ...doc.data() } as ScheduleItem);
             });
-            setDailySchedule(items.sort((a,b) => a.startTime.localeCompare(b.startTime)));
+            setDailySchedule(items.sort((a,b) => (a.startTime || "00:00").localeCompare(b.startTime || "00:00")));
             setLoading(false);
         }, (error) => {
             console.error("Error fetching schedule items: ", error);
@@ -104,15 +86,15 @@ export default function DailyOverview({ date, newEventStartTime, userId, hourHei
              <div className="absolute inset-0 top-0 pointer-events-none p-2">
                 <Skeleton
                     className="absolute rounded-lg"
-                    style={{ top: '760px', height: '80px', left: '0.5rem', right: '0.5rem' }}
+                    style={{ top: '600px', height: '60px', left: '0.5rem', right: '0.5rem' }}
                 />
                 <Skeleton
                     className="absolute rounded-lg"
-                    style={{ top: '960px', height: '120px', left: '0.5rem', right: '0.5rem' }}
+                    style={{ top: '800px', height: '90px', left: '0.5rem', right: '0.5rem' }}
                 />
                 <Skeleton
                     className="absolute rounded-lg"
-                    style={{ top: '1200px', height: '60px', left: '0.5rem', right: '0.5rem' }}
+                    style={{ top: '1000px', height: '60px', left: '0.5rem', right: '0.5rem' }}
                 />
             </div>
          ) : (
@@ -122,7 +104,6 @@ export default function DailyOverview({ date, newEventStartTime, userId, hourHei
                 ))}
             </div>
         )}
-         <NewEventPlaceholder startTime={newEventStartTime} hourHeight={hourHeight} />
     </>
   );
 }
