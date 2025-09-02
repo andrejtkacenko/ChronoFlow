@@ -35,11 +35,11 @@ export default function SmartScheduler({ open, onOpenChange }: SmartSchedulerPro
   const { user } = useAuth();
 
   const handleFindTime = async () => {
-    if (!tasks.trim()) return;
+    if (!tasks.trim() || !user) return;
     setIsLoading(true);
     setSuggestions([]);
     try {
-      const result = await getSuggestedTimeSlots(tasks);
+      const result = await getSuggestedTimeSlots(tasks, user.uid);
       if (typeof result === 'string') {
          toast({
           variant: "destructive",

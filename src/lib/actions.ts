@@ -2,14 +2,17 @@
 "use server";
 
 import { suggestOptimalTimeSlots, SuggestedSlot } from "@/ai/flows/suggest-optimal-time-slots";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import type { ScheduleItem } from "./types";
 
-export async function getSuggestedTimeSlots(tasks: string): Promise<SuggestedSlot[] | string> {
-  // In a real application, you would fetch the user's schedule from a database.
-  // For this demo, we'll use the mock data.
-  const scheduleSnapshot = await getDocs(collection(db, "scheduleItems"));
+export async function getSuggestedTimeSlots(tasks: string, userId: string): Promise<SuggestedSlot[] | string> {
+  if (!userId) {
+    return "User not authenticated. Please log in.";
+  }
+  
+  const scheduleQuery = query(collection(db, "scheduleItems"), where("userId", "==", userId));
+  const scheduleSnapshot = await getDocs(scheduleQuery);
   const scheduleItems = scheduleSnapshot.docs.map(doc => doc.data() as ScheduleItem);
 
   const scheduleString = scheduleItems
