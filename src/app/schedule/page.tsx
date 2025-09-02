@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import Header from "@/components/Header";
@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import RightSidebar from '@/components/RightSidebar';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import { Check, ChevronLeft, X } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
 import { addDays, format, isSameDay } from 'date-fns';
 import type { ScheduleItem } from '@/lib/types';
@@ -52,6 +52,50 @@ const CurrentTimeIndicator = ({ days, hourHeight }: { days: Date[], hourHeight: 
     );
 };
 
+interface Projection {
+  date: Date;
+  startTime: string; // "HH:mm"
+  duration: number; // minutes
+}
+
+const ProjectionCard = ({ 
+    projection, 
+    hourHeight, 
+    onConfirm, 
+    onCancel 
+}: { 
+    projection: Projection, 
+    hourHeight: number, 
+    onConfirm: () => void,
+    onCancel: () => void
+}) => {
+  const minuteHeight = hourHeight / 60;
+  const top = (parseInt(projection.startTime.split(":")[0]) * 60 + parseInt(projection.startTime.split(":")[1])) * minuteHeight;
+  const height = projection.duration * minuteHeight;
+
+  return (
+    <div
+      className="absolute left-2 right-2 rounded-lg p-2 transition-all ease-in-out mr-4 z-20 flex flex-col justify-between"
+      style={{
+        top: `${top}px`,
+        height: `${height}px`,
+        backgroundColor: 'hsla(var(--primary) / 0.1)',
+        border: `2px dashed hsl(var(--primary))`,
+      }}
+    >
+      <p className="text-xs font-semibold text-primary">New Event</p>
+      <div className="flex justify-end items-center gap-2">
+        <Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={(e) => { e.stopPropagation(); onCancel(); }}>
+          <X className="h-4 w-4" />
+        </Button>
+        <Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={(e) => { e.stopPropagation(); onConfirm(); }}>
+          <Check className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 
 export default function SchedulePage() {
   const { user, loading } = useAuth();
@@ -59,6 +103,8 @@ export default function SchedulePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
+  const [projection, setProjection] = useState<Projection | null>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
   
   // For creating new events
   const [newEventTime, setNewEventTime] = useState<{ date: Date; startTime: string } | null>(null);
@@ -87,11 +133,27 @@ export default function SchedulePage() {
     localStorage.setItem('numberOfDays', String(numberOfDays));
   }, [numberOfDays]);
 
+  // Close projection if clicking outside of it
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (projection && mainContentRef.current && !mainContentRef.current.contains(event.target as Node)) {
+       // This logic needs to be refined. For now, we will just close on any click.
+    }
+  }, [projection]);
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [handleClickOutside]);
+
+
   const handleCreateNewEvent = (date: Date, startTime: string) => {
     setNewEventTime({ date, startTime });
     setEditingEvent(null);
     setIsNewTask(false);
     setIsEventDialogOpen(true);
+    setProjection(null);
   };
 
   const handleEditEvent = (event: ScheduleItem) => {
@@ -99,6 +161,7 @@ export default function SchedulePage() {
     setNewEventTime(null);
     setIsNewTask(false);
     setIsEventDialogOpen(true);
+    setProjection(null);
   }
 
   const handleCreateNewTask = () => {
@@ -106,9 +169,17 @@ export default function SchedulePage() {
     setNewEventTime(null);
     setIsNewTask(true);
     setIsEventDialogOpen(true);
+    setProjection(null);
   }
   
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
+      const target = e.target as HTMLElement;
+      // If we click on an existing event, do nothing here. The event's own onClick will fire.
+      if (target.closest('.z-10')) { 
+        setProjection(null);
+        return;
+      }
+      
       const grid = e.currentTarget;
       if (!grid) return;
 
@@ -132,7 +203,13 @@ export default function SchedulePage() {
       }
       
       const startTime = `${String(finalHour).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
-      handleCreateNewEvent(day, startTime);
+      
+      // Instead of opening dialog, set projection
+      setProjection({
+        date: day,
+        startTime: startTime,
+        duration: 60,
+      });
   }
 
   const handleDialogClose = () => {
@@ -140,6 +217,12 @@ export default function SchedulePage() {
     setNewEventTime(null);
     setEditingEvent(null);
     setIsNewTask(false);
+  }
+
+  const handleConfirmProjection = () => {
+    if (projection) {
+        handleCreateNewEvent(projection.date, projection.startTime);
+    }
   }
 
   const days = Array.from({ length: numberOfDays }, (_, i) => addDays(currentDate, i));
@@ -156,7 +239,7 @@ export default function SchedulePage() {
     <>
       <div className="flex h-svh flex-col relative overflow-hidden">
           <Header />
-          <main className="flex flex-1 overflow-hidden">
+          <main className="flex flex-1 overflow-hidden" ref={mainContentRef}>
               <div className="w-[250px] flex-col border-r hidden md:flex">
                   <div className="px-4 pt-4 flex-1 flex flex-col overflow-y-auto">
                       <Inbox userId={user.uid} onNewTask={handleCreateNewTask} onEditTask={handleEditEvent}/>
@@ -203,6 +286,14 @@ export default function SchedulePage() {
                                     hourHeight={hourHeight}
                                     onEventClick={handleEditEvent}
                                 />
+                                 {projection && isSameDay(projection.date, day) && (
+                                    <ProjectionCard 
+                                        projection={projection} 
+                                        hourHeight={hourHeight} 
+                                        onConfirm={handleConfirmProjection}
+                                        onCancel={() => setProjection(null)}
+                                    />
+                                )}
                             </div>
                         </div>
                     ))}
@@ -246,3 +337,5 @@ export default function SchedulePage() {
     </>
   );
 }
+
+    
