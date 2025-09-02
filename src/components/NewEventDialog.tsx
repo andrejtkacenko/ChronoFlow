@@ -73,6 +73,7 @@ export default function NewEventDialog({
   const [color, setColor] = useState(eventColors[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAllDay, setIsAllDay] = useState(false);
+  const [itemType, setItemType] = useState<'event' | 'task'>('event');
 
   const [date, setDate] = useState(new Date());
   const [startTime, setStartTime] = useState('00:00');
@@ -92,6 +93,7 @@ export default function NewEventDialog({
         setStartTime(existingEvent.startTime);
         setDate(parse(existingEvent.date, 'yyyy-MM-dd', new Date()));
         setIsAllDay(existingEvent.startTime === '00:00' && existingEvent.endTime === '23:59');
+        setItemType(existingEvent.type);
       } else if (newEventTime) {
         // Create mode
         setTitle('');
@@ -102,6 +104,7 @@ export default function NewEventDialog({
         setStartTime(newEventTime.startTime);
         setDate(newEventTime.date);
         setIsAllDay(false);
+        setItemType('event');
       }
       setIsLoading(false);
     }
@@ -136,21 +139,21 @@ export default function NewEventDialog({
       duration: finalDuration,
       icon,
       color,
-      type: 'event',
+      type: itemType,
     };
 
     try {
       if (isEditing) {
         await updateScheduleItem(existingEvent.id, { ...eventData });
-        toast({ title: 'Event Updated', description: `"${title}" has been updated.` });
+        toast({ title: 'Item Updated', description: `"${title}" has been updated.` });
       } else {
         await addScheduleItem({ ...eventData, userId });
-        toast({ title: 'Event Created', description: `"${title}" has been added.` });
+        toast({ title: 'Item Created', description: `"${title}" has been added.` });
       }
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to save event:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save event.' });
+      console.error('Failed to save item:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save item.' });
     } finally {
       setIsLoading(false);
     }
@@ -161,11 +164,11 @@ export default function NewEventDialog({
     setIsLoading(true);
     try {
       await deleteScheduleItem(existingEvent.id);
-      toast({ title: 'Event Deleted', description: `"${existingEvent.title}" has been removed.` });
+      toast({ title: 'Item Deleted', description: `"${existingEvent.title}" has been removed.` });
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to delete event:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete event.' });
+      console.error('Failed to delete item:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete item.' });
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +182,7 @@ export default function NewEventDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0">
         <DialogHeader className="p-6 pb-2">
-           <DialogTitle className="sr-only">{isEditing ? 'Edit event' : 'Create event'}</DialogTitle>
+           <DialogTitle className="sr-only">{isEditing ? 'Edit item' : 'Create item'}</DialogTitle>
            <Input
                 id="title"
                 value={title}
@@ -192,10 +195,14 @@ export default function NewEventDialog({
         <form onSubmit={handleSubmit}>
           <div className="px-6 pb-6 space-y-4">
              <div className="pl-0">
-                 <Tabs defaultValue="event" className="w-full">
+                 <Tabs 
+                    value={itemType} 
+                    onValueChange={(value) => setItemType(value as 'event' | 'task')}
+                    className="w-full"
+                  >
                     <TabsList>
                         <TabsTrigger value="event">Мероприятие</TabsTrigger>
-                        <TabsTrigger value="task" disabled>Задача</TabsTrigger>
+                        <TabsTrigger value="task">Задача</TabsTrigger>
                         <TabsTrigger value="appointment" disabled>Расписание встреч</TabsTrigger>
                     </TabsList>
                  </Tabs>
@@ -235,20 +242,23 @@ export default function NewEventDialog({
                     />
                 </div>
 
-                <Separator />
-
-                <div className="flex items-center gap-4">
-                    <Users className="size-5 text-muted-foreground" />
-                    <Input placeholder="Добавьте гостей" className={inputStyles} />
-                </div>
-                <div className="flex items-center gap-4">
-                    <MapPin className="size-5 text-muted-foreground" />
-                    <Input placeholder="Добавить местоположение" className={inputStyles} />
-                </div>
-                <div className="flex items-center gap-4">
-                    <Video className="size-5 text-muted-foreground" />
-                    <Button variant="outline" type="button">Добавить видеоконференцию Google Meet</Button>
-                </div>
+                {itemType === 'event' && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-4">
+                        <Users className="size-5 text-muted-foreground" />
+                        <Input placeholder="Добавьте гостей" className={inputStyles} />
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <MapPin className="size-5 text-muted-foreground" />
+                        <Input placeholder="Добавить местоположение" className={inputStyles} />
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Video className="size-5 text-muted-foreground" />
+                        <Button variant="outline" type="button">Добавить видеоконференцию Google Meet</Button>
+                    </div>
+                  </>
+                )}
                 
                 <Separator />
 
