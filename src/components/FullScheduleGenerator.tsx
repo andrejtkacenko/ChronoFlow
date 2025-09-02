@@ -18,14 +18,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, ArrowRight, PlusCircle } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
 import type { SuggestedSlot } from '@/ai/flows/schema';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent } from './ui/card';
-import { format, addDays } from 'date-fns';
+import { format } from 'date-fns';
+import { Separator } from './ui/separator';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -106,7 +107,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         toast({ variant: 'destructive', title: "Ошибка генерации", description: result });
       } else {
         setSuggestions(result);
-        setStep(3);
+        setStep(2);
       }
     } catch (error) {
       toast({ variant: 'destructive', title: 'Произошла непредвиденная ошибка' });
@@ -159,53 +160,46 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
             Сгенерировать расписание
           </DialogTitle>
           <DialogDescription>
-            AI-ассистент поможет вам составить идеальное расписание на ближайшие дни.
+            AI-ассистент поможет вам составить идеальное расписание. Выберите задачи, ответьте на несколько вопросов и получите готовый план.
           </DialogDescription>
         </DialogHeader>
         
         {step === 1 && (
-          <div>
-            <div className="my-4">
-              <h3 className="font-semibold mb-2">Шаг 1: Выберите задачи из Инбокса</h3>
-              <ScrollArea className="h-60 border rounded-md p-4">
-                {inboxTasks.length > 0 ? (
-                  <div className="space-y-2">
-                    {inboxTasks.map(task => (
-                      <div key={task.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`task-${task.id}`}
-                          onCheckedChange={() => handleTaskSelection(task.id)}
-                          checked={selectedTasks.has(task.id)}
-                        />
-                        <Label htmlFor={`task-${task.id}`}>{task.title}</Label>
+            <ScrollArea className="h-[60vh]">
+              <div className="pr-6 space-y-6 py-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Шаг 1: Выберите задачи из Инбокса</h3>
+                  <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
+                    {inboxTasks.length > 0 ? (
+                      <div className="space-y-2">
+                        {inboxTasks.map(task => (
+                          <div key={task.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`task-${task.id}`}
+                              onCheckedChange={() => handleTaskSelection(task.id)}
+                              checked={selectedTasks.has(task.id)}
+                            />
+                            <Label htmlFor={`task-${task.id}`}>{task.title}</Label>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center">Ваш инбокс пуст.</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center">Ваш инбокс пуст.</p>
-                )}
-              </ScrollArea>
-            </div>
-            <DialogFooter>
-              <Button onClick={() => setStep(2)} disabled={selectedTasks.size === 0}>
-                Далее <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </DialogFooter>
-          </div>
-        )}
+                </div>
 
-        {step === 2 && (
-          <div>
-            <div className="my-4">
-                <h3 className="font-semibold mb-2">Шаг 2: Расскажите о своих предпочтениях</h3>
-                <ScrollArea className="h-[50vh] pr-4">
+                <Separator />
+                
+                <div>
+                    <h3 className="font-semibold mb-4">Шаг 2: Расскажите о своих предпочтениях</h3>
                     <div className="space-y-4">
                         {questionnaire.map(q => (
                             <div key={q.id} className="grid gap-2">
@@ -222,19 +216,12 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                             <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
                         </div>
                     </div>
-                </ScrollArea>
-            </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setStep(1)}>Назад</Button>
-              <Button onClick={handleGenerate} disabled={isLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                Сгенерировать
-              </Button>
-            </DialogFooter>
-          </div>
+                </div>
+              </div>
+            </ScrollArea>
         )}
 
-        {step === 3 && (
+        {step === 2 && (
             <div>
                 <div className="my-4">
                     <h3 className="font-semibold mb-2">Шаг 3: Ваше новое расписание</h3>
@@ -259,12 +246,23 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                         </div>
                     </ScrollArea>
                 </div>
-                 <DialogFooter>
-                    <Button variant="ghost" onClick={resetState}>Начать заново</Button>
-                    <Button onClick={() => handleOpenChange(false)}>Закрыть</Button>
-                </DialogFooter>
             </div>
         )}
+
+        <DialogFooter>
+            {step === 1 && (
+                <Button onClick={handleGenerate} disabled={isLoading || selectedTasks.size === 0} className="w-full">
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                    Сгенерировать
+                </Button>
+            )}
+             {step === 2 && (
+                <>
+                    <Button variant="ghost" onClick={resetState}>Начать заново</Button>
+                    <Button onClick={() => handleOpenChange(false)}>Закрыть</Button>
+                </>
+             )}
+        </DialogFooter>
 
       </DialogContent>
     </Dialog>
