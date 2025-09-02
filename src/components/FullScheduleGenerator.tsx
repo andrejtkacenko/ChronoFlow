@@ -39,7 +39,9 @@ interface FullScheduleGeneratorProps {
 const questionnaire = [
   { id: 'mainGoals', label: 'Каковы ваши основные цели на неделю/квартал?', type: 'textarea' },
   { id: 'priorities', label: 'Какие у вас приоритеты?', type: 'select', options: ['Работа', 'Учеба', 'Личные дела', 'Сбалансированно'] },
-  { id: 'sleepHours', label: 'Сколько часов сна/питания/отдыха вам нужно ежедневно?', type: 'text' },
+  { id: 'sleepDuration', label: 'Продолжительность сна', type: 'select', options: ['7 часов', '8 часов', '9 часов'] },
+  { id: 'mealsPerDay', label: 'Количество приемов пищи', type: 'select', options: ['2', '3', '4'] },
+  { id: 'restTime', label: 'Время на отдых (кроме сна)', type: 'select', options: ['1 час', '2 часа', '3 часа'] },
   { id: 'energyPeaks', label: 'Когда у вас пики энергии?', type: 'select', options: ['Утро', 'День', 'Вечер'] },
   { id: 'fixedEvents', label: 'Какие у вас есть обязательства/привычки с фиксированным временем?', type: 'textarea' },
   { id: 'delegationOpportunities', label: 'Что из задач можно было бы делегировать/автоматизировать/удалить?', type: 'textarea' },
@@ -55,6 +57,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const [preferences, setPreferences] = useState<Record<string, string>>({
     priorities: 'Сбалансированно',
     energyPeaks: 'Утро',
+    sleepDuration: '8 часов',
+    mealsPerDay: '3',
+    restTime: '2 часа'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
@@ -154,6 +159,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     setPreferences({
       priorities: 'Сбалансированно',
       energyPeaks: 'Утро',
+      sleepDuration: '8 часов',
+      mealsPerDay: '3',
+      restTime: '2 часа'
     });
     setSuggestions([]);
     setIsLoading(false);

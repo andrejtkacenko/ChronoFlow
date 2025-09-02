@@ -27,9 +27,9 @@ const PreferencesSchema = z.object({
   priorities: z
     .string()
     .describe("User's priorities (work, study, personal)."),
-  sleepHours: z
-    .string()
-    .describe('How many hours of sleep, nutrition, and rest are needed daily.'),
+  sleepDuration: z.string().describe('How many hours of sleep are needed daily.'),
+  mealsPerDay: z.string().describe('How many meals are eaten per day.'),
+  restTime: z.string().describe('How much rest time, besides sleep, is needed daily.'),
   energyPeaks: z
     .string()
     .describe(
