@@ -10,7 +10,7 @@ import { Skeleton } from './ui/skeleton';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
-import { addTask } from '@/lib/client-actions';
+import { addTask, updateTask } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -21,20 +21,53 @@ interface Task {
     userId: string;
 }
 
-const TaskItem = ({ task, onCompletionChange }: { task: Task, onCompletionChange: (id: string, completed: boolean) => void }) => {
+const TaskItem = ({ task, onCompletionChange, onLabelUpdate }: { task: Task, onCompletionChange: (id: string, completed: boolean) => void, onLabelUpdate: (id: string, label: string) => void }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [label, setLabel] = useState(task.label);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isEditing) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [isEditing]);
+    
+    const handleLabelUpdate = () => {
+        setIsEditing(false);
+        if (label.trim() && label.trim() !== task.label) {
+            onLabelUpdate(task.id, label.trim());
+        } else {
+            setLabel(task.label); // Revert if empty or unchanged
+        }
+    }
+
     return (
-        <div className="flex items-center space-x-3 bg-card p-2 rounded-md">
+        <div className="flex items-center space-x-3 bg-card p-2 rounded-md group">
             <Checkbox
                 id={task.id}
                 checked={task.completed}
                 onCheckedChange={(checked) => onCompletionChange(task.id, !!checked)}
             />
-            <label
-                htmlFor={task.id}
-                className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${task.completed ? 'line-through text-muted-foreground' : ''}`}
-            >
-                {task.label}
-            </label>
+            {isEditing ? (
+                 <form action={handleLabelUpdate} className="flex-1">
+                    <Input
+                        ref={inputRef}
+                        value={label}
+                        onChange={(e) => setLabel(e.target.value)}
+                        onBlur={handleLabelUpdate}
+                        className="h-7 text-sm"
+                    />
+                 </form>
+            ) : (
+                <label
+                    htmlFor={task.id}
+                    className={`flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer ${task.completed ? 'line-through text-muted-foreground' : ''}`}
+                    onClick={() => setIsEditing(true)}
+                >
+                    {task.label}
+                </label>
+            )}
         </div>
     );
 }
@@ -92,6 +125,22 @@ export default function Inbox({ userId }: InboxProps) {
             console.error("Error updating task: ", error);
         }
     };
+    
+    const handleTaskUpdate = async (taskId: string, newLabel: string) => {
+        try {
+            await updateTask(taskId, newLabel);
+            toast({
+                title: "Task Updated",
+                description: "Your task has been successfully updated.",
+            });
+        } catch (error) {
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to update task.",
+            });
+        }
+    }
 
     const handleAddTask = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -189,7 +238,12 @@ export default function Inbox({ userId }: InboxProps) {
                 <ScrollArea className="h-full pr-4">
                     <div className="space-y-4 px-4">
                         {tasks.length > 0 ? tasks.map(task => (
-                           <TaskItem key={task.id} task={task} onCompletionChange={handleTaskCompletion} />
+                           <TaskItem 
+                                key={task.id} 
+                                task={task} 
+                                onCompletionChange={handleTaskCompletion} 
+                                onLabelUpdate={handleTaskUpdate}
+                            />
                         )) : (
                             <p className="text-sm text-muted-foreground text-center py-4">No tasks in your inbox.</p>
                         )}

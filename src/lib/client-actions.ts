@@ -27,6 +27,20 @@ export async function addTask(label: string, userId: string) {
     }
 }
 
+export async function updateTask(id: string, label: string) {
+    if (!label.trim()) {
+        throw new Error("Task label cannot be empty.");
+    }
+    
+    try {
+        const itemRef = doc(db, "tasks", id);
+        await updateDoc(itemRef, { label });
+    } catch (e) {
+        console.error("Error updating task: ", e);
+        throw new Error("Could not update task in the database.");
+    }
+}
+
 export async function addScheduleItem(item: Omit<ScheduleItem, 'id' | 'userId'> & { userId: string }) {
     if (!item.userId) {
         throw new Error("User not authenticated.");
