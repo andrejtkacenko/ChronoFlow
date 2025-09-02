@@ -9,7 +9,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from "./ui/skeleton";
 
-const EventCard = ({ item, hourHeight, onClick }: { item: ScheduleItem, hourHeight: number, onClick: () => void }) => {
+const EventCard = ({ item, hourHeight, onClick }: { item: ScheduleItem, hourHeight: number, onClick: (e: React.MouseEvent) => void }) => {
   const minuteHeight = hourHeight / 60;
   const top = (parseInt(item.startTime.split(":")[0]) * 60 + parseInt(item.startTime.split(":")[1])) * minuteHeight;
   const height = item.duration * minuteHeight;
@@ -24,7 +24,6 @@ const EventCard = ({ item, hourHeight, onClick }: { item: ScheduleItem, hourHeig
         backgroundColor: item.color.replace(')', ', 0.2)').replace('hsl', 'hsla'),
         borderLeft: `3px solid ${item.color}`
       }}
-      data-no-grid-click="true"
       onClick={onClick}
     >
       <div className="flex h-full flex-col overflow-hidden">
@@ -93,6 +92,11 @@ export default function DailyOverview({ date, newEventStartTime, userId, hourHei
 
         return () => unsubscribe();
     }, [date, userId]);
+    
+    const handleEventClick = (e: React.MouseEvent, item: ScheduleItem) => {
+        e.stopPropagation();
+        onEventClick(item);
+    }
 
   return (
     <>
@@ -112,9 +116,9 @@ export default function DailyOverview({ date, newEventStartTime, userId, hourHei
                 />
             </div>
          ) : (
-            <div className="absolute inset-0 top-0 pointer-events-none">
+            <div className="absolute inset-0 top-0">
                 {dailySchedule.length > 0 && dailySchedule.map((item) => (
-                    <EventCard key={item.id} item={item} hourHeight={hourHeight} onClick={() => onEventClick(item)} />
+                    <EventCard key={item.id} item={item} hourHeight={hourHeight} onClick={(e) => handleEventClick(e, item)} />
                 ))}
             </div>
         )}

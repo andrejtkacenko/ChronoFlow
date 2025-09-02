@@ -100,11 +100,6 @@ export default function SchedulePage() {
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
       const grid = e.currentTarget;
       if (!grid) return;
-      
-      const relativeTarget = e.target as HTMLElement;
-      if (relativeTarget.closest('[data-no-grid-click]')) {
-        return;
-      }
 
       const rect = grid.getBoundingClientRect();
       const y = e.clientY - rect.top;
