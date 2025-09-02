@@ -60,7 +60,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     const q = query(
       collection(db, "scheduleItems"),
       where("userId", "==", userId),
-      where("date", "==", undefined)
+      where("date", "==", null)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tasks: ScheduleItem[] = [];
