@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { format } from 'date-fns';
 import { Separator } from './ui/separator';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from './ui/resizable';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -37,9 +38,9 @@ interface FullScheduleGeneratorProps {
 
 const questionnaire = [
   { id: 'mainGoals', label: 'Каковы ваши основные цели на неделю/квартал?', type: 'textarea' },
-  { id: 'priorities', label: 'Какие у вас приоритеты (работа, учеба, личные дела)?', type: 'text' },
+  { id: 'priorities', label: 'Какие у вас приоритеты?', type: 'select', options: ['Работа', 'Учеба', 'Личные дела', 'Сбалансированно'] },
   { id: 'sleepHours', label: 'Сколько часов сна/питания/отдыха вам нужно ежедневно?', type: 'text' },
-  { id: 'energyPeaks', label: 'Когда у вас пики энергии (утро/день/вечер)?', type: 'text' },
+  { id: 'energyPeaks', label: 'Когда у вас пики энергии?', type: 'select', options: ['Утро', 'День', 'Вечер'] },
   { id: 'fixedEvents', label: 'Какие у вас есть обязательства/привычки с фиксированным временем?', type: 'textarea' },
   { id: 'delegationOpportunities', label: 'Что из задач можно было бы делегировать/автоматизировать/удалить?', type: 'textarea' },
   { id: 'selfCareTime', label: 'Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?', type: 'textarea' },
@@ -51,7 +52,10 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const [step, setStep] = useState(1);
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const [preferences, setPreferences] = useState<Record<string, string>>({});
+  const [preferences, setPreferences] = useState<Record<string, string>>({
+    priorities: 'Сбалансированно',
+    energyPeaks: 'Утро',
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
   const [numberOfDays, setNumberOfDays] = useState(7);
@@ -147,7 +151,10 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const resetState = () => {
     setStep(1);
     setSelectedTasks(new Set());
-    setPreferences({});
+    setPreferences({
+      priorities: 'Сбалансированно',
+      energyPeaks: 'Утро',
+    });
     setSuggestions([]);
     setIsLoading(false);
   }
@@ -174,7 +181,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         
         {step === 1 && (
             <ResizablePanelGroup direction="horizontal" className="flex-1">
-                <ResizablePanel defaultSize={60}>
+                <ResizablePanel defaultSize={70}>
                     <Card className="h-full flex flex-col">
                         <CardHeader>
                            <CardTitle className="text-lg">Расскажите о своих предпочтениях</CardTitle>
@@ -186,6 +193,15 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                                     <Label htmlFor={q.id}>{q.label}</Label>
                                     {q.type === 'textarea' ? (
                                         <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                                    ) : q.type === 'select' ? (
+                                        <Select value={preferences[q.id] ?? ''} onValueChange={value => setPreferences(p => ({ ...p, [q.id]: value }))}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Выберите..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {q.options?.map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
                                     ) : (
                                         <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
                                     )}
@@ -200,7 +216,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                     </Card>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={40}>
+                <ResizablePanel defaultSize={30}>
                     <Card className="h-full flex flex-col">
                         <CardHeader>
                             <CardTitle className="text-lg">Выберите задачи для планирования</CardTitle>
@@ -216,7 +232,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                                         onCheckedChange={() => handleTaskSelection(task.id)}
                                         checked={selectedTasks.has(task.id)}
                                         />
-                                        <Label htmlFor={`task-${task.id}`}>{task.title}</Label>
+                                        <Label htmlFor={`task-${task.id}`} className="flex-1 truncate">{task.title}</Label>
                                     </div>
                                     ))}
                                 </div>
@@ -277,5 +293,3 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </Dialog>
   );
 }
-
-    
