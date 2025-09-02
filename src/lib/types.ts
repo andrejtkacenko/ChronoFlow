@@ -51,15 +51,16 @@ export type ScheduleItem = {
   userId: string;
   type: "event" | "task";
   title: string;
-  startTime?: string;
-  endTime?: string;
-  duration?: number; // in minutes
-  description?: string;
-  location?: string;
-  attendees?: string[];
-  icon?: string; 
-  color?: string;
-  date?: string; // YYYY-MM-DD
+  startTime?: string | null;
+  endTime?: string | null;
+  duration?: number | null; // in minutes
+  description?: string | null;
+  location?: string | null;
+  attendees?: string[] | null;
+  icon?: string | null; 
+  color?: string | null;
+  date?: string | null; // YYYY-MM-DD
   completed?: boolean;
 };
 
+    

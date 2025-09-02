@@ -148,14 +148,16 @@ export default function NewEventDialog({
     }
     setIsLoading(true);
 
-    let finalStartTime: string | undefined = startTime;
-    let finalDuration: number | undefined = duration;
-    let finalEndTime: string | undefined = endTime;
+    let finalStartTime: string | null = startTime;
+    let finalDuration: number | null = duration;
+    let finalEndTime: string | null = endTime;
+    let finalDate: string | null = date ? format(date, 'yyyy-MM-dd') : null;
 
     if (!date) { // Unscheduled task
-      finalStartTime = undefined;
-      finalEndTime = undefined;
-      finalDuration = undefined;
+      finalStartTime = null;
+      finalEndTime = null;
+      finalDuration = null;
+      finalDate = null;
     } else if (isAllDay) {
         finalStartTime = '00:00';
         finalDuration = 24 * 60 -1;
@@ -163,10 +165,10 @@ export default function NewEventDialog({
     }
 
 
-    const eventData: Omit<ScheduleItem, 'id' | 'userId'> = {
+    const eventData = {
       title,
       description,
-      date: date ? format(date, 'yyyy-MM-dd') : undefined,
+      date: finalDate,
       startTime: finalStartTime,
       endTime: finalEndTime,
       duration: finalDuration,
@@ -178,7 +180,7 @@ export default function NewEventDialog({
 
     try {
       if (isEditing) {
-        await updateScheduleItem(existingEvent.id, { ...eventData });
+        await updateScheduleItem(existingEvent.id, eventData);
         toast({ title: 'Item Updated', description: `"${title}" has been updated.` });
       } else {
         await addScheduleItem({ ...eventData, userId });
@@ -438,3 +440,5 @@ export default function NewEventDialog({
     </>
   );
 }
+
+    
