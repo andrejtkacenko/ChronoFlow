@@ -17,7 +17,7 @@ import { getSuggestedTimeSlots } from "@/lib/actions";
 import { Loader2, Sparkles, PlusCircle } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import type { SuggestedSlot } from "@/ai/flows/suggest-optimal-time-slots";
+import type { SuggestedSlot } from "@/ai/flows/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { addScheduleItem } from "@/lib/client-actions";
 import { useAuth } from "@/hooks/use-auth";

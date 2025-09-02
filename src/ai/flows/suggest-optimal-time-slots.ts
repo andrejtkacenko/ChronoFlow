@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { SuggestedSlotSchema, type SuggestedSlot } from './schema';
 
 const SuggestOptimalTimeSlotsInputSchema = z.object({
   schedule: z
@@ -21,13 +22,6 @@ export type SuggestOptimalTimeSlotsInput = z.infer<
   typeof SuggestOptimalTimeSlotsInputSchema
 >;
 
-const SuggestedSlotSchema = z.object({
-    task: z.string().describe("The name of the task to be scheduled."),
-    date: z.string().describe("The suggested date for the task in 'YYYY-MM-DD' format."),
-    startTime: z.string().describe("The suggested start time for the task in 'HH:mm' format."),
-    endTime: z.string().describe("The suggested end time for the task in 'HH:mm' format."),
-    duration: z.number().describe("The duration of the task in minutes."),
-});
 
 const SuggestOptimalTimeSlotsOutputSchema = z.object({
   suggestions: z.array(SuggestedSlotSchema).describe("A list of suggested time slots for the tasks."),
@@ -35,7 +29,6 @@ const SuggestOptimalTimeSlotsOutputSchema = z.object({
 export type SuggestOptimalTimeSlotsOutput = z.infer<
   typeof SuggestOptimalTimeSlotsOutputSchema
 >;
-export type SuggestedSlot = z.infer<typeof SuggestedSlotSchema>;
 
 
 export async function suggestOptimalTimeSlots(

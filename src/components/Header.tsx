@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Sparkles, LogOut, Menu, X } from "lucide-react";
+import { Sparkles, LogOut, Menu, X, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SmartScheduler from "./SmartScheduler";
 import { useState } from "react";
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils";
+import FullScheduleGenerator from "./FullScheduleGenerator";
 
 
 const navLinks = [
@@ -37,6 +38,7 @@ export default function Header({
   showDateNav = false,
 }: HeaderProps) {
   const [isSmartSchedulerOpen, setSmartSchedulerOpen] = useState(false);
+  const [isFullScheduleGeneratorOpen, setFullScheduleGeneratorOpen] = useState(false);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { user, logout } = useAuth();
@@ -80,8 +82,17 @@ export default function Header({
             size="icon"
             onClick={() => setSmartSchedulerOpen(true)}
             aria-label="Smart Scheduler"
+            id="smart-scheduler-trigger"
           >
             <Sparkles className="h-5 w-5 text-primary" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setFullScheduleGeneratorOpen(true)}
+            aria-label="Generate Full Schedule"
+          >
+            <Wand2 className="h-5 w-5 text-primary" />
           </Button>
            {user && (
              <DropdownMenu>
@@ -125,6 +136,7 @@ export default function Header({
         )}
       </header>
       <SmartScheduler open={isSmartSchedulerOpen} onOpenChange={setSmartSchedulerOpen} />
+      {user && <FullScheduleGenerator open={isFullScheduleGeneratorOpen} onOpenChange={setFullScheduleGeneratorOpen} userId={user.uid} />}
     </>
   );
 }
