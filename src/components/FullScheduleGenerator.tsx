@@ -24,9 +24,10 @@ import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
 import type { SuggestedSlot } from '@/ai/flows/schema';
 import { ScrollArea } from './ui/scroll-area';
-import { Card, CardContent } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { format } from 'date-fns';
 import { Separator } from './ui/separator';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from './ui/resizable';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -160,7 +161,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
@@ -172,59 +173,67 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         </DialogHeader>
         
         {step === 1 && (
-            <ScrollArea className="h-[60vh]">
-              <div className="pr-6 space-y-6 py-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Шаг 1: Выберите задачи из Инбокса</h3>
-                  <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
-                    {inboxTasks.length > 0 ? (
-                      <div className="space-y-2">
-                        {inboxTasks.map(task => (
-                          <div key={task.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`task-${task.id}`}
-                              onCheckedChange={() => handleTaskSelection(task.id)}
-                              checked={selectedTasks.has(task.id)}
-                            />
-                            <Label htmlFor={`task-${task.id}`}>{task.title}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center">Ваш инбокс пуст.</p>
-                    )}
-                  </div>
-                </div>
-
-                <Separator />
-                
-                <div>
-                    <h3 className="font-semibold mb-4">Шаг 2: Расскажите о своих предпочтениях</h3>
-                    <div className="space-y-4">
-                        {questionnaire.map(q => (
-                            <div key={q.id} className="grid gap-2">
-                            <Label htmlFor={q.id}>{q.label}</Label>
-                            {q.type === 'textarea' ? (
-                                <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
-                            ) : (
-                                <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
-                            )}
+            <ResizablePanelGroup direction="horizontal" className="flex-1">
+                <ResizablePanel defaultSize={40}>
+                    <Card className="h-full flex flex-col">
+                        <CardHeader>
+                            <CardTitle className="text-lg">Выберите задачи для планирования</CardTitle>
+                        </CardHeader>
+                         <CardContent className="flex-1 overflow-hidden">
+                             <ScrollArea className="h-full pr-4">
+                                {inboxTasks.length > 0 ? (
+                                <div className="space-y-2">
+                                    {inboxTasks.map(task => (
+                                    <div key={task.id} className="flex items-center space-x-2">
+                                        <Checkbox
+                                        id={`task-${task.id}`}
+                                        onCheckedChange={() => handleTaskSelection(task.id)}
+                                        checked={selectedTasks.has(task.id)}
+                                        />
+                                        <Label htmlFor={`task-${task.id}`}>{task.title}</Label>
+                                    </div>
+                                    ))}
+                                </div>
+                                ) : (
+                                <p className="text-sm text-muted-foreground text-center pt-10">Ваш инбокс пуст.</p>
+                                )}
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={60}>
+                    <Card className="h-full flex flex-col">
+                        <CardHeader>
+                           <CardTitle className="text-lg">Расскажите о своих предпочтениях</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-1 overflow-y-auto">
+                             <div className="space-y-4 pr-2">
+                                {questionnaire.map(q => (
+                                    <div key={q.id} className="grid gap-2">
+                                    <Label htmlFor={q.id}>{q.label}</Label>
+                                    {q.type === 'textarea' ? (
+                                        <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                                    ) : (
+                                        <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                                    )}
+                                    </div>
+                                ))}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
+                                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
+                                </div>
                             </div>
-                        ))}
-                         <div className="grid gap-2">
-                            <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
-                            <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
-                        </div>
-                    </div>
-                </div>
-              </div>
-            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </ResizablePanel>
+            </ResizablePanelGroup>
         )}
 
         {step === 2 && (
             <div>
                 <div className="my-4">
-                    <h3 className="font-semibold mb-2">Шаг 3: Ваше новое расписание</h3>
+                    <h3 className="font-semibold mb-2">Ваше новое расписание</h3>
                      <ScrollArea className="h-96 w-full">
                         <div className="space-y-2 pr-4">
                             {suggestions.map((slot, index) => (
@@ -251,7 +260,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
         <DialogFooter>
             {step === 1 && (
-                <Button onClick={handleGenerate} disabled={isLoading || selectedTasks.size === 0} className="w-full">
+                <Button onClick={handleGenerate} disabled={isLoading || selectedTasks.size === 0} className="w-full sm:w-auto">
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                     Сгенерировать
                 </Button>
@@ -268,3 +277,5 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </Dialog>
   );
 }
+
+    
