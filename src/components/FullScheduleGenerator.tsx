@@ -174,6 +174,32 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         
         {step === 1 && (
             <ResizablePanelGroup direction="horizontal" className="flex-1">
+                <ResizablePanel defaultSize={60}>
+                    <Card className="h-full flex flex-col">
+                        <CardHeader>
+                           <CardTitle className="text-lg">Расскажите о своих предпочтениях</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-1 overflow-y-auto">
+                             <div className="space-y-4 pr-2">
+                                {questionnaire.map(q => (
+                                    <div key={q.id} className="grid gap-2">
+                                    <Label htmlFor={q.id}>{q.label}</Label>
+                                    {q.type === 'textarea' ? (
+                                        <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                                    ) : (
+                                        <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                                    )}
+                                    </div>
+                                ))}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
+                                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={40}>
                     <Card className="h-full flex flex-col">
                         <CardHeader>
@@ -198,32 +224,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                                 <p className="text-sm text-muted-foreground text-center pt-10">Ваш инбокс пуст.</p>
                                 )}
                             </ScrollArea>
-                        </CardContent>
-                    </Card>
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={60}>
-                    <Card className="h-full flex flex-col">
-                        <CardHeader>
-                           <CardTitle className="text-lg">Расскажите о своих предпочтениях</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-1 overflow-y-auto">
-                             <div className="space-y-4 pr-2">
-                                {questionnaire.map(q => (
-                                    <div key={q.id} className="grid gap-2">
-                                    <Label htmlFor={q.id}>{q.label}</Label>
-                                    {q.type === 'textarea' ? (
-                                        <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
-                                    ) : (
-                                        <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
-                                    )}
-                                    </div>
-                                ))}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
-                                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
-                                </div>
-                            </div>
                         </CardContent>
                     </Card>
                 </ResizablePanel>
