@@ -70,9 +70,11 @@ export async function getSuggestedTimeSlotsForTask(task: ScheduleItem, userId: s
     return "User not authenticated. Please log in.";
   }
   
-  const scheduleQuery = query(collection(db, "scheduleItems"), where("userId", "==", userId), where("date", "!=", null));
+  const scheduleQuery = query(collection(db, "scheduleItems"), where("userId", "==", userId));
   const scheduleSnapshot = await getDocs(scheduleQuery);
-  const scheduleItems = scheduleSnapshot.docs.map(doc => doc.data() as ScheduleItem);
+  const scheduleItems = scheduleSnapshot.docs
+    .map(doc => doc.data() as ScheduleItem)
+    .filter(item => item.date); // Filter for scheduled items client-side
 
   const scheduleString = scheduleItems
     .map(item => `${item.title} on ${item.date} from ${item.startTime} to ${item.endTime}`)
