@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { iconMap, eventColors, ScheduleItem } from '@/lib/types';
 import { format, addMinutes, parse } from 'date-fns';
-import { addScheduleItem, updateScheduleItem, deleteScheduleItem } from '@/lib/client-actions';
+import { addScheduleItem, updateScheduleItem, deleteScheduleItem, getSuggestedTimeSlotsForTask } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2, Sparkles, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import SmartScheduler from './SmartScheduler';
+import type { SuggestedSlot } from '@/ai/flows/schema';
 
 interface NewEventDialogProps {
   isOpen: boolean;
@@ -83,9 +84,26 @@ export default function NewEventDialog({
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
-  const [isSmartSchedulerOpen, setIsSmartSchedulerOpen] = useState(false);
+  
+  const [isAISuggesting, setIsAISuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
 
   const isEditing = !!existingEvent;
+
+  const resetForm = useCallback(() => {
+      setTitle('');
+      setDescription('');
+      setDuration(60);
+      setIcon('Default');
+      setColor(eventColors[0]);
+      setIsAllDay(false);
+      setItemType('event');
+      setDate(new Date());
+      setStartTime('09:00');
+      setIsLoading(false);
+      setSuggestions([]);
+      setIsAISuggesting(false);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -103,30 +121,38 @@ export default function NewEventDialog({
         } else {
           setIsAllDay(false);
         }
+
+        // If it's an unscheduled task, auto-fetch suggestions
+        if (existingEvent.type === 'task' && !existingEvent.date) {
+            fetchSuggestions(existingEvent);
+        }
+
       } else if (newEventTime) { // Create event from grid
+        resetForm();
         setItemType('event');
-        setTitle('');
-        setDescription('');
-        setDuration(60);
-        setIcon('Default');
-        setColor(eventColors[0]);
         setDate(newEventTime.date);
         setStartTime(newEventTime.startTime);
-        setIsAllDay(false);
       } else if (isNewTask) { // Create task from Inbox
+        resetForm();
         setItemType('task');
-        setTitle('');
-        setDescription('');
-        setDuration(60);
         setIcon('BrainCircuit');
         setColor(eventColors[1]);
-        setDate(undefined);
-        setStartTime('09:00');
-        setIsAllDay(false);
+        setDate(undefined); // Unscheduled by default
       }
-      setIsLoading(false);
     }
-  }, [isOpen, existingEvent, newEventTime, isNewTask]);
+  }, [isOpen, existingEvent, newEventTime, isNewTask, resetForm]);
+
+  const fetchSuggestions = async (task: ScheduleItem) => {
+      setIsAISuggesting(true);
+      setSuggestions([]);
+      const result = await getSuggestedTimeSlotsForTask(task, userId);
+      if (typeof result !== 'string') {
+          setSuggestions(result);
+      } else {
+          toast({ variant: 'destructive', title: 'AI Error', description: result });
+      }
+      setIsAISuggesting(false);
+  };
 
   useEffect(() => {
     if (!date) {
@@ -210,25 +236,18 @@ export default function NewEventDialog({
     }
   }
 
-  const handleScheduleWithAI = () => {
-    // This will just close the current dialog and open the smart scheduler
-    // We pass the task title to the smart scheduler
-    onOpenChange(false); // Close current dialog
-    // A bit of a hack: use a timeout to ensure the main smart scheduler opens
-    setTimeout(() => {
-        document.getElementById('smart-scheduler-trigger')?.click();
-        // And maybe populate the textarea
-        const textarea = document.getElementById('tasks-input') as HTMLTextAreaElement;
-        if (textarea) {
-            textarea.value = `${title} (${duration/60} hours)`;
-        }
-    }, 100);
-  }
+  const handleApplySuggestion = (slot: SuggestedSlot) => {
+      setDate(parse(slot.date, 'yyyy-MM-dd', new Date()));
+      setStartTime(slot.startTime);
+      setDuration(slot.duration);
+      setItemType('event'); // It's now an event because it's being scheduled
+      setSuggestions([]); // Clear suggestions
+  };
 
   const handleDateSelect = (selectedDate?: Date) => {
     setDate(selectedDate);
-    if (selectedDate && !isEditing) { // If it's a new item, set a default time
-        setStartTime('09:00');
+    if (selectedDate) {
+        setItemType('event');
     }
   }
   
@@ -239,7 +258,7 @@ export default function NewEventDialog({
 
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={(open) => !isSmartSchedulerOpen && onOpenChange(open)}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0">
         <DialogHeader className="p-6 pb-2">
            <DialogTitle className="sr-only">{isEditing ? `Edit ${itemType}` : `Create ${itemType}`}</DialogTitle>
@@ -257,7 +276,15 @@ export default function NewEventDialog({
             <div className="pl-0">
                  <Tabs 
                     value={itemType} 
-                    onValueChange={(value) => setItemType(value as 'event' | 'task')}
+                    onValueChange={(value) => {
+                        const newType = value as 'event' | 'task';
+                        setItemType(newType);
+                        if (newType === 'task') {
+                            setDate(undefined);
+                        } else if (newType === 'event' && !date) {
+                            setDate(new Date());
+                        }
+                    }}
                     className="w-full"
                   >
                     <TabsList>
@@ -295,21 +322,30 @@ export default function NewEventDialog({
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 flex-1">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline">Назначить дату</Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={date} onSelect={handleDateSelect} initialFocus />
-                                </PopoverContent>
-                            </Popover>
-                            <Button variant="outline" onClick={handleScheduleWithAI}>
-                                <Wand2 className="mr-2 h-4 w-4"/>
-                                Найти время
-                            </Button>
+                            <Button variant="outline" type="button" onClick={() => handleDateSelect(new Date())}>Назначить дату</Button>
                         </div>
                     )}
                 </div>
+
+                {isAISuggesting && (
+                    <div className="flex items-center justify-center p-4">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <span className="text-sm text-muted-foreground">Ищем свободные слоты...</span>
+                    </div>
+                )}
+                {suggestions.length > 0 && (
+                    <div className='space-y-2'>
+                        <Label>Предложения от AI:</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {suggestions.map((slot, i) => (
+                                <Button key={i} variant="outline" size="sm" onClick={() => handleApplySuggestion(slot)}>
+                                    {format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'd MMM')}, {slot.startTime}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
 
                 <Separator />
                 
@@ -440,5 +476,3 @@ export default function NewEventDialog({
     </>
   );
 }
-
-    
