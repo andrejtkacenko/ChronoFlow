@@ -7,6 +7,7 @@ import type { GenerateFullScheduleInput, GenerateFullScheduleOutput, SuggestedSl
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import type { ScheduleItem } from "./types";
+import { format } from "date-fns";
 
 export async function getSuggestedTimeSlots(tasks: string, userId: string): Promise<SuggestedSlot[] | string> {
   if (!userId) {
@@ -27,6 +28,7 @@ export async function getSuggestedTimeSlots(tasks: string, userId: string): Prom
     const result = await suggestOptimalTimeSlots({
       schedule: scheduleString,
       tasks,
+      currentDate: format(new Date(), 'yyyy-MM-dd'),
     });
     return result.suggestions;
   } catch (error) {

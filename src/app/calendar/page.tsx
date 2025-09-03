@@ -82,7 +82,7 @@ const DayCell = ({
           className="rounded-sm px-1.5 text-xs"
           style={{
             backgroundColor: event.color
-              .replace(')', ', 0.2)')
+              ?.replace(')', ', 0.2)')
               .replace('hsl', 'hsla'),
             borderLeft: `3px solid ${event.color}`,
           }}
@@ -100,6 +100,12 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [today, setToday] = useState(new Date());
+
+  useEffect(() => {
+    // Set today's date on the client-side to avoid hydration mismatch
+    setToday(new Date());
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -195,7 +201,7 @@ export default function CalendarPage() {
                 key={day.toString()}
                 day={day}
                 isCurrentMonth={isSameMonth(day, currentMonth)}
-                isToday={isSameDay(day, new Date())}
+                isToday={isSameDay(day, today)}
                 events={getEventsForDay(day)}
               />
             ))}

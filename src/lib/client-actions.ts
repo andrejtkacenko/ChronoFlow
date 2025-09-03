@@ -6,6 +6,7 @@ import { db } from "./firebase";
 import type { ScheduleItem } from "./types";
 import { suggestOptimalTimeSlots } from "@/ai/flows/suggest-optimal-time-slots";
 import type { SuggestedSlot } from "@/ai/flows/schema";
+import { format } from "date-fns";
 
 
 type ScheduleItemInput = Omit<ScheduleItem, 'id'>
@@ -84,7 +85,8 @@ export async function getSuggestedTimeSlotsForTask(task: ScheduleItem, userId: s
     const result = await suggestOptimalTimeSlots({
       schedule: scheduleString,
       tasks: task.title,
-      duration: task.duration ?? 60
+      duration: task.duration ?? 60,
+      currentDate: format(new Date(), 'yyyy-MM-dd')
     });
     return result.suggestions;
   } catch (error) {

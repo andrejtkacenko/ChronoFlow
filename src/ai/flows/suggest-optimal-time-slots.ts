@@ -18,6 +18,7 @@ const SuggestOptimalTimeSlotsInputSchema = z.object({
     .describe('The user schedule, including events and tasks with their time slots.'),
   tasks: z.string().describe('The tasks needed to be scheduled. It can be a single task or a list.'),
   duration: z.number().optional().describe('The estimated duration of the task in minutes, if only one task is provided.'),
+  currentDate: z.string().describe("The current date in 'YYYY-MM-DD' format. This should be used as the reference for 'today'."),
 });
 export type SuggestOptimalTimeSlotsInput = z.infer<
   typeof SuggestOptimalTimeSlotsInputSchema
@@ -45,7 +46,7 @@ const prompt = ai.definePrompt({
   prompt: `You are a scheduling assistant who analyzes a user's schedule and suggests optimal time slots for new tasks.
 
   Analyze the following schedule and task(s) to find the best time slots without conflicts.
-  The current date is ${new Date().toISOString().split('T')[0]}. Find slots on or after this date.
+  The current date is {{{currentDate}}}. Find slots on or after this date.
 
   Schedule: {{{schedule}}}
   Task(s): {{{tasks}}}

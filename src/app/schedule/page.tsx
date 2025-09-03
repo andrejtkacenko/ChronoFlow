@@ -187,6 +187,11 @@ export default function SchedulePage() {
 
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -384,7 +389,7 @@ export default function SchedulePage() {
                             </div>
                         </div>
                     ))}
-                    <CurrentTimeIndicator days={days} hourHeight={hourHeight} />
+                    {isClient && <CurrentTimeIndicator days={days} hourHeight={hourHeight} />}
                   </div>
               </div>
                <div
