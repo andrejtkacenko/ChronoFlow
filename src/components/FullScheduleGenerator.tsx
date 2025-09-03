@@ -72,7 +72,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         const docSnap = await getDoc(prefRef);
         if (docSnap.exists()) {
             const loadedPrefs = docSnap.data();
-            // Ensure energyPeaks is an array, not a string
             if (typeof loadedPrefs.energyPeaks === 'string') {
               loadedPrefs.energyPeaks = loadedPrefs.energyPeaks ? loadedPrefs.energyPeaks.split(',').map((s: string) => s.trim()) : [];
             }
@@ -240,7 +239,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   const Step1_TaskSelection = () => (
      <div className="flex h-full flex-col">
-        <Card className="flex-1 flex flex-col">
+        <Card className="flex-1 flex flex-col border-none rounded-none">
              <CardHeader>
                  <CardTitle className="text-lg">Шаг 1: Выберите задачи</CardTitle>
                  <CardDescription>Отметьте задачи из вашего инбокса, которые вы хотите добавить в расписание.</CardDescription>
@@ -271,13 +270,13 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   const Step2_Preferences = () => (
      <div className="flex h-full flex-col">
-        <Card className="flex-1 flex flex-col">
+        <Card className="flex-1 flex flex-col border-none rounded-none">
             <CardHeader>
                 <CardTitle className="text-lg">Шаг 2: Укажите предпочтения</CardTitle>
                 <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание.</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full pr-4">
+            <ScrollArea className="flex-1">
+                <CardContent className="pr-6">
                     {isPrefLoading ? (
                         <div className="flex justify-center items-center h-full">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -338,7 +337,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                                   </Select>
                                 </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2">Общее время на короткие перерывы, прогулки и т.д. в течение дня.</p>
+                            <CardDescription className="text-xs mt-2">Общее время на короткие перерывы, прогулки и т.д. в течение дня.</CardDescription>
 
                             <div className="grid gap-2 mt-4">
                                 <Label htmlFor="selfCareTime">Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?</Label>
@@ -385,15 +384,15 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                         </div>
                     </div>
                     )}
-                 </ScrollArea>
-            </CardContent>
+                 </CardContent>
+            </ScrollArea>
         </Card>
     </div>
   )
 
   const FormView = () => (
     <>
-      <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
         <ResizablePanel defaultSize={35} minSize={25}>
            <Step1_TaskSelection/>
         </ResizablePanel>
