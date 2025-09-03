@@ -63,4 +63,8 @@ export type ScheduleItem = {
   completed?: boolean;
 };
 
-    
+// This type is for display purposes only, to handle multi-day events
+export type DisplayScheduleItem = ScheduleItem & {
+  isStart?: boolean;
+  isEnd?: boolean;
+}

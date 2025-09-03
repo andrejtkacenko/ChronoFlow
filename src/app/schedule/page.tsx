@@ -15,8 +15,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronLeft, X } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
-import { addDays, format, isSameDay } from 'date-fns';
-import type { ScheduleItem } from '@/lib/types';
+import { addDays, format, isSameDay, parse, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import type { ScheduleItem, DisplayScheduleItem } from '@/lib/types';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const hours = Array.from({ length: 24 }, (_, i) => {
     const hour24 = i;
@@ -96,9 +98,76 @@ const ProjectionCard = ({
   );
 };
 
+const processScheduleForDisplay = (items: ScheduleItem[], visibleDays: Date[]): Map<string, DisplayScheduleItem[]> => {
+    const displayMap = new Map<string, DisplayScheduleItem[]>();
+    const visibleInterval = { start: startOfDay(visibleDays[0]), end: endOfDay(visibleDays[visibleDays.length - 1])};
+
+    visibleDays.forEach(day => {
+        displayMap.set(format(day, 'yyyy-MM-dd'), []);
+    });
+
+    items.forEach(item => {
+        if (!item.date || !item.startTime || !item.endTime) return;
+
+        const itemDate = parse(item.date, 'yyyy-MM-dd', new Date());
+        if (!isWithinInterval(itemDate, visibleInterval)) {
+             // Basic check to exclude items far out of view
+             // This can be improved with more robust logic
+            return;
+        }
+       
+        const crossesMidnight = item.startTime > item.endTime;
+
+        if (!crossesMidnight) {
+            const dateStr = format(itemDate, 'yyyy-MM-dd');
+            if (displayMap.has(dateStr)) {
+                displayMap.get(dateStr)!.push({ ...item, isStart: true, isEnd: true });
+            }
+        } else {
+            // Event crosses midnight, so we split it
+            const day1DateStr = format(itemDate, 'yyyy-MM-dd');
+            const day2Date = addDays(itemDate, 1);
+            const day2DateStr = format(day2Date, 'yyyy-MM-dd');
+
+            // Part 1: from startTime to end of day 1
+            if (displayMap.has(day1DateStr)) {
+                 const startMins = parseInt(item.startTime.split(':')[0]) * 60 + parseInt(item.startTime.split(':')[1]);
+                 const duration1 = 24 * 60 - startMins;
+
+                displayMap.get(day1DateStr)!.push({
+                    ...item,
+                    endTime: '23:59',
+                    duration: duration1,
+                    isStart: true,
+                    isEnd: false, // This part doesn't end here
+                });
+            }
+
+            // Part 2: from start of day 2 to endTime
+            if (displayMap.has(day2DateStr)) {
+                const endMins = parseInt(item.endTime.split(':')[0]) * 60 + parseInt(item.endTime.split(':')[1]);
+                displayMap.get(day2DateStr)!.push({
+                    ...item,
+                    date: day2DateStr,
+                    startTime: '00:00',
+                    duration: endMins,
+                    isStart: false, // This part is a continuation
+                    isEnd: true,
+                });
+            }
+        }
+    });
+
+    // Sort items within each day by start time
+    for (const key of displayMap.keys()) {
+        displayMap.get(key)!.sort((a,b) => (a.startTime || "00:00").localeCompare(b.startTime || "00:00"));
+    }
+
+    return displayMap;
+}
 
 export default function SchedulePage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
@@ -116,11 +185,42 @@ export default function SchedulePage() {
   const [numberOfDays, setNumberOfDays] = useState(3);
   const [hourHeight, setHourHeight] = useState(60);
 
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+  const [loadingSchedule, setLoadingSchedule] = useState(true);
+
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (user) {
+        setLoadingSchedule(true);
+        const q = query(
+            collection(db, "scheduleItems"), 
+            where("userId", "==", user.uid)
+        );
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const items: ScheduleItem[] = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                // Filter out unscheduled tasks (inbox items)
+                if (data.date) {
+                    items.push({ id: doc.id, ...data } as ScheduleItem);
+                }
+            });
+            setScheduleItems(items);
+            setLoadingSchedule(false);
+        }, (error) => {
+            console.error("Error fetching schedule items: ", error);
+            setLoadingSchedule(false);
+        });
+
+        return () => unsubscribe();
+    }
+  }, [user]);
   
   useEffect(() => {
     const savedDays = localStorage.getItem('numberOfDays');
@@ -133,20 +233,9 @@ export default function SchedulePage() {
     localStorage.setItem('numberOfDays', String(numberOfDays));
   }, [numberOfDays]);
 
-  // Close projection if clicking outside of it
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (projection && mainContentRef.current && !mainContentRef.current.contains(event.target as Node)) {
-       // This logic needs to be refined. For now, we will just close on any click.
-    }
-  }, [projection]);
+  const days = Array.from({ length: numberOfDays }, (_, i) => addDays(currentDate, i));
 
-  useEffect(() => {
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [handleClickOutside]);
-
+  const displaySchedule = processScheduleForDisplay(scheduleItems, days);
 
   const handleCreateNewEvent = (date: Date, startTime: string) => {
     setNewEventTime({ date, startTime });
@@ -204,7 +293,6 @@ export default function SchedulePage() {
       
       const startTime = `${String(finalHour).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
       
-      // Instead of opening dialog, set projection
       setProjection({
         date: day,
         startTime: startTime,
@@ -225,9 +313,7 @@ export default function SchedulePage() {
     }
   }
 
-  const days = Array.from({ length: numberOfDays }, (_, i) => addDays(currentDate, i));
-
-  if (loading || !user) {
+  if (authLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Skeleton className="h-24 w-24 rounded-full" />
@@ -281,8 +367,9 @@ export default function SchedulePage() {
                             </div>
                             <div className='relative h-full'>
                                 <DailyOverview 
-                                    date={day} 
-                                    userId={user.uid}
+                                    date={day}
+                                    dailySchedule={displaySchedule.get(format(day, 'yyyy-MM-dd')) || []}
+                                    loading={loadingSchedule}
                                     hourHeight={hourHeight}
                                     onEventClick={handleEditEvent}
                                 />
@@ -337,5 +424,3 @@ export default function SchedulePage() {
     </>
   );
 }
-
-    
