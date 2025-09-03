@@ -41,15 +41,22 @@ interface FullScheduleGeneratorProps {
 }
 
 const questionnaire = [
+  // Block 1: High-Level Goals
   { id: 'mainGoals', label: 'Каковы ваши основные цели на неделю/квартал?', type: 'textarea' },
   { id: 'priorities', label: 'Какие у вас приоритеты?', type: 'select', options: [{value: 'Work', label: 'Работа'}, {value: 'Study', label: 'Учеба'}, {value: 'Personal', label: 'Личные дела'}, {value: 'Balanced', label: 'Сбалансированно'}] },
+
+  // Block 2: Daily Needs (Routine)
   { id: 'sleepDuration', label: 'Продолжительность сна', type: 'select', options: [{value: '7', label: '7 часов'}, {value: '8', label: '8 часов'}, {value: '9', label: '9 часов'}] },
   { id: 'mealsPerDay', label: 'Количество приемов пищи', type: 'select', options: [{value: '2', label: '2'}, {value: '3', label: '3'}, {value: '4', label: '4'}] },
   { id: 'restTime', label: 'Время на отдых (кроме сна)', type: 'select', options: [{value: '1', label: '1 час'}, {value: '2', label: '2 часа'}, {value: '3', label: '3 часа'}] },
+  { id: 'selfCareTime', label: 'Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?', type: 'textarea' },
+  
+  // Block 3: Productivity & Constraints
   { id: 'energyPeaks', label: 'Когда у вас пики энергии?', type: 'select', options: [{value: 'Morning', label: 'Утро'}, {value: 'Afternoon', label: 'День'}, {value: 'Evening', label: 'Вечер'}] },
   { id: 'fixedEvents', label: 'Какие у вас есть обязательства/привычки с фиксированным временем?', type: 'textarea' },
   { id: 'delegationOpportunities', label: 'Что из задач можно было бы делегировать/автоматизировать/удалить?', type: 'textarea' },
-  { id: 'selfCareTime', label: 'Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?', type: 'textarea' },
+
+  // Block 4: Analysis & Learnings
   { id: 'pastLearnings', label: 'Прошлые успехи/уроки/препятствия в планировании?', type: 'textarea' },
 ];
 
