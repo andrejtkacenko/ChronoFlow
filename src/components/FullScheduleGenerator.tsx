@@ -33,7 +33,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -277,6 +276,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание.</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto pr-6">
+                <ScrollArea className="h-full pr-4 -mr-6">
                 {isPrefLoading ? (
                     <div className="flex justify-center items-center h-full">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -384,6 +384,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                     </div>
                 </div>
                 )}
+                </ScrollArea>
             </CardContent>
         </Card>
     </div>
@@ -490,3 +491,5 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </Dialog>
   );
 }
+
+    
