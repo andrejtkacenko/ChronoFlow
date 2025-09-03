@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,10 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -26,8 +26,6 @@ import type { SuggestedSlot } from '@/ai/flows/schema';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { format } from 'date-fns';
-import { Separator } from './ui/separator';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from './ui/resizable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface FullScheduleGeneratorProps {
@@ -49,24 +47,53 @@ const questionnaire = [
   { id: 'pastLearnings', label: 'Прошлые успехи/уроки/препятствия в планировании?', type: 'textarea' },
 ];
 
+const defaultPreferences = {
+  mainGoals: '',
+  priorities: 'Balanced',
+  sleepDuration: '8',
+  mealsPerDay: '3',
+  restTime: '2',
+  energyPeaks: 'Morning',
+  fixedEvents: '',
+  delegationOpportunities: '',
+  selfCareTime: '',
+  pastLearnings: '',
+};
+
 export default function FullScheduleGenerator({ open, onOpenChange, userId }: FullScheduleGeneratorProps) {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const [preferences, setPreferences] = useState<Record<string, string>>({
-    priorities: 'Balanced',
-    energyPeaks: 'Morning',
-    sleepDuration: '8',
-    mealsPerDay: '3',
-    restTime: '2'
-  });
+  const [preferences, setPreferences] = useState<Record<string, string>>(defaultPreferences);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPrefLoading, setIsPrefLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
   const [numberOfDays, setNumberOfDays] = useState(7);
 
+  const fetchUserPreferences = useCallback(async () => {
+    if (!userId) return;
+    setIsPrefLoading(true);
+    try {
+        const prefRef = doc(db, 'userPreferences', userId);
+        const docSnap = await getDoc(prefRef);
+        if (docSnap.exists()) {
+            setPreferences(docSnap.data() as Record<string, string>);
+        } else {
+            setPreferences(defaultPreferences);
+        }
+    } catch (error) {
+        console.error("Error fetching preferences:", error);
+        toast({ variant: 'destructive', title: 'Не удалось загрузить ваши предпочтения.' });
+    } finally {
+        setIsPrefLoading(false);
+    }
+  }, [userId, toast]);
+
   useEffect(() => {
     if (!open || !userId) return;
+    
+    fetchUserPreferences();
 
     const q = query(
       collection(db, "scheduleItems"),
@@ -79,7 +106,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       setInboxTasks(tasks);
     });
     return () => unsubscribe();
-  }, [open, userId]);
+  }, [open, userId, fetchUserPreferences]);
 
   const handleTaskSelection = (taskId: string) => {
     setSelectedTasks(prev => {
@@ -93,13 +120,22 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     });
   };
 
-  const handleGenerate = async () => {
+  const handleSavePreferencesAndGenerate = async () => {
     if (selectedTasks.size === 0) {
       toast({ variant: 'destructive', title: 'Выберите хотя бы одну задачу' });
       return;
     }
     setIsLoading(true);
     setSuggestions([]);
+
+    // Save preferences to Firestore
+    try {
+        const prefRef = doc(db, 'userPreferences', userId);
+        await setDoc(prefRef, preferences, { merge: true });
+    } catch (error) {
+        console.error("Error saving preferences:", error);
+        toast({ variant: 'destructive', title: 'Не удалось сохранить ваши предпочтения.' });
+    }
 
     const tasksToSchedule = inboxTasks
       .filter(task => selectedTasks.has(task.id))
@@ -108,7 +144,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     try {
       const result = await generateSchedule({
         tasks: tasksToSchedule,
-        preferences: preferences as any, // Cast because we know the shape
+        preferences: preferences as any, 
         startDate: format(new Date(), 'yyyy-MM-dd'),
         numberOfDays,
       }, userId);
@@ -117,7 +153,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         toast({ variant: 'destructive', title: "Ошибка генерации", description: result });
       } else {
         setSuggestions(result);
-        setStep(2);
+        setStep(3);
       }
     } catch (error) {
       console.error(error);
@@ -154,19 +190,13 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     }
   }
   
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setStep(1);
     setSelectedTasks(new Set());
-    setPreferences({
-      priorities: 'Balanced',
-      energyPeaks: 'Morning',
-      sleepDuration: '8',
-      mealsPerDay: '3',
-      restTime: '2'
-    });
     setSuggestions([]);
     setIsLoading(false);
-  }
+    // Don't reset preferences, as they are now loaded from DB
+  }, []);
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -175,129 +205,151 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     onOpenChange(isOpen);
   }
 
+  const Step1_TaskSelection = () => (
+    <>
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">Шаг 1: Выберите задачи для планирования</CardTitle>
+                <CardDescription>Отметьте задачи из вашего инбокса, которые вы хотите добавить в расписание.</CardDescription>
+            </CardHeader>
+             <CardContent className="flex-1 overflow-hidden">
+                 <ScrollArea className="h-full pr-4">
+                    {inboxTasks.length > 0 ? (
+                    <div className="space-y-2">
+                        {inboxTasks.map(task => (
+                        <div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
+                            <Checkbox
+                            id={`task-${task.id}`}
+                            onCheckedChange={() => handleTaskSelection(task.id)}
+                            checked={selectedTasks.has(task.id)}
+                            />
+                            <Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label>
+                        </div>
+                        ))}
+                    </div>
+                    ) : (
+                    <p className="text-sm text-muted-foreground text-center pt-10">Ваш инбокс пуст. Добавьте задачи, чтобы их запланировать.</p>
+                    )}
+                </ScrollArea>
+            </CardContent>
+        </Card>
+        <DialogFooter>
+            <Button onClick={() => setStep(2)} disabled={selectedTasks.size === 0}>
+                Далее
+            </Button>
+        </DialogFooter>
+    </>
+  );
+
+  const Step2_Preferences = () => (
+    <>
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+               <CardTitle className="text-lg">Шаг 2: Расскажите о своих предпочтениях</CardTitle>
+               <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание. Ваши ответы будут сохранены.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto">
+                {isPrefLoading ? (
+                    <div className="flex justify-center items-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : (
+                 <div className="space-y-4 pr-2">
+                    {questionnaire.map(q => (
+                        <div key={q.id} className="grid gap-2">
+                        <Label htmlFor={q.id}>{q.label}</Label>
+                        {q.type === 'textarea' ? (
+                            <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                        ) : q.type === 'select' ? (
+                            <Select value={preferences[q.id] ?? ''} onValueChange={value => setPreferences(p => ({ ...p, [q.id]: value }))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Выберите..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {q.options?.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                        )}
+                        </div>
+                    ))}
+                    <div className="grid gap-2">
+                        <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
+                        <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
+                    </div>
+                </div>
+                )}
+            </CardContent>
+        </Card>
+        <DialogFooter>
+            <Button variant="ghost" onClick={() => setStep(1)}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Назад
+            </Button>
+            <Button onClick={handleSavePreferencesAndGenerate} disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                Сгенерировать
+            </Button>
+        </DialogFooter>
+    </>
+  );
+
+  const Step3_Results = () => (
+    <>
+        <div className="my-4">
+            <h3 className="font-semibold mb-2">Ваше новое расписание</h3>
+             <ScrollArea className="h-96 w-full">
+                {suggestions.length > 0 ? (
+                    <div className="space-y-2 pr-4">
+                        {suggestions.map((slot, index) => (
+                            <Card key={index} className="bg-secondary/50">
+                                <CardContent className="p-3 flex items-center justify-between">
+                                    <div>
+                                        <p className="font-semibold">{slot.task}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {new Date(slot.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">{slot.startTime} - {slot.endTime}</p>
+                                    </div>
+                                    <Button size="icon" variant="ghost" onClick={() => handleAddEvent(slot)}>
+                                        <PlusCircle className="h-5 w-5 text-primary" />
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                 ) : (
+                    <p className="text-sm text-muted-foreground text-center pt-10">Все предложенные события добавлены в ваш календарь.</p>
+                 )}
+            </ScrollArea>
+        </div>
+        <DialogFooter>
+            <Button variant="ghost" onClick={resetState}>Начать заново</Button>
+            <Button onClick={() => handleOpenChange(false)}>Закрыть</Button>
+        </DialogFooter>
+    </>
+  );
+
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-5xl h-[80vh] flex flex-col">
+      <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
             Сгенерировать расписание
           </DialogTitle>
           <DialogDescription>
-            AI-ассистент поможет вам составить идеальное расписание. Выберите задачи, ответьте на несколько вопросов и получите готовый план.
+            AI-ассистент поможет вам составить идеальное расписание. Выполните несколько простых шагов.
           </DialogDescription>
         </DialogHeader>
         
-        {step === 1 && (
-            <ResizablePanelGroup direction="horizontal" className="flex-1">
-                <ResizablePanel defaultSize={70}>
-                    <Card className="h-full flex flex-col">
-                        <CardHeader>
-                           <CardTitle className="text-lg">Расскажите о своих предпочтениях</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-1 overflow-y-auto">
-                             <div className="space-y-4 pr-2">
-                                {questionnaire.map(q => (
-                                    <div key={q.id} className="grid gap-2">
-                                    <Label htmlFor={q.id}>{q.label}</Label>
-                                    {q.type === 'textarea' ? (
-                                        <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
-                                    ) : q.type === 'select' ? (
-                                        <Select value={preferences[q.id] ?? ''} onValueChange={value => setPreferences(p => ({ ...p, [q.id]: value }))}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Выберите..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {q.options?.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
-                                    )}
-                                    </div>
-                                ))}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
-                                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={30}>
-                    <Card className="h-full flex flex-col">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Выберите задачи для планирования</CardTitle>
-                        </CardHeader>
-                         <CardContent className="flex-1 overflow-hidden">
-                             <ScrollArea className="h-full pr-4">
-                                {inboxTasks.length > 0 ? (
-                                <div className="space-y-2">
-                                    {inboxTasks.map(task => (
-                                    <div key={task.id} className="flex items-center space-x-2">
-                                        <Checkbox
-                                        id={`task-${task.id}`}
-                                        onCheckedChange={() => handleTaskSelection(task.id)}
-                                        checked={selectedTasks.has(task.id)}
-                                        />
-                                        <Label htmlFor={`task-${task.id}`} className="flex-1 truncate">{task.title}</Label>
-                                    </div>
-                                    ))}
-                                </div>
-                                ) : (
-                                <p className="text-sm text-muted-foreground text-center pt-10">Ваш инбокс пуст.</p>
-                                )}
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
-                </ResizablePanel>
-            </ResizablePanelGroup>
-        )}
-
-        {step === 2 && (
-            <div>
-                <div className="my-4">
-                    <h3 className="font-semibold mb-2">Ваше новое расписание</h3>
-                     <ScrollArea className="h-96 w-full">
-                        <div className="space-y-2 pr-4">
-                            {suggestions.map((slot, index) => (
-                                <Card key={index} className="bg-secondary/50">
-                                    <CardContent className="p-3 flex items-center justify-between">
-                                        <div>
-                                            <p className="font-semibold">{slot.task}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {new Date(slot.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">{slot.startTime} - {slot.endTime}</p>
-                                        </div>
-                                        <Button size="icon" variant="ghost" onClick={() => handleAddEvent(slot)}>
-                                            <PlusCircle className="h-5 w-5 text-primary" />
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </div>
-            </div>
-        )}
-
-        <DialogFooter>
-            {step === 1 && (
-                <Button onClick={handleGenerate} disabled={isLoading || selectedTasks.size === 0} className="w-full sm:w-auto">
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                    Сгенерировать
-                </Button>
-            )}
-             {step === 2 && (
-                <>
-                    <Button variant="ghost" onClick={resetState}>Начать заново</Button>
-                    <Button onClick={() => handleOpenChange(false)}>Закрыть</Button>
-                </>
-             )}
-        </DialogFooter>
-
+        <div className="flex-1 flex flex-col min-h-0">
+            {step === 1 && <Step1_TaskSelection />}
+            {step === 2 && <Step2_Preferences />}
+            {step === 3 && <Step3_Results />}
+        </div>
       </DialogContent>
     </Dialog>
   );
