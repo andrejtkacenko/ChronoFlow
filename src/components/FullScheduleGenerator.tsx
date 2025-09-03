@@ -10,6 +10,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +32,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Separator } from './ui/separator';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -55,14 +61,14 @@ const defaultPreferences = {
   restTime: '2',
   energyPeaks: 'Morning',
   fixedEvents: '',
-  delegationOpportunities: '',
+delegationOpportunities: '',
   selfCareTime: '',
   pastLearnings: '',
 };
 
 export default function FullScheduleGenerator({ open, onOpenChange, userId }: FullScheduleGeneratorProps) {
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
+  const [view, setView] = useState<'form' | 'results'>('form');
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<Record<string, string>>(defaultPreferences);
@@ -120,7 +126,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     });
   };
 
-  const handleSavePreferencesAndGenerate = async () => {
+  const handleGenerate = async () => {
     if (selectedTasks.size === 0) {
       toast({ variant: 'destructive', title: 'Выберите хотя бы одну задачу' });
       return;
@@ -153,7 +159,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         toast({ variant: 'destructive', title: "Ошибка генерации", description: result });
       } else {
         setSuggestions(result);
-        setStep(3);
+        setView('results');
       }
     } catch (error) {
       console.error(error);
@@ -200,7 +206,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   }
   
   const resetState = useCallback(() => {
-    setStep(1);
+    setView('form');
     setSelectedTasks(new Set());
     setSuggestions(null);
     setIsLoading(false);
@@ -213,96 +219,85 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     onOpenChange(isOpen);
   }
 
-  const Step1_TaskSelection = () => (
+  const FormView = () => (
     <>
-        <Card className="h-full flex flex-col">
-            <CardHeader>
-                <CardTitle className="text-lg">Шаг 1: Выберите задачи для планирования</CardTitle>
-                <CardDescription>Отметьте задачи из вашего инбокса, которые вы хотите добавить в расписание.</CardDescription>
-            </CardHeader>
-             <CardContent className="flex-1 overflow-hidden">
-                 <ScrollArea className="h-full pr-4">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
+        <ResizablePanel defaultSize={40}>
+           <div className="flex h-full flex-col p-4">
+              <h3 className="text-lg font-semibold mb-2">1. Выберите задачи</h3>
+              <p className="text-sm text-muted-foreground mb-4">Отметьте задачи из вашего инбокса, которые вы хотите добавить в расписание.</p>
+              <Separator className="mb-4" />
+              <ScrollArea className="flex-1">
+                  <div className="space-y-2 pr-4">
                     {inboxTasks.length > 0 ? (
-                    <div className="space-y-2">
-                        {inboxTasks.map(task => (
-                        <div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
-                            <Checkbox
-                            id={`task-${task.id}`}
-                            onCheckedChange={() => handleTaskSelection(task.id)}
-                            checked={selectedTasks.has(task.id)}
-                            />
-                            <Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label>
+                      inboxTasks.map(task => (
+                      <div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
+                          <Checkbox
+                          id={`task-${task.id}`}
+                          onCheckedChange={() => handleTaskSelection(task.id)}
+                          checked={selectedTasks.has(task.id)}
+                          />
+                          <Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label>
+                      </div>
+                      ))
+                  ) : (
+                      <p className="text-sm text-muted-foreground text-center pt-10">Ваш инбокс пуст.</p>
+                  )}
+                  </div>
+              </ScrollArea>
+           </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={60}>
+            <div className="flex h-full flex-col p-4">
+                 <h3 className="text-lg font-semibold mb-2">2. Укажите предпочтения</h3>
+                 <p className="text-sm text-muted-foreground mb-4">Эта информация поможет AI создать для вас наиболее подходящее расписание.</p>
+                 <Separator className="mb-4" />
+                 <ScrollArea className="flex-1">
+                    {isPrefLoading ? (
+                        <div className="flex justify-center items-center h-full">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
-                        ))}
-                    </div>
                     ) : (
-                    <p className="text-sm text-muted-foreground text-center pt-10">Ваш инбокс пуст. Добавьте задачи, чтобы их запланировать.</p>
+                    <div className="space-y-4 pr-4">
+                        {questionnaire.map(q => (
+                            <div key={q.id} className="grid gap-2">
+                            <Label htmlFor={q.id}>{q.label}</Label>
+                            {q.type === 'textarea' ? (
+                                <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                            ) : q.type === 'select' ? (
+                                <Select value={preferences[q.id] ?? ''} onValueChange={value => setPreferences(p => ({ ...p, [q.id]: value }))}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Выберите..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {q.options?.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
+                            )}
+                            </div>
+                        ))}
+                        <div className="grid gap-2">
+                            <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
+                            <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
+                        </div>
+                    </div>
                     )}
-                </ScrollArea>
-            </CardContent>
-        </Card>
-        <DialogFooter>
-            <Button onClick={() => setStep(2)} disabled={selectedTasks.size === 0}>
-                Далее
+                 </ScrollArea>
+            </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+      <DialogFooter className="mt-4">
+            <Button onClick={handleGenerate} disabled={isLoading || selectedTasks.size === 0}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                Сгенерировать расписание
             </Button>
-        </DialogFooter>
+      </DialogFooter>
     </>
   );
 
-  const Step2_Preferences = () => (
-    <>
-        <Card className="h-full flex flex-col">
-            <CardHeader>
-               <CardTitle className="text-lg">Шаг 2: Расскажите о своих предпочтениях</CardTitle>
-               <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание. Ваши ответы будут сохранены.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto">
-                {isPrefLoading ? (
-                    <div className="flex justify-center items-center h-full">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                ) : (
-                 <div className="space-y-4 pr-2">
-                    {questionnaire.map(q => (
-                        <div key={q.id} className="grid gap-2">
-                        <Label htmlFor={q.id}>{q.label}</Label>
-                        {q.type === 'textarea' ? (
-                            <Textarea id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
-                        ) : q.type === 'select' ? (
-                            <Select value={preferences[q.id] ?? ''} onValueChange={value => setPreferences(p => ({ ...p, [q.id]: value }))}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Выберите..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {q.options?.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <Input id={q.id} value={preferences[q.id] ?? ''} onChange={e => setPreferences(p => ({ ...p, [q.id]: e.target.value }))} />
-                        )}
-                        </div>
-                    ))}
-                    <div className="grid gap-2">
-                        <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
-                        <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
-                    </div>
-                </div>
-                )}
-            </CardContent>
-        </Card>
-        <DialogFooter>
-            <Button variant="ghost" onClick={() => setStep(1)}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Назад
-            </Button>
-            <Button onClick={handleSavePreferencesAndGenerate} disabled={isLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                Сгенерировать
-            </Button>
-        </DialogFooter>
-    </>
-  );
-  
   const SuggestionList = ({ title, items, type }: { title: string, items: SuggestedSlot[], type: 'task' | 'routine' }) => {
     if (items.length === 0) return null;
     return (
@@ -330,11 +325,11 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     );
   }
 
-  const Step3_Results = () => (
+  const ResultsView = () => (
     <>
-        <div className="my-4">
+        <div className="my-4 flex-1 flex flex-col min-h-0">
             <h3 className="font-semibold mb-4 text-lg">Ваше новое расписание</h3>
-             <ScrollArea className="h-96 w-full">
+             <ScrollArea className="flex-1">
                 {!suggestions || (suggestions.tasks.length === 0 && suggestions.routineEvents.length === 0) ? (
                      <p className="text-sm text-muted-foreground text-center pt-10">Все предложенные события добавлены в ваш календарь.</p>
                 ) : (
@@ -355,21 +350,19 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
             Сгенерировать расписание
           </DialogTitle>
           <DialogDescription>
-            AI-ассистент поможет вам составить идеальное расписание. Выполните несколько простых шагов.
+            AI-ассистент поможет вам составить идеальное расписание. Выберите задачи и настройте предпочтения.
           </DialogDescription>
         </DialogHeader>
         
         <div className="flex-1 flex flex-col min-h-0">
-            {step === 1 && <Step1_TaskSelection />}
-            {step === 2 && <Step2_Preferences />}
-            {step === 3 && <Step3_Results />}
+            {view === 'form' ? <FormView /> : <ResultsView />}
         </div>
       </DialogContent>
     </Dialog>
