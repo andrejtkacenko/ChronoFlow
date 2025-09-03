@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   2.  **Avoid Conflicts:** NEVER schedule a new task during a time that is already occupied by an existing event in the user's schedule. Check for overlaps.
   3.  **Respect Preferences:**
       - Schedule demanding tasks during the user's peak energy times ({{{preferences.energyPeaks}}}).
-      - Block out time for sleep ({{{preferences.sleepDuration}}}), meals ({{{preferences.mealsPerDay}}} times), and rest ({{{preferences.restTime}}}).
+      - Block out time for sleep ({{{preferences.sleepDuration}}} hours), meals ({{{preferences.mealsPerDay}}} times per day), and rest ({{{preferences.restTime}}} hours).
       - Incorporate fixed events and habits from {{{preferences.fixedEvents}}}.
       - Allocate time for self-care and learning as per {{{preferences.selfCareTime}}}.
   4.  **Be Realistic:** Distribute tasks evenly across the specified number of days. Do not try to cram everything into one day. Leave buffer time between tasks.
@@ -55,7 +55,7 @@ const prompt = ai.definePrompt({
   **User's Preferences & Goals for a Perfect Schedule:**
   - Main Goals: {{{preferences.mainGoals}}}
   - Priorities: {{{preferences.priorities}}}
-  - Daily Needs: Sleep: {{{preferences.sleepDuration}}}, Meals: {{{preferences.mealsPerDay}}}, Rest: {{{preferences.restTime}}}.
+  - Daily Needs: Sleep: {{{preferences.sleepDuration}}} hours, Meals: {{{preferences.mealsPerDay}}} times, Rest: {{{preferences.restTime}}} hours.
   - Peak Energy: {{{preferences.energyPeaks}}}
   - Fixed Commitments: {{{preferences.fixedEvents}}}
   - Delegation/Automation Ideas: {{{preferences.delegationOpportunities}}}

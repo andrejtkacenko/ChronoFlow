@@ -38,11 +38,11 @@ interface FullScheduleGeneratorProps {
 
 const questionnaire = [
   { id: 'mainGoals', label: 'Каковы ваши основные цели на неделю/квартал?', type: 'textarea' },
-  { id: 'priorities', label: 'Какие у вас приоритеты?', type: 'select', options: ['Работа', 'Учеба', 'Личные дела', 'Сбалансированно'] },
-  { id: 'sleepDuration', label: 'Продолжительность сна', type: 'select', options: ['7 часов', '8 часов', '9 часов'] },
-  { id: 'mealsPerDay', label: 'Количество приемов пищи', type: 'select', options: ['2', '3', '4'] },
-  { id: 'restTime', label: 'Время на отдых (кроме сна)', type: 'select', options: ['1 час', '2 часа', '3 часа'] },
-  { id: 'energyPeaks', label: 'Когда у вас пики энергии?', type: 'select', options: ['Утро', 'День', 'Вечер'] },
+  { id: 'priorities', label: 'Какие у вас приоритеты?', type: 'select', options: [{value: 'Work', label: 'Работа'}, {value: 'Study', label: 'Учеба'}, {value: 'Personal', label: 'Личные дела'}, {value: 'Balanced', label: 'Сбалансированно'}] },
+  { id: 'sleepDuration', label: 'Продолжительность сна', type: 'select', options: [{value: '7', label: '7 часов'}, {value: '8', label: '8 часов'}, {value: '9', label: '9 часов'}] },
+  { id: 'mealsPerDay', label: 'Количество приемов пищи', type: 'select', options: [{value: '2', label: '2'}, {value: '3', label: '3'}, {value: '4', label: '4'}] },
+  { id: 'restTime', label: 'Время на отдых (кроме сна)', type: 'select', options: [{value: '1', label: '1 час'}, {value: '2', label: '2 часа'}, {value: '3', label: '3 часа'}] },
+  { id: 'energyPeaks', label: 'Когда у вас пики энергии?', type: 'select', options: [{value: 'Morning', label: 'Утро'}, {value: 'Afternoon', label: 'День'}, {value: 'Evening', label: 'Вечер'}] },
   { id: 'fixedEvents', label: 'Какие у вас есть обязательства/привычки с фиксированным временем?', type: 'textarea' },
   { id: 'delegationOpportunities', label: 'Что из задач можно было бы делегировать/автоматизировать/удалить?', type: 'textarea' },
   { id: 'selfCareTime', label: 'Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?', type: 'textarea' },
@@ -55,11 +55,11 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<Record<string, string>>({
-    priorities: 'Сбалансированно',
-    energyPeaks: 'Утро',
-    sleepDuration: '8 часов',
+    priorities: 'Balanced',
+    energyPeaks: 'Morning',
+    sleepDuration: '8',
     mealsPerDay: '3',
-    restTime: '2 часа'
+    restTime: '2'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
@@ -120,6 +120,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         setStep(2);
       }
     } catch (error) {
+      console.error(error);
       toast({ variant: 'destructive', title: 'Произошла непредвиденная ошибка' });
     } finally {
       setIsLoading(false);
@@ -157,11 +158,11 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     setStep(1);
     setSelectedTasks(new Set());
     setPreferences({
-      priorities: 'Сбалансированно',
-      energyPeaks: 'Утро',
-      sleepDuration: '8 часов',
+      priorities: 'Balanced',
+      energyPeaks: 'Morning',
+      sleepDuration: '8',
       mealsPerDay: '3',
-      restTime: '2 часа'
+      restTime: '2'
     });
     setSuggestions([]);
     setIsLoading(false);
@@ -207,7 +208,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                                                 <SelectValue placeholder="Выберите..." />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {q.options?.map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                                                {q.options?.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     ) : (
