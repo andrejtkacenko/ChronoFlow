@@ -22,7 +22,7 @@ import { Loader2, Wand2, PlusCircle, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
-import type { SuggestedSlot } from '@/ai/flows/schema';
+import type { GenerateFullScheduleOutput, SuggestedSlot } from '@/ai/flows/schema';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { format } from 'date-fns';
@@ -68,7 +68,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const [preferences, setPreferences] = useState<Record<string, string>>(defaultPreferences);
   const [isLoading, setIsLoading] = useState(false);
   const [isPrefLoading, setIsPrefLoading] = useState(true);
-  const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
+  const [suggestions, setSuggestions] = useState<GenerateFullScheduleOutput | null>(null);
   const [numberOfDays, setNumberOfDays] = useState(7);
 
   const fetchUserPreferences = useCallback(async () => {
@@ -126,7 +126,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       return;
     }
     setIsLoading(true);
-    setSuggestions([]);
+    setSuggestions(null);
 
     // Save preferences to Firestore
     try {
@@ -163,7 +163,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     }
   };
 
-  const handleAddEvent = async (slot: SuggestedSlot) => {
+  const handleAddEvent = async (slot: SuggestedSlot, type: 'task' | 'routine') => {
     try {
         await addScheduleItem({
             userId: userId,
@@ -173,14 +173,23 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
             endTime: slot.endTime,
             duration: slot.duration,
             type: 'event',
-            icon: 'BrainCircuit',
-            color: 'hsl(262.1 83.3% 57.8%)',
+            icon: type === 'task' ? 'BrainCircuit' : 'Coffee',
+            color: type === 'task' ? 'hsl(262.1 83.3% 57.8%)' : 'hsl(204, 70%, 53%)',
         });
         toast({
             title: 'Событие добавлено',
             description: `"${slot.task}" было добавлено в ваш календарь.`
         });
-        setSuggestions(prev => prev.filter(s => s !== slot));
+        
+        setSuggestions(prev => {
+            if (!prev) return null;
+            if (type === 'task') {
+                return {...prev, tasks: prev.tasks.filter(s => s !== slot)};
+            } else {
+                return {...prev, routineEvents: prev.routineEvents.filter(s => s !== slot)};
+            }
+        });
+
     } catch (error) {
         toast({
             variant: 'destructive',
@@ -193,9 +202,8 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const resetState = useCallback(() => {
     setStep(1);
     setSelectedTasks(new Set());
-    setSuggestions([]);
+    setSuggestions(null);
     setIsLoading(false);
-    // Don't reset preferences, as they are now loaded from DB
   }, []);
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -294,34 +302,47 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         </DialogFooter>
     </>
   );
+  
+  const SuggestionList = ({ title, items, type }: { title: string, items: SuggestedSlot[], type: 'task' | 'routine' }) => {
+    if (items.length === 0) return null;
+    return (
+        <div className="mb-4">
+            <h4 className="font-semibold text-md mb-2">{title}</h4>
+             <div className="space-y-2 pr-4">
+                {items.map((slot, index) => (
+                    <Card key={index} className="bg-secondary/50">
+                        <CardContent className="p-3 flex items-center justify-between">
+                            <div>
+                                <p className="font-semibold">{slot.task}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {new Date(slot.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                                </p>
+                                <p className="text-sm text-muted-foreground">{slot.startTime} - {slot.endTime}</p>
+                            </div>
+                            <Button size="icon" variant="ghost" onClick={() => handleAddEvent(slot, type)}>
+                                <PlusCircle className="h-5 w-5 text-primary" />
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
+  }
 
   const Step3_Results = () => (
     <>
         <div className="my-4">
-            <h3 className="font-semibold mb-2">Ваше новое расписание</h3>
+            <h3 className="font-semibold mb-4 text-lg">Ваше новое расписание</h3>
              <ScrollArea className="h-96 w-full">
-                {suggestions.length > 0 ? (
-                    <div className="space-y-2 pr-4">
-                        {suggestions.map((slot, index) => (
-                            <Card key={index} className="bg-secondary/50">
-                                <CardContent className="p-3 flex items-center justify-between">
-                                    <div>
-                                        <p className="font-semibold">{slot.task}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {new Date(slot.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">{slot.startTime} - {slot.endTime}</p>
-                                    </div>
-                                    <Button size="icon" variant="ghost" onClick={() => handleAddEvent(slot)}>
-                                        <PlusCircle className="h-5 w-5 text-primary" />
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                 ) : (
-                    <p className="text-sm text-muted-foreground text-center pt-10">Все предложенные события добавлены в ваш календарь.</p>
-                 )}
+                {!suggestions || (suggestions.tasks.length === 0 && suggestions.routineEvents.length === 0) ? (
+                     <p className="text-sm text-muted-foreground text-center pt-10">Все предложенные события добавлены в ваш календарь.</p>
+                ) : (
+                    <>
+                        <SuggestionList title="Задачи" items={suggestions.tasks} type="task" />
+                        <SuggestionList title="Рутина" items={suggestions.routineEvents} type="routine" />
+                    </>
+                )}
             </ScrollArea>
         </div>
         <DialogFooter>

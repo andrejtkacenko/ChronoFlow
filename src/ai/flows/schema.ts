@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // Schema for a single suggested time slot
 export const SuggestedSlotSchema = z.object({
-  task: z.string().describe('The name of the task to be scheduled.'),
+  task: z.string().describe('The name of the task or event to be scheduled.'),
   date: z
     .string()
     .describe("The suggested date for the task in 'YYYY-MM-DD' format."),
@@ -73,9 +73,12 @@ export type GenerateFullScheduleInput = z.infer<
 
 // Output schema for the generateFullSchedule flow
 export const GenerateFullScheduleOutputSchema = z.object({
-  suggestions: z
+   tasks: z
     .array(SuggestedSlotSchema)
-    .describe('A list of suggested time slots for the tasks.'),
+    .describe('A list of suggested time slots for the tasks from the inbox.'),
+   routineEvents: z
+    .array(SuggestedSlotSchema)
+    .describe('A list of newly created routine events like sleep, meals, and rest.'),
 });
 export type GenerateFullScheduleOutput = z.infer<
   typeof GenerateFullScheduleOutputSchema
