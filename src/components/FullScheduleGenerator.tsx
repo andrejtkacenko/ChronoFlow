@@ -40,33 +40,13 @@ interface FullScheduleGeneratorProps {
   userId: string;
 }
 
-const questionnaire = [
-  // Block 1: High-Level Goals
-  { id: 'mainGoals', label: 'Каковы ваши основные цели на неделю/квартал?', type: 'textarea' },
-  { id: 'priorities', label: 'Какие у вас приоритеты?', type: 'select', options: [{value: 'Work', label: 'Работа'}, {value: 'Study', label: 'Учеба'}, {value: 'Personal', label: 'Личные дела'}, {value: 'Balanced', label: 'Сбалансированно'}] },
-
-  // Block 2: Daily Needs (Routine)
-  { id: 'sleepDuration', label: 'Продолжительность сна', type: 'select', options: [{value: '7', label: '7 часов'}, {value: '8', label: '8 часов'}, {value: '9', label: '9 часов'}] },
-  { id: 'mealsPerDay', label: 'Количество приемов пищи', type: 'select', options: [{value: '2', label: '2'}, {value: '3', label: '3'}, {value: '4', label: '4'}] },
-  { id: 'restTime', label: 'Время на отдых (кроме сна)', type: 'select', options: [{value: '1', label: '1 час'}, {value: '2', label: '2 часа'}, {value: '3', label: '3 часа'}] },
-  { id: 'selfCareTime', label: 'Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?', type: 'textarea' },
-  
-  // Block 3: Productivity & Constraints
-  { id: 'energyPeaks', label: 'Когда у вас пики энергии?', type: 'select', options: [{value: 'Morning', label: 'Утро'}, {value: 'Afternoon', label: 'День'}, {value: 'Evening', label: 'Вечер'}] },
-  { id: 'fixedEvents', label: 'Какие у вас есть обязательства/привычки с фиксированным временем?', type: 'textarea' },
-  { id: 'delegationOpportunities', label: 'Что из задач можно было бы делегировать/автоматизировать/удалить?', type: 'textarea' },
-
-  // Block 4: Analysis & Learnings
-  { id: 'pastLearnings', label: 'Прошлые успехи/уроки/препятствия в планировании?', type: 'textarea' },
-];
-
 const defaultPreferences = {
   mainGoals: '',
   priorities: 'Balanced',
   sleepDuration: '8',
   mealsPerDay: '3',
   restTime: '2',
-  energyPeaks: 'Morning',
+  energyPeaks: [],
   fixedEvents: '',
   delegationOpportunities: '',
   selfCareTime: '',
@@ -92,13 +72,13 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         const docSnap = await getDoc(prefRef);
         if (docSnap.exists()) {
             const loadedPrefs = docSnap.data();
-            // Ensure energyPeaks is an array
+            // Ensure energyPeaks is an array, not a string
             if (typeof loadedPrefs.energyPeaks === 'string') {
-              loadedPrefs.energyPeaks = loadedPrefs.energyPeaks ? [loadedPrefs.energyPeaks] : [];
+              loadedPrefs.energyPeaks = loadedPrefs.energyPeaks ? loadedPrefs.energyPeaks.split(',').map((s: string) => s.trim()) : [];
             }
-            setPreferences(loadedPrefs as Record<string, string>);
+            setPreferences(loadedPrefs);
         } else {
-            setPreferences({...defaultPreferences, energyPeaks: []});
+            setPreferences({...defaultPreferences});
         }
     } catch (error) {
         console.error("Error fetching preferences:", error);
@@ -151,7 +131,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks,
     };
 
-    // Save preferences to Firestore
     try {
         const prefRef = doc(db, 'userPreferences', userId);
         await setDoc(prefRef, prefsToSave, { merge: true });
@@ -263,7 +242,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
      <div className="flex h-full flex-col">
         <Card className="flex-1 flex flex-col">
              <CardHeader>
-                 <CardTitle className="text-lg">Шаг 1: Выберите задачи для планирования</CardTitle>
+                 <CardTitle className="text-lg">Шаг 1: Выберите задачи</CardTitle>
                  <CardDescription>Отметьте задачи из вашего инбокса, которые вы хотите добавить в расписание.</CardDescription>
              </CardHeader>
               <CardContent className="flex-1 overflow-hidden">
@@ -294,7 +273,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
      <div className="flex h-full flex-col">
         <Card className="flex-1 flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Шаг 2: Укажите ваши предпочтения</CardTitle>
+                <CardTitle className="text-lg">Шаг 2: Укажите предпочтения</CardTitle>
                 <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание.</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden">
@@ -305,57 +284,62 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                         </div>
                     ) : (
                     <div className="space-y-6">
-                        {/* Block 1: High-Level Goals */}
                         <div>
                             <h4 className="font-semibold text-base mb-3">Высокоуровневые цели</h4>
-                            <div className="space-y-4">
-                               <div className="grid gap-2">
-                                  <Label htmlFor="mainGoals">Каковы ваши основные цели на неделю/квартал?</Label>
-                                  <Textarea id="mainGoals" value={preferences.mainGoals ?? ''} onChange={e => handlePrefChange('mainGoals', e.target.value)} />
-                               </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="mainGoals">Каковы ваши основные цели на этот период?</Label>
+                                <Textarea id="mainGoals" value={preferences.mainGoals ?? ''} onChange={e => handlePrefChange('mainGoals', e.target.value)} />
                             </div>
                         </div>
 
                         <Separator/>
                         
-                        {/* Block 2: Daily Needs */}
                         <div>
                             <h4 className="font-semibold text-base mb-3">Ежедневные потребности</h4>
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="grid gap-2">
                                   <Label>Продолжительность сна</Label>
-                                  <Select value={preferences.sleepDuration ?? ''} onValueChange={value => handlePrefChange('sleepDuration', value)}>
+                                  <Select value={preferences.sleepDuration ?? '8'} onValueChange={value => handlePrefChange('sleepDuration', value)}>
                                       <SelectTrigger><SelectValue/></SelectTrigger>
                                       <SelectContent>
+                                          <SelectItem value="4">4 часа</SelectItem>
+                                          <SelectItem value="5">5 часов</SelectItem>
+                                          <SelectItem value="6">6 часов</SelectItem>
                                           <SelectItem value="7">7 часов</SelectItem>
                                           <SelectItem value="8">8 часов</SelectItem>
                                           <SelectItem value="9">9 часов</SelectItem>
+                                          <SelectItem value="10">10 часов</SelectItem>
                                       </SelectContent>
                                   </Select>
                                 </div>
                                 <div className="grid gap-2">
                                   <Label>Количество приемов пищи</Label>
-                                   <Select value={preferences.mealsPerDay ?? ''} onValueChange={value => handlePrefChange('mealsPerDay', value)}>
+                                   <Select value={preferences.mealsPerDay ?? '3'} onValueChange={value => handlePrefChange('mealsPerDay', value)}>
                                       <SelectTrigger><SelectValue/></SelectTrigger>
                                       <SelectContent>
+                                          <SelectItem value="1">1</SelectItem>
                                           <SelectItem value="2">2</SelectItem>
                                           <SelectItem value="3">3</SelectItem>
                                           <SelectItem value="4">4</SelectItem>
+                                          <SelectItem value="5">5</SelectItem>
                                       </SelectContent>
                                   </Select>
                                 </div>
                                 <div className="grid gap-2">
-                                  <Label>Время на отдых</Label>
-                                  <Select value={preferences.restTime ?? ''} onValueChange={value => handlePrefChange('restTime', value)}>
+                                  <Label>Время на отдых (кроме сна)</Label>
+                                  <Select value={preferences.restTime ?? '2'} onValueChange={value => handlePrefChange('restTime', value)}>
                                       <SelectTrigger><SelectValue/></SelectTrigger>
                                       <SelectContent>
                                           <SelectItem value="1">1 час</SelectItem>
                                           <SelectItem value="2">2 часа</SelectItem>
                                           <SelectItem value="3">3 часа</SelectItem>
+                                          <SelectItem value="4">4 часа</SelectItem>
                                       </SelectContent>
                                   </Select>
                                 </div>
                             </div>
+                            <p className="text-xs text-muted-foreground mt-2">Общее время на короткие перерывы, прогулки и т.д. в течение дня.</p>
+
                             <div className="grid gap-2 mt-4">
                                 <Label htmlFor="selfCareTime">Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?</Label>
                                 <Textarea id="selfCareTime" placeholder="Пример: Чтение - 1 час, Прогулка - 30 минут" value={preferences.selfCareTime ?? ''} onChange={e => handlePrefChange('selfCareTime', e.target.value)} />
@@ -364,7 +348,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
                         <Separator/>
 
-                        {/* Block 3: Productivity */}
                         <div>
                             <h4 className="font-semibold text-base mb-3">Продуктивность и ограничения</h4>
                              <div className="grid gap-2">
@@ -386,7 +369,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                         
                         <Separator/>
 
-                        {/* Block 4: Analysis & Learnings */}
                          <div>
                             <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
                              <div className="grid gap-2">
@@ -399,7 +381,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
                         <div className="grid gap-2">
                             <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
-                            <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10))} />
+                            <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10) || 1)} min="1" max="14" />
                         </div>
                     </div>
                     )}
@@ -434,7 +416,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     return (
         <div className="mb-4">
             <h4 className="font-semibold text-md mb-2">{title}</h4>
-             <div className="space-y-2 pr-4">
+             <div className="space-y-2">
                 {items.map((slot, index) => (
                     <Card key={index} className="bg-secondary/50">
                         <CardContent className="p-3 flex items-center justify-between">
@@ -464,7 +446,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 Назад к редактированию
             </Button>
             <h3 className="font-semibold mb-4 text-lg">Ваше новое расписание</h3>
-             <ScrollArea className="flex-1">
+             <ScrollArea className="flex-1 pr-4">
                 {!suggestions || (suggestions.tasks.length === 0 && suggestions.routineEvents.length === 0) ? (
                      <p className="text-sm text-muted-foreground text-center pt-10">Все предложенные события добавлены в ваш календарь.</p>
                 ) : (
@@ -475,9 +457,11 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 )}
             </ScrollArea>
         </div>
-        <DialogFooter className="justify-between">
+        <DialogFooter className="justify-between pt-4 border-t">
             <div>
-                <Button variant="outline" onClick={handleAddAll}>Добавить все</Button>
+                 {(suggestions?.tasks?.length || 0) + (suggestions?.routineEvents?.length || 0) > 0 && (
+                    <Button variant="outline" onClick={handleAddAll}>Добавить все</Button>
+                 )}
             </div>
             <div>
                 <Button variant="ghost" onClick={resetState}>Начать заново</Button>
@@ -508,5 +492,3 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </Dialog>
   );
 }
-
-    
