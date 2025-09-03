@@ -115,20 +115,22 @@ export default function CalendarPage() {
   useEffect(() => {
     if (user) {
       setLoading(true);
-      const firstDay = format(startDate, 'yyyy-MM-dd');
-      const lastDay = format(endDate, 'yyyy-MM-dd');
       
       const q = query(
         collection(db, "scheduleItems"),
-        where("userId", "==", user.uid),
-        where("date", ">=", firstDay),
-        where("date", "<=", lastDay)
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const items: ScheduleItem[] = [];
+        const firstDay = format(startDate, 'yyyy-MM-dd');
+        const lastDay = format(endDate, 'yyyy-MM-dd');
+
         querySnapshot.forEach((doc) => {
-          items.push({ id: doc.id, ...doc.data() } as ScheduleItem);
+          const item = { id: doc.id, ...doc.data() } as ScheduleItem;
+          if (item.date && item.date >= firstDay && item.date <= lastDay) {
+             items.push(item);
+          }
         });
         setScheduleItems(items);
         setLoading(false);
@@ -147,10 +149,12 @@ export default function CalendarPage() {
     const eventsMap = new Map<string, ScheduleItem[]>();
     scheduleItems.forEach((item) => {
       const dateString = item.date; // Date is already YYYY-MM-DD
-      if (!eventsMap.has(dateString)) {
-        eventsMap.set(dateString, []);
+      if (dateString) {
+        if (!eventsMap.has(dateString)) {
+            eventsMap.set(dateString, []);
+        }
+        eventsMap.get(dateString)?.push(item);
       }
-      eventsMap.get(dateString)?.push(item);
     });
     return eventsMap;
   }, [scheduleItems]);
