@@ -17,14 +17,17 @@ const EventCard = ({ item, hourHeight, onClick }: { item: DisplayScheduleItem, h
   const Icon = iconMap[item.icon || 'Default'] || iconMap.Default;
 
   const cardClasses = cn(
-    "absolute left-2 right-2 p-3 transition-all ease-in-out mr-4 z-10 cursor-pointer hover:opacity-80",
+    "absolute left-2 right-2 p-2 transition-all ease-in-out mr-4 z-10 cursor-pointer hover:opacity-80 flex flex-col",
     {
         "rounded-lg": item.isStart && item.isEnd,
         "rounded-t-lg": item.isStart && !item.isEnd,
         "rounded-b-lg": !item.isStart && item.isEnd,
         "rounded-none": !item.isStart && !item.isEnd,
-    }
+    },
+    height < 40 ? "p-1.5" : "p-3" // Less padding for small cards
   );
+
+  const isTooSmallForDetails = height < 45;
 
   return (
     <div
@@ -38,12 +41,16 @@ const EventCard = ({ item, hourHeight, onClick }: { item: DisplayScheduleItem, h
       onClick={onClick}
     >
       <div className="flex h-full flex-col overflow-hidden">
-        <div className="flex items-center gap-2">
-            <Icon className="size-4" style={{color: item.color}} />
-            <h3 className="font-semibold truncate text-sm" style={{color: item.color}}>{item.title}</h3>
+        <div className={cn("flex items-start gap-2", isTooSmallForDetails && "gap-1.5")}>
+            <Icon className={cn("flex-shrink-0", isTooSmallForDetails ? "size-3.5 mt-0.5" : "size-4 mt-0.5")} style={{color: item.color}} />
+            <h3 className="font-semibold text-sm leading-tight" style={{color: item.color}}>{item.title}</h3>
         </div>
-        <p className="text-xs text-muted-foreground pl-6">{item.startTime} - {item.endTime}</p>
-        {item.description && <p className="mt-1 text-xs text-muted-foreground truncate pl-6">{item.description}</p>}
+        {!isTooSmallForDetails && (
+          <>
+            <p className="text-xs text-muted-foreground pl-6">{item.startTime} - {item.endTime}</p>
+            {item.description && <p className="mt-1 text-xs text-muted-foreground truncate pl-6">{item.description}</p>}
+          </>
+        )}
       </div>
     </div>
   );
