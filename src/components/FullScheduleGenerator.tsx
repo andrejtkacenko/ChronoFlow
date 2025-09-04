@@ -20,9 +20,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { collection, onSnapshot, query, where, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { ScheduleItem, TaskTemplate } from '@/lib/types';
+import type { ScheduleItem } from '@/lib/types';
 import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain, X, Edit, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
@@ -113,111 +113,14 @@ const GenerationProgress = memo(() => {
 GenerationProgress.displayName = 'GenerationProgress';
 
 
-const TemplateManager = memo(({ userId, selectedTemplates, onTemplateSelection }: { userId: string; selectedTemplates: Set<string>; onTemplateSelection: (templateId: string) => void; }) => {
-    const [templates, setTemplates] = useState<TaskTemplate[]>([]);
-    const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-    const [editingTitle, setEditingTitle] = useState('');
-    const { toast } = useToast();
-
-    useEffect(() => {
-        const q = query(collection(db, "taskTemplates"), where("userId", "==", userId));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedTemplates: TaskTemplate[] = [];
-            snapshot.forEach(doc => fetchedTemplates.push({ id: doc.id, ...doc.data() } as TaskTemplate));
-            setTemplates(fetchedTemplates);
-        });
-        return () => unsubscribe();
-    }, [userId]);
-
-    const handleAddNew = async () => {
-        try {
-            const newTemplateRef = await addDoc(collection(db, "taskTemplates"), { userId, title: 'Новый шаблон', icon: 'PenSquare' });
-            setEditingTemplateId(newTemplateRef.id);
-            setEditingTitle('Новый шаблон');
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось создать шаблон.' });
-        }
-    };
-
-    const handleUpdate = async (templateId: string) => {
-        try {
-            await updateDoc(doc(db, "taskTemplates", templateId), { title: editingTitle });
-            setEditingTemplateId(null);
-            setEditingTitle('');
-            toast({ title: 'Шаблон обновлен' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось обновить шаблон.' });
-        }
-    };
-    
-    const handleDelete = async (templateId: string) => {
-        try {
-            await deleteDoc(doc(db, "taskTemplates", templateId));
-            toast({ title: 'Шаблон удален' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось удалить шаблон.' });
-        }
-    };
-
-
-    return (
-        <div>
-            <h4 className="font-semibold text-base mb-3 text-muted-foreground">Готовые задачи</h4>
-            <div className="space-y-2">
-                {templates.map(template => {
-                    const isEditing = editingTemplateId === template.id;
-                    return (
-                        <div key={template.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted group">
-                            <Checkbox
-                                id={`template-${template.id}`}
-                                onCheckedChange={() => onTemplateSelection(template.id)}
-                                checked={selectedTemplates.has(template.id)}
-                            />
-                            {isEditing ? (
-                                <Input 
-                                    value={editingTitle}
-                                    onChange={(e) => setEditingTitle(e.target.value)}
-                                    className="h-8"
-                                />
-                            ) : (
-                                <Label htmlFor={`template-${template.id}`} className="flex-1 truncate cursor-pointer">{template.title}</Label>
-                            )}
-
-                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                {isEditing ? (
-                                    <Button variant="ghost" size="icon" className="size-7" onClick={() => handleUpdate(template.id)}><Check className="size-4" /></Button>
-                                ) : (
-                                    <Button variant="ghost" size="icon" className="size-7" onClick={() => { setEditingTemplateId(template.id); setEditingTitle(template.title); }}><Edit className="size-4" /></Button>
-                                )}
-                                <Button variant="ghost" size="icon" className="size-7" onClick={() => handleDelete(template.id)}><Trash2 className="size-4" /></Button>
-                            </div>
-                        </div>
-                    )
-                })}
-            </div>
-             <Button variant="ghost" onClick={handleAddNew} className="mt-2 w-full justify-start text-sm">
-                <PlusCircle className="mr-2 size-4" />
-                Добавить новый шаблон
-            </Button>
-        </div>
-    );
-});
-TemplateManager.displayName = 'TemplateManager';
-
 const Step1_TaskSelection = memo(({
   inboxTasks,
   selectedTasks,
-  onTaskSelection,
-  userId,
-  selectedTemplates,
-  onTemplateSelection
+  onTaskSelection
 }: {
   inboxTasks: ScheduleItem[];
   selectedTasks: Set<string>;
   onTaskSelection: (taskId: string) => void;
-  userId: string;
-  selectedTemplates: Set<string>;
-  onTemplateSelection: (templateId: string) => void;
 }) => (
   <div className="flex h-full flex-col">
     <Card className="flex-1 flex flex-col border-none rounded-none">
@@ -246,12 +149,6 @@ const Step1_TaskSelection = memo(({
                 )}
             </div>
           </div>
-          <Separator className="my-6" />
-          <TemplateManager 
-             userId={userId}
-             selectedTemplates={selectedTemplates}
-             onTemplateSelection={onTemplateSelection}
-          />
         </ScrollArea>
       </CardContent>
     </Card>
@@ -638,9 +535,6 @@ const FormView = memo(({
   handleEnergyPeakChange,
   handleNumberOfDaysChange,
   handleGenerate,
-  userId,
-  selectedTemplates,
-  handleTemplateSelection
 }: {
   inboxTasks: ScheduleItem[];
   selectedTasks: Set<string>;
@@ -652,9 +546,6 @@ const FormView = memo(({
   handleEnergyPeakChange: (peak: string, checked: boolean) => void;
   handleNumberOfDaysChange: (days: number) => void;
   handleGenerate: () => void;
-  userId: string;
-  selectedTemplates: Set<string>;
-  handleTemplateSelection: (templateId: string) => void;
 }) => (
   <>
     <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border my-4 min-h-0">
@@ -663,9 +554,6 @@ const FormView = memo(({
             inboxTasks={inboxTasks}
             selectedTasks={selectedTasks}
             onTaskSelection={handleTaskSelection}
-            userId={userId}
-            selectedTemplates={selectedTemplates}
-            onTemplateSelection={handleTemplateSelection}
         />
       </ResizablePanel>
       <ResizableHandle withHandle />
@@ -681,7 +569,7 @@ const FormView = memo(({
       </ResizablePanel>
     </ResizablePanelGroup>
     <DialogFooter>
-      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0 && selectedTemplates.size === 0}>
+      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
         <Wand2 className="mr-2 h-4 w-4" />
         Сгенерировать расписание
       </Button>
@@ -695,9 +583,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const { toast } = useToast();
   const [view, setView] = useState<'form' | 'results' | 'loading'>('form');
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
-  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<Record<string, any>>(defaultPreferences);
   const [isPrefLoading, setIsPrefLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<GenerateFullScheduleOutput | null>(null);
@@ -748,16 +634,8 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       setInboxTasks(tasks);
     });
 
-    const qTemplates = query(collection(db, "taskTemplates"), where("userId", "==", userId));
-    const unsubscribeTemplates = onSnapshot(qTemplates, (snapshot) => {
-        const templates: TaskTemplate[] = [];
-        snapshot.forEach(doc => templates.push({ id: doc.id, ...doc.data() } as TaskTemplate));
-        setTaskTemplates(templates);
-    });
-
     return () => {
       unsubscribeTasks();
-      unsubscribeTemplates();
     }
   }, [open, userId, fetchUserPreferences]);
 
@@ -772,21 +650,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       return newSet;
     });
   }, []);
-  
-  const handleTemplateSelection = useCallback((templateId: string) => {
-    setSelectedTemplates(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(templateId)) {
-        newSet.delete(templateId);
-      } else {
-        newSet.add(templateId);
-      }
-      return newSet;
-    });
-  }, []);
 
   const handleGenerate = async () => {
-    if (selectedTasks.size === 0 && selectedTemplates.size === 0) {
+    if (selectedTasks.size === 0) {
       toast({ variant: 'destructive', title: 'Выберите хотя бы одну задачу' });
       return;
     }
@@ -818,15 +684,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         toast({ variant: 'destructive', title: 'Не удалось сохранить ваши предпочтения.' });
     }
 
-    const tasksFromInbox = inboxTasks
+    const allTasks = inboxTasks
       .filter(task => selectedTasks.has(task.id))
       .map(task => task.title);
-
-    const tasksFromTemplates = taskTemplates
-      .filter(template => selectedTemplates.has(template.id))
-      .map(template => template.title);
-    
-    const allTasks = [...tasksFromInbox, ...tasksFromTemplates];
 
     try {
       const result = await generateSchedule({
@@ -906,7 +766,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const resetState = useCallback(() => {
     setView('form');
     setSelectedTasks(new Set());
-    setSelectedTemplates(new Set());
     setSuggestions(null);
     fetchUserPreferences();
   }, [fetchUserPreferences]);
@@ -962,9 +821,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 handleEnergyPeakChange={handleEnergyPeakChange}
                 handleNumberOfDaysChange={handleNumberOfDaysChange}
                 handleGenerate={handleGenerate}
-                userId={userId}
-                selectedTemplates={selectedTemplates}
-                handleTemplateSelection={handleTemplateSelection}
             />;
     }
   }

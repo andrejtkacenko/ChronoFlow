@@ -72,10 +72,3 @@ export type DisplayScheduleItem = ScheduleItem & {
   isStart?: boolean;
   isEnd?: boolean;
 }
-
-export type TaskTemplate = {
-  id: string;
-  userId: string;
-  title: string;
-  icon: string;
-};
