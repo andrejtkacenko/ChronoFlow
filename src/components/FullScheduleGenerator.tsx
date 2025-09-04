@@ -56,7 +56,7 @@ const defaultPreferences = {
 
 type GenerationStep = 'idle' | 'routine' | 'tasks' | 'done';
 
-const GenerationProgress = () => {
+const GenerationProgress = memo(() => {
     const [step, setStep] = useState<GenerationStep>('routine');
     const [isDone, setIsDone] = useState(false);
 
@@ -108,7 +108,9 @@ const GenerationProgress = () => {
             </div>
         </div>
     );
-};
+});
+GenerationProgress.displayName = 'GenerationProgress';
+
 
 const Step1_TaskSelection = memo(({ inboxTasks, selectedTasks, onTaskSelection }: {
   inboxTasks: ScheduleItem[];
@@ -167,8 +169,8 @@ const Step2_Preferences = memo(({
         <CardTitle className="text-lg">Шаг 2: Укажите предпочтения</CardTitle>
         <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 overflow-auto pr-6">
-        <ScrollArea className="h-full pr-4 -mr-6">
+      <CardContent className="flex-1 overflow-auto">
+        <ScrollArea className="h-full pr-4">
           {isPrefLoading ? (
             <div className="flex justify-center items-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -179,7 +181,7 @@ const Step2_Preferences = memo(({
                 <h4 className="font-semibold text-base mb-3">Высокоуровневые цели</h4>
                 <div className="grid gap-2">
                   <Label htmlFor="mainGoals">Каковы ваши основные цели на этот период?</Label>
-                  <Textarea id="mainGoals" value={preferences.mainGoals ?? ''} onChange={e => onPrefChange('mainGoals', e.target.value)} />
+                  <Textarea id="mainGoals" placeholder="Пример: Запустить новый проект, подготовиться к марафону, прочитать 3 книги." value={preferences.mainGoals ?? ''} onChange={e => onPrefChange('mainGoals', e.target.value)} />
                 </div>
               </div>
 
@@ -233,7 +235,7 @@ const Step2_Preferences = memo(({
 
                 <div className="grid gap-2 mt-4">
                   <Label htmlFor="selfCareTime">Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?</Label>
-                  <Textarea id="selfCareTime" placeholder="Пример: Чтение - 1 час, Прогулка - 30 минут" value={preferences.selfCareTime ?? ''} onChange={e => onPrefChange('selfCareTime', e.target.value)} />
+                  <Textarea id="selfCareTime" placeholder="Пример: Чтение - 1 час в день, Прогулка - 30 минут, Курс по React - 2 часа по вт и чт." value={preferences.selfCareTime ?? ''} onChange={e => onPrefChange('selfCareTime', e.target.value)} />
                 </div>
               </div>
 
@@ -264,7 +266,7 @@ const Step2_Preferences = memo(({
                 <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
                 <div className="grid gap-2">
                   <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
-                  <Textarea id="pastLearnings" placeholder="Пример: Лучше не ставить больше 2 больших задач в день" value={preferences.pastLearnings ?? ''} onChange={e => onPrefChange('pastLearnings', e.target.value)} />
+                  <Textarea id="pastLearnings" placeholder="Пример: Лучше не ставить больше 2 больших задач в день. Утренние тренировки дают больше энергии." value={preferences.pastLearnings ?? ''} onChange={e => onPrefChange('pastLearnings', e.target.value)} />
                 </div>
               </div>
 
@@ -389,7 +391,7 @@ const FormView = memo(({
   handleGenerate: () => void;
 }) => (
   <>
-    <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
+    <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border my-4 min-h-0">
       <ResizablePanel defaultSize={35} minSize={25}>
         <Step1_TaskSelection inboxTasks={inboxTasks} selectedTasks={selectedTasks} onTaskSelection={handleTaskSelection} />
       </ResizablePanel>
@@ -405,7 +407,7 @@ const FormView = memo(({
         />
       </ResizablePanel>
     </ResizablePanelGroup>
-    <DialogFooter className="mt-4">
+    <DialogFooter>
       <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
         <Wand2 className="mr-2 h-4 w-4" />
         Сгенерировать расписание
@@ -434,8 +436,11 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         const docSnap = await getDoc(prefRef);
         if (docSnap.exists()) {
             const loadedPrefs = docSnap.data();
+             // Ensure energyPeaks is an array
             if (typeof loadedPrefs.energyPeaks === 'string') {
               loadedPrefs.energyPeaks = loadedPrefs.energyPeaks ? loadedPrefs.energyPeaks.split(',').map((s: string) => s.trim()) : [];
+            } else if (!Array.isArray(loadedPrefs.energyPeaks)) {
+              loadedPrefs.energyPeaks = [];
             }
             setPreferences(loadedPrefs);
         } else {
@@ -489,6 +494,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
     const prefsToSave = {
       ...preferences,
+      // Convert array to comma-separated string for storing in Firestore
       energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks,
     };
 
@@ -594,10 +600,14 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   }, []);
 
   const handleEnergyPeakChange = useCallback((peak: string, checked: boolean) => {
-      const currentPeaks = preferences.energyPeaks || [];
-      const newPeaks = checked ? [...currentPeaks, peak] : currentPeaks.filter((p: string) => p !== peak);
-      handlePrefChange('energyPeaks', newPeaks);
-  }, [preferences.energyPeaks, handlePrefChange]);
+      setPreferences(p => {
+          const currentPeaks = p.energyPeaks || [];
+          const newPeaks = checked 
+              ? [...currentPeaks, peak] 
+              : currentPeaks.filter((pk: string) => pk !== peak);
+          return { ...p, energyPeaks: newPeaks };
+      });
+  }, []);
 
   const handleNumberOfDaysChange = useCallback((days: number) => {
       setNumberOfDays(days);
@@ -605,19 +615,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   const renderContent = () => {
     switch (view) {
-        case 'form':
-            return <FormView 
-                inboxTasks={inboxTasks}
-                selectedTasks={selectedTasks}
-                handleTaskSelection={handleTaskSelection}
-                preferences={preferences}
-                isPrefLoading={isPrefLoading}
-                numberOfDays={numberOfDays}
-                handlePrefChange={handlePrefChange}
-                handleEnergyPeakChange={handleEnergyPeakChange}
-                handleNumberOfDaysChange={handleNumberOfDaysChange}
-                handleGenerate={handleGenerate}
-            />;
         case 'loading':
             return <GenerationProgress />;
         case 'results':
@@ -629,6 +626,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 onResetState={resetState}
                 onOpenChange={handleOpenChange}
             />;
+        case 'form':
         default:
             return <FormView 
                 inboxTasks={inboxTasks}
@@ -648,8 +646,8 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-6xl w-full h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-6xl w-full h-[90vh] flex flex-col p-0">
+        <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
             Генератор расписания
@@ -659,10 +657,12 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 px-6 pb-6">
             {renderContent()}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+    
