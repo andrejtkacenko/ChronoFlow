@@ -16,6 +16,8 @@ import {
     Palette,
     Aperture,
     Bell,
+    BookOpen,
+    PersonStanding,
   } from 'lucide-react';
   
 export const iconMap: { [key: string]: LucideIcon } = {
@@ -34,6 +36,8 @@ export const iconMap: { [key: string]: LucideIcon } = {
     Palette,
     Aperture,
     Bell,
+    BookOpen,
+    PersonStanding,
     Default: Briefcase,
 };
 
@@ -69,10 +73,9 @@ export type DisplayScheduleItem = ScheduleItem & {
   isEnd?: boolean;
 }
 
-export type PredefinedTask = {
+export type TaskTemplate = {
   id: string;
+  userId: string;
   title: string;
-  icon: LucideIcon;
+  icon: string;
 };
-
-    
