@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { ScheduleItem } from '@/lib/types';
+import type { ScheduleItem, PredefinedTask } from '@/lib/types';
 import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
@@ -34,7 +34,7 @@ import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { BookOpen, PersonStanding } from 'lucide-react';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -112,35 +112,74 @@ const GenerationProgress = memo(() => {
 });
 GenerationProgress.displayName = 'GenerationProgress';
 
+const predefinedTasks: PredefinedTask[] = [
+    { id: 'sport', title: 'Спорт', icon: Dumbbell },
+    { id: 'meditation', title: 'Медитация', icon: Brain },
+    { id: 'reading', title: 'Чтение', icon: BookOpen },
+    { id: 'yoga', title: 'Йога', icon: PersonStanding },
+];
 
-const Step1_TaskSelection = memo(({ inboxTasks, selectedTasks, onTaskSelection }: {
+
+const Step1_TaskSelection = memo(({
+  inboxTasks,
+  selectedTasks,
+  onTaskSelection,
+  selectedPredefinedTasks,
+  onPredefinedTaskSelection
+}: {
   inboxTasks: ScheduleItem[];
   selectedTasks: Set<string>;
   onTaskSelection: (taskId: string) => void;
+  selectedPredefinedTasks: Set<string>;
+  onPredefinedTaskSelection: (taskId: string) => void;
 }) => (
   <div className="flex h-full flex-col">
     <Card className="flex-1 flex flex-col border-none rounded-none">
       <CardHeader>
         <CardTitle className="text-lg">Шаг 1: Выберите задачи</CardTitle>
-        <CardDescription>Отметьте задачи из вашего инбокса, которые вы хотите добавить в расписание.</CardDescription>
+        <CardDescription>Отметьте задачи, которые вы хотите добавить в расписание.</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden">
         <ScrollArea className="h-full pr-4">
-          <div className="space-y-2">
-            {inboxTasks.length > 0 ? (
-              inboxTasks.map(task => (
-                <div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
-                  <Checkbox
-                    id={`task-${task.id}`}
-                    onCheckedChange={() => onTaskSelection(task.id)}
-                    checked={selectedTasks.has(task.id)}
-                  />
-                  <Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground text-center pt-10">Ваш инбокс пуст.</p>
-            )}
+          <div>
+            <h4 className="font-semibold text-base mb-3 text-muted-foreground">Из инбокса</h4>
+            <div className="space-y-2">
+                {inboxTasks.length > 0 ? (
+                inboxTasks.map(task => (
+                    <div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
+                    <Checkbox
+                        id={`task-${task.id}`}
+                        onCheckedChange={() => onTaskSelection(task.id)}
+                        checked={selectedTasks.has(task.id)}
+                    />
+                    <Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label>
+                    </div>
+                ))
+                ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">Ваш инбокс пуст.</p>
+                )}
+            </div>
+          </div>
+          <Separator className="my-6" />
+           <div>
+            <h4 className="font-semibold text-base mb-3 text-muted-foreground">Готовые задачи</h4>
+             <div className="space-y-2">
+               {predefinedTasks.map(task => {
+                 const Icon = task.icon;
+                 return (
+                    <div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
+                        <Checkbox
+                            id={`predefined-${task.id}`}
+                            onCheckedChange={() => onPredefinedTaskSelection(task.id)}
+                            checked={selectedPredefinedTasks.has(task.id)}
+                        />
+                        <Label htmlFor={`predefined-${task.id}`} className="flex-1 flex items-center gap-2 truncate cursor-pointer">
+                            <Icon className="size-4" />
+                            {task.title}
+                        </Label>
+                    </div>
+                )})}
+            </div>
           </div>
         </ScrollArea>
       </CardContent>
@@ -505,6 +544,8 @@ const FormView = memo(({
   inboxTasks,
   selectedTasks,
   handleTaskSelection,
+  selectedPredefinedTasks,
+  handlePredefinedTaskSelection,
   preferences,
   isPrefLoading,
   numberOfDays,
@@ -516,6 +557,8 @@ const FormView = memo(({
   inboxTasks: ScheduleItem[];
   selectedTasks: Set<string>;
   handleTaskSelection: (taskId: string) => void;
+  selectedPredefinedTasks: Set<string>;
+  handlePredefinedTaskSelection: (taskId: string) => void;
   preferences: Record<string, any>;
   isPrefLoading: boolean;
   numberOfDays: number;
@@ -527,7 +570,13 @@ const FormView = memo(({
   <>
     <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border my-4 min-h-0">
       <ResizablePanel defaultSize={35} minSize={25}>
-        <Step1_TaskSelection inboxTasks={inboxTasks} selectedTasks={selectedTasks} onTaskSelection={handleTaskSelection} />
+        <Step1_TaskSelection
+            inboxTasks={inboxTasks}
+            selectedTasks={selectedTasks}
+            onTaskSelection={handleTaskSelection}
+            selectedPredefinedTasks={selectedPredefinedTasks}
+            onPredefinedTaskSelection={handlePredefinedTaskSelection}
+        />
       </ResizablePanel>
       <ResizableHandle withHandle />
       <ResizablePanel defaultSize={65} minSize={40}>
@@ -542,7 +591,7 @@ const FormView = memo(({
       </ResizablePanel>
     </ResizablePanelGroup>
     <DialogFooter>
-      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
+      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0 && selectedPredefinedTasks.size === 0}>
         <Wand2 className="mr-2 h-4 w-4" />
         Сгенерировать расписание
       </Button>
@@ -557,6 +606,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const [view, setView] = useState<'form' | 'results' | 'loading'>('form');
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [selectedPredefinedTasks, setSelectedPredefinedTasks] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<Record<string, any>>(defaultPreferences);
   const [isPrefLoading, setIsPrefLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<GenerateFullScheduleOutput | null>(null);
@@ -620,9 +670,21 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       return newSet;
     });
   }, []);
+  
+  const handlePredefinedTaskSelection = useCallback((taskId: string) => {
+    setSelectedPredefinedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  }, []);
 
   const handleGenerate = async () => {
-    if (selectedTasks.size === 0) {
+    if (selectedTasks.size === 0 && selectedPredefinedTasks.size === 0) {
       toast({ variant: 'destructive', title: 'Выберите хотя бы одну задачу' });
       return;
     }
@@ -654,13 +716,19 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         toast({ variant: 'destructive', title: 'Не удалось сохранить ваши предпочтения.' });
     }
 
-    const tasksToSchedule = inboxTasks
+    const tasksFromInbox = inboxTasks
       .filter(task => selectedTasks.has(task.id))
       .map(task => task.title);
 
+    const tasksFromPredefined = predefinedTasks
+      .filter(task => selectedPredefinedTasks.has(task.id))
+      .map(task => task.title);
+    
+    const allTasks = [...tasksFromInbox, ...tasksFromPredefined];
+
     try {
       const result = await generateSchedule({
-        tasks: tasksToSchedule,
+        tasks: allTasks,
         preferences: {
             ...prefsToSave,
             // Pass the combined string to the AI
@@ -736,6 +804,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const resetState = useCallback(() => {
     setView('form');
     setSelectedTasks(new Set());
+    setSelectedPredefinedTasks(new Set());
     setSuggestions(null);
     fetchUserPreferences();
   }, [fetchUserPreferences]);
@@ -784,6 +853,8 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 inboxTasks={inboxTasks}
                 selectedTasks={selectedTasks}
                 handleTaskSelection={handleTaskSelection}
+                selectedPredefinedTasks={selectedPredefinedTasks}
+                handlePredefinedTaskSelection={handlePredefinedTaskSelection}
                 preferences={preferences}
                 isPrefLoading={isPrefLoading}
                 numberOfDays={numberOfDays}
@@ -816,5 +887,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </Dialog>
   );
 }
+
+    
 
     

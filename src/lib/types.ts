@@ -68,3 +68,11 @@ export type DisplayScheduleItem = ScheduleItem & {
   isStart?: boolean;
   isEnd?: boolean;
 }
+
+export type PredefinedTask = {
+  id: string;
+  title: string;
+  icon: LucideIcon;
+};
+
+    
