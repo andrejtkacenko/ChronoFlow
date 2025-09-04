@@ -10,11 +10,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +30,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { BookOpen, PersonStanding } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -123,15 +120,13 @@ const Step1_TaskSelection = memo(({
   onTaskSelection: (taskId: string) => void;
 }) => (
   <div className="flex h-full flex-col">
-    <Card className="flex-1 flex flex-col border-none rounded-none">
-      <CardHeader>
-        <CardTitle className="text-lg">Шаг 1: Выберите задачи</CardTitle>
-        <CardDescription>Отметьте задачи, которые вы хотите добавить в расписание.</CardDescription>
+    <Card className="flex-1 flex flex-col border-none rounded-none shadow-none bg-transparent">
+      <CardHeader className='p-0 pb-4'>
+        <CardTitle className="text-base">Выберите задачи из инбокса</CardTitle>
+        <CardDescription>Отметьте то, что хотите добавить в расписание.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden">
+      <CardContent className="flex-1 overflow-hidden p-0">
         <ScrollArea className="h-full pr-4">
-          <div>
-            <h4 className="font-semibold text-base mb-3 text-muted-foreground">Из инбокса</h4>
             <div className="space-y-2">
                 {inboxTasks.length > 0 ? (
                 inboxTasks.map(task => (
@@ -148,7 +143,6 @@ const Step1_TaskSelection = memo(({
                 <p className="text-sm text-muted-foreground text-center py-4">Ваш инбокс пуст.</p>
                 )}
             </div>
-          </div>
         </ScrollArea>
       </CardContent>
     </Card>
@@ -220,7 +214,7 @@ const HabitBuilder = memo(({
                 <Checkbox
                     id={`habit-${habitKey}`}
                     checked={isActive}
-                    onCheckedChange={handleIsActiveChange}
+                    onCheckedChange={handleIsActiveChange as (checked: boolean | 'indeterminate') => void}
                 />
                 <Label htmlFor={`habit-${habitKey}`} className="flex-1 font-semibold text-base flex items-center gap-2 cursor-pointer">
                     <Icon className="size-5 text-primary" />
@@ -309,12 +303,12 @@ const Step2_Preferences = memo(({
 
   return (
       <div className="flex h-full flex-col">
-        <Card className="flex-1 flex flex-col border-none rounded-none overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-lg">Шаг 2: Укажите предпочтения</CardTitle>
+        <Card className="flex-1 flex flex-col border-none rounded-none overflow-hidden shadow-none bg-transparent">
+           <CardHeader className='p-0 pb-4'>
+            <CardTitle className="text-base">Настройте предпочтения</CardTitle>
             <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание.</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-auto">
+          <CardContent className="flex-1 overflow-auto p-0">
             <ScrollArea className="h-full pr-4">
               {isPrefLoading ? (
                 <div className="flex justify-center items-center h-full">
@@ -545,26 +539,31 @@ const FormView = memo(({
   handleGenerate: () => void;
 }) => (
   <>
-    <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border my-4 min-h-0">
-      <ResizablePanel defaultSize={35} minSize={25}>
-        <Step1_TaskSelection
-            inboxTasks={inboxTasks}
-            selectedTasks={selectedTasks}
-            onTaskSelection={handleTaskSelection}
-        />
-      </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel defaultSize={65} minSize={40}>
-        <Step2_Preferences
-          preferences={preferences}
-          isPrefLoading={isPrefLoading}
-          numberOfDays={numberOfDays}
-          onPrefChange={handlePrefChange}
-          onEnergyPeakChange={handleEnergyPeakChange}
-          onNumberOfDaysChange={handleNumberOfDaysChange}
-        />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+    <div className="flex-1 my-4 min-h-0">
+        <Tabs defaultValue="tasks" className="w-full h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="tasks">Шаг 1: Задачи</TabsTrigger>
+                <TabsTrigger value="preferences">Шаг 2: Предпочтения</TabsTrigger>
+            </TabsList>
+            <TabsContent value="tasks" className="flex-1 overflow-y-auto mt-4">
+                <Step1_TaskSelection
+                    inboxTasks={inboxTasks}
+                    selectedTasks={selectedTasks}
+                    onTaskSelection={handleTaskSelection}
+                />
+            </TabsContent>
+            <TabsContent value="preferences" className="flex-1 overflow-y-auto mt-4">
+                <Step2_Preferences
+                preferences={preferences}
+                isPrefLoading={isPrefLoading}
+                numberOfDays={numberOfDays}
+                onPrefChange={handlePrefChange}
+                onEnergyPeakChange={handleEnergyPeakChange}
+                onNumberOfDaysChange={handleNumberOfDaysChange}
+                />
+            </TabsContent>
+        </Tabs>
+    </div>
     <DialogFooter>
       <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
         <Wand2 className="mr-2 h-4 w-4" />
@@ -825,7 +824,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-6xl w-full h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-2xl w-full h-[80vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
@@ -843,3 +842,5 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </Dialog>
   );
 }
+
+    
