@@ -561,3 +561,5 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </Dialog>
   );
 }
+
+    
