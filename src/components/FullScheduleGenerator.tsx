@@ -23,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -149,17 +149,111 @@ const Step1_TaskSelection = memo(({ inboxTasks, selectedTasks, onTaskSelection }
 ));
 Step1_TaskSelection.displayName = 'Step1_TaskSelection';
 
-const InteractiveQuestion = memo(({ question, children, icon: Icon }: { question: string, children: React.ReactNode, icon: React.ElementType }) => (
-    <div className="p-4 rounded-lg bg-secondary/50">
-        <div className="flex items-center gap-3 mb-3">
-            <Icon className="size-5 text-primary" />
-            <h5 className="font-semibold text-base">{question}</h5>
-        </div>
-        {children}
-    </div>
-));
-InteractiveQuestion.displayName = 'InteractiveQuestion';
+const HabitBuilder = memo(({
+    habitName,
+    habitKey,
+    icon: Icon,
+    onHabitChange,
+    initialValue
+}: {
+    habitName: string;
+    habitKey: string;
+    icon: React.ElementType;
+    onHabitChange: (key: string, value: string) => void;
+    initialValue?: string;
+}) => {
+    const [isActive, setIsActive] = useState(false);
+    const [freq, setFreq] = useState('');
+    const [dur, setDur] = useState('');
 
+    const handleReset = () => {
+        setIsActive(false);
+        setFreq('');
+        setDur('');
+        onHabitChange(habitKey, ''); // Clear the value
+    }
+
+    const handleUpdate = useCallback((newFreq: string, newDur: string) => {
+        if (newFreq && newDur) {
+            onHabitChange(habitKey, `${habitName}: ${newFreq}, ${newDur}`);
+        } else {
+            onHabitChange(habitKey, '');
+        }
+    }, [habitName, habitKey, onHabitChange]);
+
+    const handleFreqChange = (newFreq: string) => {
+        setFreq(newFreq);
+        handleUpdate(newFreq, dur);
+    }
+    
+    const handleDurChange = (newDur: string) => {
+        setDur(newDur);
+        handleUpdate(freq, newDur);
+    }
+
+    if (!isActive) {
+        return (
+            <Button variant="outline" className="w-full justify-start" onClick={() => setIsActive(true)}>
+                <PlusCircle className="mr-2 size-4" />
+                Добавить {habitName.toLowerCase()}
+            </Button>
+        )
+    }
+
+    return (
+        <div className="p-4 rounded-lg bg-secondary/50">
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                    <Icon className="size-5 text-primary" />
+                    <h5 className="font-semibold text-base">{habitName}</h5>
+                </div>
+                <Button variant="ghost" size="icon" className="size-7" onClick={handleReset}>
+                    <X className="size-4" />
+                </Button>
+            </div>
+             <div className="grid grid-cols-2 gap-4">
+                <Select onValueChange={handleFreqChange} value={freq}>
+                    <SelectTrigger><SelectValue placeholder="Частота" /></SelectTrigger>
+                    <SelectContent>
+                        {habitKey === 'sport' ? (
+                            <>
+                                <SelectItem value="1 раз в неделю">1 раз в неделю</SelectItem>
+                                <SelectItem value="2 раза в неделю">2 раза в неделю</SelectItem>
+                                <SelectItem value="3 раза в неделю">3 раза в неделю</SelectItem>
+                                <SelectItem value="каждый день">Каждый день</SelectItem>
+                            </>
+                        ) : (
+                             <>
+                                <SelectItem value="1 раз в день">1 раз в день</SelectItem>
+                                <SelectItem value="2 раза в день">2 раза в день</SelectItem>
+                                <SelectItem value="несколько раз в неделю">Несколько раз в неделю</SelectItem>
+                             </>
+                        )}
+                    </SelectContent>
+                </Select>
+                <Select onValueChange={handleDurChange} value={dur}>
+                    <SelectTrigger><SelectValue placeholder="Длительность" /></SelectTrigger>
+                    <SelectContent>
+                         {habitKey === 'sport' ? (
+                            <>
+                                <SelectItem value="по 30 минут">30 минут</SelectItem>
+                                <SelectItem value="по 1 часу">1 час</SelectItem>
+                                <SelectItem value="по 1.5 часа">1.5 часа</SelectItem>
+                            </>
+                         ) : (
+                            <>
+                                <SelectItem value="по 10 минут">10 минут</SelectItem>
+                                <SelectItem value="по 15 минут">15 минут</SelectItem>
+                                <SelectItem value="по 20 минут">20 минут</SelectItem>
+                            </>
+                         )}
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+    )
+});
+HabitBuilder.displayName = 'HabitBuilder';
 
 const Step2_Preferences = memo(({
   preferences,
@@ -177,35 +271,13 @@ const Step2_Preferences = memo(({
   onNumberOfDaysChange: (days: number) => void;
 }) => {
   
-  const [hasSport, setHasSport] = useState('no');
-  const [sportFreq, setSportFreq] = useState('');
-  const [sportDur, setSportDur] = useState('');
-
-  const [hasMeditation, setHasMeditation] = useState('no');
-  const [medFreq, setMedFreq] = useState('');
-  const [medDur, setMedDur] = useState('');
-
-  const updateHabit = useCallback((habit: string, enabled: boolean, freq: string, dur: string) => {
-    let habitString = '';
-    if (enabled && freq && dur) {
-      habitString = `${habit}: ${freq}, ${dur}`;
-    }
-    
-    // Using a functional update to avoid stale state issues
-    onPrefChange('fixedEvents', (prevFixedEvents: any) => ({
-      ...((prevFixedEvents || {}) as object),
-      [habit.toLowerCase()]: habitString,
+  const handleHabitChange = useCallback((key: string, value: string) => {
+    onPrefChange('fixedEvents', (prevFixedEvents: Record<string, string> | undefined) => ({
+      ...(prevFixedEvents || {}),
+      [key]: value
     }));
   }, [onPrefChange]);
 
-  useEffect(() => {
-    updateHabit('Спорт', hasSport === 'yes', sportFreq, sportDur);
-  }, [hasSport, sportFreq, sportDur, updateHabit]);
-
-  useEffect(() => {
-    updateHabit('Медитация', hasMeditation === 'yes', medFreq, medDur);
-  }, [hasMeditation, medFreq, medDur, updateHabit]);
-  
   useEffect(() => {
     // This effect combines various text-based habits into a single string for the AI
     const fixedEventsObject = (preferences.fixedEvents || {}) as Record<string, string>;
@@ -279,61 +351,19 @@ const Step2_Preferences = memo(({
 
                   <div>
                      <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
-                     <div className="space-y-4">
-                        <InteractiveQuestion question="Выделяете ли вы время на спорт?" icon={Dumbbell}>
-                            <RadioGroup value={hasSport} onValueChange={setHasSport}>
-                                <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="sport-yes" /><Label htmlFor="sport-yes">Да</Label></div>
-                                <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="sport-no" /><Label htmlFor="sport-no">Нет</Label></div>
-                            </RadioGroup>
-                            {hasSport === 'yes' && (
-                              <div className="grid grid-cols-2 gap-4 mt-3">
-                                  <Select onValueChange={setSportFreq} value={sportFreq}>
-                                      <SelectTrigger><SelectValue placeholder="Частота" /></SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="1 раз в неделю">1 раз в неделю</SelectItem>
-                                          <SelectItem value="2 раза в неделю">2 раза в неделю</SelectItem>
-                                          <SelectItem value="3 раза в неделю">3 раза в неделю</SelectItem>
-                                          <SelectItem value="каждый день">каждый день</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                                  <Select onValueChange={setSportDur} value={sportDur}>
-                                      <SelectTrigger><SelectValue placeholder="Длительность" /></SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="по 30 минут">30 минут</SelectItem>
-                                          <SelectItem value="по 1 часу">1 час</SelectItem>
-                                          <SelectItem value="по 1.5 часа">1.5 часа</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                              </div>
-                            )}
-                        </InteractiveQuestion>
-
-                        <InteractiveQuestion question="Практикуете ли вы медитации?" icon={Brain}>
-                             <RadioGroup value={hasMeditation} onValueChange={setHasMeditation}>
-                                <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="med-yes" /><Label htmlFor="med-yes">Да</Label></div>
-                                <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="med-no" /><Label htmlFor="med-no">Нет</Label></div>
-                            </RadioGroup>
-                            {hasMeditation === 'yes' && (
-                               <div className="grid grid-cols-2 gap-4 mt-3">
-                                  <Select onValueChange={setMedFreq} value={medFreq}>
-                                      <SelectTrigger><SelectValue placeholder="Частота" /></SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="1 раз в день">1 раз в день</SelectItem>
-                                          <SelectItem value="2 раза в день">2 раза в день</SelectItem>
-                                          <SelectItem value="несколько раз в неделю">несколько раз в неделю</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                                  <Select onValueChange={setMedDur} value={medDur}>
-                                      <SelectTrigger><SelectValue placeholder="Длительность" /></SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="по 10 минут">10 минут</SelectItem>
-                                          <SelectItem value="по 15 минут">15 минут</SelectItem>
-                                          <SelectItem value="по 20 минут">20 минут</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                              </div>
-                            )}
-                        </InteractiveQuestion>
+                     <div className="space-y-2">
+                        <HabitBuilder
+                            habitName="Спорт"
+                            habitKey="sport"
+                            icon={Dumbbell}
+                            onHabitChange={handleHabitChange}
+                        />
+                         <HabitBuilder
+                            habitName="Медитация"
+                            habitKey="meditation"
+                            icon={Brain}
+                            onHabitChange={handleHabitChange}
+                        />
                         
                         <div className="grid gap-2 pt-2">
                            <Label htmlFor="selfCareTime">Другие занятия (чтение, курсы, хобби)?</Label>
@@ -546,6 +576,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
             } else if (!Array.isArray(loadedPrefs.energyPeaks)) {
               loadedPrefs.energyPeaks = [];
             }
+            if (!loadedPrefs.fixedEvents) {
+              loadedPrefs.fixedEvents = {};
+            }
             setPreferences(loadedPrefs);
         } else {
             setPreferences({...defaultPreferences, fixedEvents: {}});
@@ -599,7 +632,8 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     // Combine different fixed events fields into one string for the AI
     const combinedFixedEvents = [
         preferences.combinedFixedEvents,
-        preferences.fixedEventsText
+        preferences.fixedEventsText,
+        preferences.selfCareTime
     ].filter(Boolean).join('. ');
 
     const prefsToSave = {
@@ -783,3 +817,4 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   );
 }
 
+    
