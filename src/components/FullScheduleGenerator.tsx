@@ -187,13 +187,6 @@ const HabitBuilder = memo(({
       }
     }, [initialValue]);
 
-    const handleReset = () => {
-        setIsActive(false);
-        setFreq('');
-        setDur('');
-        onHabitChange(habitKey, ''); // Clear the value
-    }
-
     const handleUpdate = useCallback((newFreq: string, newDur: string) => {
         if (newFreq && newDur) {
             onHabitChange(habitKey, `${habitName}: ${newFreq}, ${newDur}`);
@@ -211,66 +204,70 @@ const HabitBuilder = memo(({
         setDur(newDur);
         handleUpdate(freq, newDur);
     }
-
-    if (!isActive) {
-        return (
-            <Button variant="outline" className="w-full justify-start" onClick={() => setIsActive(true)}>
-                <PlusCircle className="mr-2 size-4" />
-                Добавить {habitName.toLowerCase()}
-            </Button>
-        )
+    
+    const handleIsActiveChange = (checked: boolean) => {
+        setIsActive(checked);
+        if (!checked) {
+            setFreq('');
+            setDur('');
+            onHabitChange(habitKey, ''); // Clear the value
+        }
     }
 
     return (
-        <div className="p-4 rounded-lg bg-secondary/50">
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
+        <div className="p-3 rounded-lg bg-card border">
+             <div className="flex items-center space-x-2">
+                <Checkbox
+                    id={`habit-${habitKey}`}
+                    checked={isActive}
+                    onCheckedChange={handleIsActiveChange}
+                />
+                <Label htmlFor={`habit-${habitKey}`} className="flex-1 font-semibold text-base flex items-center gap-2 cursor-pointer">
                     <Icon className="size-5 text-primary" />
-                    <h5 className="font-semibold text-base">{habitName}</h5>
+                    {habitName}
+                </Label>
+            </div>
+            {isActive && (
+                 <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t">
+                    <Select onValueChange={handleFreqChange} value={freq}>
+                        <SelectTrigger><SelectValue placeholder="Частота" /></SelectTrigger>
+                        <SelectContent>
+                            {habitKey === 'sport' ? (
+                                <>
+                                    <SelectItem value="1 раз в неделю">1 раз в неделю</SelectItem>
+                                    <SelectItem value="2 раза в неделю">2 раза в неделю</SelectItem>
+                                    <SelectItem value="3 раза в неделю">3 раза в неделю</SelectItem>
+                                    <SelectItem value="каждый день">Каждый день</SelectItem>
+                                </>
+                            ) : (
+                                <>
+                                    <SelectItem value="1 раз в день">1 раз в день</SelectItem>
+                                    <SelectItem value="2 раза в день">2 раза в день</SelectItem>
+                                    <SelectItem value="несколько раз в неделю">Несколько раз в неделю</SelectItem>
+                                </>
+                            )}
+                        </SelectContent>
+                    </Select>
+                    <Select onValueChange={handleDurChange} value={dur}>
+                        <SelectTrigger><SelectValue placeholder="Длительность" /></SelectTrigger>
+                        <SelectContent>
+                            {habitKey === 'sport' ? (
+                                <>
+                                    <SelectItem value="по 30 минут">30 минут</SelectItem>
+                                    <SelectItem value="по 1 часу">1 час</SelectItem>
+                                    <SelectItem value="по 1.5 часа">1.5 часа</SelectItem>
+                                </>
+                            ) : (
+                                <>
+                                    <SelectItem value="по 10 минут">10 минут</SelectItem>
+                                    <SelectItem value="по 15 минут">15 минут</SelectItem>
+                                    <SelectItem value="по 20 минут">20 минут</SelectItem>
+                                </>
+                            )}
+                        </SelectContent>
+                    </Select>
                 </div>
-                <Button variant="ghost" size="icon" className="size-7" onClick={handleReset}>
-                    <X className="size-4" />
-                </Button>
-            </div>
-             <div className="grid grid-cols-2 gap-4">
-                <Select onValueChange={handleFreqChange} value={freq}>
-                    <SelectTrigger><SelectValue placeholder="Частота" /></SelectTrigger>
-                    <SelectContent>
-                        {habitKey === 'sport' ? (
-                            <>
-                                <SelectItem value="1 раз в неделю">1 раз в неделю</SelectItem>
-                                <SelectItem value="2 раза в неделю">2 раза в неделю</SelectItem>
-                                <SelectItem value="3 раза в неделю">3 раза в неделю</SelectItem>
-                                <SelectItem value="каждый день">Каждый день</SelectItem>
-                            </>
-                        ) : (
-                             <>
-                                <SelectItem value="1 раз в день">1 раз в день</SelectItem>
-                                <SelectItem value="2 раза в день">2 раза в день</SelectItem>
-                                <SelectItem value="несколько раз в неделю">Несколько раз в неделю</SelectItem>
-                             </>
-                        )}
-                    </SelectContent>
-                </Select>
-                <Select onValueChange={handleDurChange} value={dur}>
-                    <SelectTrigger><SelectValue placeholder="Длительность" /></SelectTrigger>
-                    <SelectContent>
-                         {habitKey === 'sport' ? (
-                            <>
-                                <SelectItem value="по 30 минут">30 минут</SelectItem>
-                                <SelectItem value="по 1 часу">1 час</SelectItem>
-                                <SelectItem value="по 1.5 часа">1.5 часа</SelectItem>
-                            </>
-                         ) : (
-                            <>
-                                <SelectItem value="по 10 минут">10 минут</SelectItem>
-                                <SelectItem value="по 15 минут">15 минут</SelectItem>
-                                <SelectItem value="по 20 минут">20 минут</SelectItem>
-                            </>
-                         )}
-                    </SelectContent>
-                </Select>
-            </div>
+            )}
         </div>
     )
 });
