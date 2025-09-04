@@ -23,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2 } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -34,6 +34,7 @@ import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -148,6 +149,18 @@ const Step1_TaskSelection = memo(({ inboxTasks, selectedTasks, onTaskSelection }
 ));
 Step1_TaskSelection.displayName = 'Step1_TaskSelection';
 
+const InteractiveQuestion = memo(({ question, children, icon: Icon }: { question: string, children: React.ReactNode, icon: React.ElementType }) => (
+    <div className="p-4 rounded-lg bg-secondary/50">
+        <div className="flex items-center gap-3 mb-3">
+            <Icon className="size-5 text-primary" />
+            <h5 className="font-semibold text-base">{question}</h5>
+        </div>
+        {children}
+    </div>
+));
+InteractiveQuestion.displayName = 'InteractiveQuestion';
+
+
 const Step2_Preferences = memo(({
   preferences,
   isPrefLoading,
@@ -162,127 +175,166 @@ const Step2_Preferences = memo(({
   onPrefChange: (id: string, value: any) => void;
   onEnergyPeakChange: (peak: string, checked: boolean) => void;
   onNumberOfDaysChange: (days: number) => void;
-}) => (
-  <div className="flex h-full flex-col">
-    <Card className="flex-1 flex flex-col border-none rounded-none overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-lg">Шаг 2: Укажите предпочтения</CardTitle>
-        <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-auto">
-        <ScrollArea className="h-full pr-4">
-          {isPrefLoading ? (
-            <div className="flex justify-center items-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-semibold text-base mb-3">Высокоуровневые цели</h4>
-                <div className="grid gap-2">
-                  <Label htmlFor="mainGoals">Каковы ваши основные цели на этот период?</Label>
-                  <Textarea id="mainGoals" placeholder="Пример: Запустить новый проект, подготовиться к марафону, прочитать 3 книги." value={preferences.mainGoals ?? ''} onChange={e => onPrefChange('mainGoals', e.target.value)} />
+}) => {
+  
+  const [hasSport, setHasSport] = useState('no');
+  const [hasMeditation, setHasMeditation] = useState('no');
+
+  const handleHabitChange = (habit: string, answer: 'yes' | 'no', description: string) => {
+    onPrefChange('fixedEvents', {
+        ...((preferences.fixedEvents || {}) as object),
+        [habit]: answer === 'yes' ? description : undefined
+    });
+    if (habit === 'sport') setHasSport(answer);
+    if (habit === 'meditation') setHasMeditation(answer);
+  }
+
+  const handleHabitDetailChange = (habit: string, value: string) => {
+     handleHabitChange(habit, 'yes', value);
+  }
+
+  useEffect(() => {
+    // This effect combines various text-based habits into a single string for the AI
+    const fixedEventsObject = (preferences.fixedEvents || {}) as Record<string, string>;
+    const combinedString = Object.values(fixedEventsObject).filter(Boolean).join('. ');
+    
+    // We use a different key to avoid re-triggering this effect
+    onPrefChange('combinedFixedEvents', combinedString);
+
+  }, [preferences.fixedEvents, onPrefChange]);
+
+
+  return (
+      <div className="flex h-full flex-col">
+        <Card className="flex-1 flex flex-col border-none rounded-none overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-lg">Шаг 2: Укажите предпочтения</CardTitle>
+            <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto">
+            <ScrollArea className="h-full pr-4">
+              {isPrefLoading ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold text-base mb-3">Ежедневные потребности</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Продолжительность сна</Label>
-                    <Select value={preferences.sleepDuration ?? '8'} onValueChange={value => onPrefChange('sleepDuration', value)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="4">4 часа</SelectItem>
-                        <SelectItem value="5">5 часов</SelectItem>
-                        <SelectItem value="6">6 часов</SelectItem>
-                        <SelectItem value="7">7 часов</SelectItem>
-                        <SelectItem value="8">8 часов</SelectItem>
-                        <SelectItem value="9">9 часов</SelectItem>
-                        <SelectItem value="10">10 часов</SelectItem>
-                      </SelectContent>
-                    </Select>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="font-semibold text-base mb-3">Высокоуровневые цели</h4>
+                    <div className="grid gap-2">
+                      <Label htmlFor="mainGoals">Каковы ваши основные цели на этот период?</Label>
+                      <Textarea id="mainGoals" placeholder="Пример: Запустить новый проект, подготовиться к марафону, прочитать 3 книги." value={preferences.mainGoals ?? ''} onChange={e => onPrefChange('mainGoals', e.target.value)} />
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label>Количество приемов пищи</Label>
-                    <Select value={preferences.mealsPerDay ?? '3'} onValueChange={value => onPrefChange('mealsPerDay', value)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1</SelectItem>
-                        <SelectItem value="2">2</SelectItem>
-                        <SelectItem value="3">3</SelectItem>
-                        <SelectItem value="4">4</SelectItem>
-                        <SelectItem value="5">5+</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Время на отдых (кроме сна)</Label>
-                    <Select value={preferences.restTime ?? '2'} onValueChange={value => onPrefChange('restTime', value)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1 час</SelectItem>
-                        <SelectItem value="2">2 часа</SelectItem>
-                        <SelectItem value="3">3 часа</SelectItem>
-                        <SelectItem value="4">4 часа</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <CardDescription className="text-xs mt-2">Общее время на короткие перерывы, прогулки и т.д. в течение дня.</CardDescription>
-
-                <div className="grid gap-2 mt-4">
-                  <Label htmlFor="selfCareTime">Что вы делаете для самоухода/обучения/развлечений и сколько времени это занимает?</Label>
-                  <Textarea id="selfCareTime" placeholder="Пример: Чтение - 1 час в день, Прогулка - 30 минут, Курс по React - 2 часа по вт и чт." value={preferences.selfCareTime ?? ''} onChange={e => onPrefChange('selfCareTime', e.target.value)} />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold text-base mb-3">Продуктивность и ограничения</h4>
-                <div className="grid gap-2">
-                  <Label>Когда у вас пики энергии?</Label>
-                  <div className="flex items-center space-x-4">
-                    {['Morning', 'Afternoon', 'Evening'].map(peak => (
-                      <div key={peak} className="flex items-center space-x-2">
-                        <Checkbox id={`peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => onEnergyPeakChange(peak, !!checked)} />
-                        <Label htmlFor={`peak-${peak}`}>{peak === 'Morning' ? 'Утро' : peak === 'Afternoon' ? 'День' : 'Вечер'}</Label>
+    
+                  <Separator />
+    
+                  <div>
+                    <h4 className="font-semibold text-base mb-3">Ежедневные потребности</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Продолжительность сна</Label>
+                        <Select value={preferences.sleepDuration ?? '8'} onValueChange={value => onPrefChange('sleepDuration', value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {[...Array(7)].map((_, i) => <SelectItem key={i} value={String(i + 4)}>{i + 4} часов</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    ))}
+                      <div className="grid gap-2">
+                        <Label>Количество приемов пищи</Label>
+                        <Select value={preferences.mealsPerDay ?? '3'} onValueChange={value => onPrefChange('mealsPerDay', value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {[...Array(5)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>{i + 1}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Время на отдых (кроме сна)</Label>
+                         <Select value={preferences.restTime ?? '2'} onValueChange={value => onPrefChange('restTime', value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                             {[...Array(4)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>{i + 1} час(а)</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                     <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
+                     <div className="space-y-4">
+                        <InteractiveQuestion question="Выделяете ли вы время на спорт?" icon={Dumbbell}>
+                            <RadioGroup value={hasSport} onValueChange={(val) => handleHabitChange('sport', val as any, 'Спорт: ')}>
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="sport-yes" /><Label htmlFor="sport-yes">Да</Label></div>
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="sport-no" /><Label htmlFor="sport-no">Нет</Label></div>
+                            </RadioGroup>
+                            {hasSport === 'yes' && <Input className="mt-2" placeholder="Например: 3 раза в неделю по 1 часу" onChange={(e) => handleHabitDetailChange('sport', `Спорт: ${e.target.value}`)} />}
+                        </InteractiveQuestion>
+
+                        <InteractiveQuestion question="Практикуете ли вы медитации?" icon={Brain}>
+                             <RadioGroup value={hasMeditation} onValueChange={(val) => handleHabitChange('meditation', val as any, 'Медитация: ')}>
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="med-yes" /><Label htmlFor="med-yes">Да</Label></div>
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="med-no" /><Label htmlFor="med-no">Нет</Label></div>
+                            </RadioGroup>
+                            {hasMeditation === 'yes' && <Input className="mt-2" placeholder="Например: 15 минут каждый день утром" onChange={(e) => handleHabitDetailChange('meditation', `Медитация: ${e.target.value}`)} />}
+                        </InteractiveQuestion>
+                        
+                        <div className="grid gap-2 pt-2">
+                           <Label htmlFor="selfCareTime">Другие занятия (чтение, курсы, хобби)?</Label>
+                           <Textarea id="selfCareTime" placeholder="Пример: Чтение - 1 час в день, Курс по React - 2 часа по вт и чт." value={preferences.selfCareTime ?? ''} onChange={e => onPrefChange('selfCareTime', e.target.value)} />
+                        </div>
+                     </div>
+                  </div>
+    
+                  <Separator />
+    
+                  <div>
+                    <h4 className="font-semibold text-base mb-3">Продуктивность и ограничения</h4>
+                    <div className="grid gap-2">
+                      <Label>Когда у вас пики энергии?</Label>
+                      <div className="flex items-center space-x-4">
+                        {['Morning', 'Afternoon', 'Evening'].map(peak => (
+                          <div key={peak} className="flex items-center space-x-2">
+                            <Checkbox id={`peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => onEnergyPeakChange(peak, !!checked)} />
+                            <Label htmlFor={`peak-${peak}`}>{peak === 'Morning' ? 'Утро' : peak === 'Afternoon' ? 'День' : 'Вечер'}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid gap-2 mt-4">
+                      <Label htmlFor="fixedEventsText">Какие еще у вас есть обязательства/привычки с фиксированным временем?</Label>
+                      <Textarea id="fixedEventsText" placeholder="Пример: Встреча команды каждый Пн в 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => onPrefChange('fixedEventsText', e.target.value)} />
+                    </div>
+                  </div>
+    
+                  <Separator />
+    
+                  <div>
+                    <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
+                    <div className="grid gap-2">
+                      <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
+                      <Textarea id="pastLearnings" placeholder="Пример: Лучше не ставить больше 2 больших задач в день. Утренние тренировки дают больше энергии." value={preferences.pastLearnings ?? ''} onChange={e => onPrefChange('pastLearnings', e.target.value)} />
+                    </div>
+                  </div>
+    
+                  <Separator />
+    
+                  <div className="grid gap-2">
+                    <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
+                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => onNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" />
                   </div>
                 </div>
-                <div className="grid gap-2 mt-4">
-                  <Label htmlFor="fixedEvents">Какие у вас есть обязательства/привычки с фиксированным временем?</Label>
-                  <Textarea id="fixedEvents" placeholder="Пример: Встреча команды каждый Пн в 10:00" value={preferences.fixedEvents ?? ''} onChange={e => onPrefChange('fixedEvents', e.target.value)} />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
-                <div className="grid gap-2">
-                  <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
-                  <Textarea id="pastLearnings" placeholder="Пример: Лучше не ставить больше 2 больших задач в день. Утренние тренировки дают больше энергии." value={preferences.pastLearnings ?? ''} onChange={e => onPrefChange('pastLearnings', e.target.value)} />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="grid gap-2">
-                <Label htmlFor="numberOfDays">На сколько дней сгенерировать расписание?</Label>
-                <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => onNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" />
-              </div>
-            </div>
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  </div>
-));
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+  )
+});
 Step2_Preferences.displayName = 'Step2_Preferences';
 
 const SuggestionList = memo(({ title, items, type, onAddEvent }: {
@@ -444,7 +496,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
             }
             setPreferences(loadedPrefs);
         } else {
-            setPreferences({...defaultPreferences});
+            setPreferences({...defaultPreferences, fixedEvents: {}});
         }
     } catch (error) {
         console.error("Error fetching preferences:", error);
@@ -492,11 +544,21 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     setView('loading');
     setSuggestions(null);
 
+    // Combine different fixed events fields into one string for the AI
+    const combinedFixedEvents = [
+        preferences.combinedFixedEvents,
+        preferences.fixedEventsText
+    ].filter(Boolean).join('. ');
+
     const prefsToSave = {
       ...preferences,
-      // Convert array to comma-separated string for storing in Firestore
+      fixedEvents: combinedFixedEvents,
       energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks,
     };
+    
+    // Clean up temporary fields before saving
+    delete prefsToSave.combinedFixedEvents;
+    delete prefsToSave.fixedEventsText;
 
     try {
         const prefRef = doc(db, 'userPreferences', userId);
@@ -513,7 +575,11 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     try {
       const result = await generateSchedule({
         tasks: tasksToSchedule,
-        preferences: prefsToSave as any, 
+        preferences: {
+            ...prefsToSave,
+            // Pass the combined string to the AI
+            fixedEvents: combinedFixedEvents
+        }, 
         startDate: format(new Date(), 'yyyy-MM-dd'),
         numberOfDays,
       }, userId);
@@ -665,4 +731,3 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   );
 }
 
-    
