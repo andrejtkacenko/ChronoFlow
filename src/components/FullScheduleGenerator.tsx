@@ -178,21 +178,34 @@ const Step2_Preferences = memo(({
 }) => {
   
   const [hasSport, setHasSport] = useState('no');
+  const [sportFreq, setSportFreq] = useState('');
+  const [sportDur, setSportDur] = useState('');
+
   const [hasMeditation, setHasMeditation] = useState('no');
+  const [medFreq, setMedFreq] = useState('');
+  const [medDur, setMedDur] = useState('');
 
-  const handleHabitChange = (habit: string, answer: 'yes' | 'no', description: string) => {
-    onPrefChange('fixedEvents', {
-        ...((preferences.fixedEvents || {}) as object),
-        [habit]: answer === 'yes' ? description : undefined
-    });
-    if (habit === 'sport') setHasSport(answer);
-    if (habit === 'meditation') setHasMeditation(answer);
-  }
+  const updateHabit = useCallback((habit: string, enabled: boolean, freq: string, dur: string) => {
+    let habitString = '';
+    if (enabled && freq && dur) {
+      habitString = `${habit}: ${freq}, ${dur}`;
+    }
+    
+    // Using a functional update to avoid stale state issues
+    onPrefChange('fixedEvents', (prevFixedEvents: any) => ({
+      ...((prevFixedEvents || {}) as object),
+      [habit.toLowerCase()]: habitString,
+    }));
+  }, [onPrefChange]);
 
-  const handleHabitDetailChange = (habit: string, value: string) => {
-     handleHabitChange(habit, 'yes', value);
-  }
+  useEffect(() => {
+    updateHabit('Спорт', hasSport === 'yes', sportFreq, sportDur);
+  }, [hasSport, sportFreq, sportDur, updateHabit]);
 
+  useEffect(() => {
+    updateHabit('Медитация', hasMeditation === 'yes', medFreq, medDur);
+  }, [hasMeditation, medFreq, medDur, updateHabit]);
+  
   useEffect(() => {
     // This effect combines various text-based habits into a single string for the AI
     const fixedEventsObject = (preferences.fixedEvents || {}) as Record<string, string>;
@@ -268,19 +281,58 @@ const Step2_Preferences = memo(({
                      <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
                      <div className="space-y-4">
                         <InteractiveQuestion question="Выделяете ли вы время на спорт?" icon={Dumbbell}>
-                            <RadioGroup value={hasSport} onValueChange={(val) => handleHabitChange('sport', val as any, 'Спорт: ')}>
+                            <RadioGroup value={hasSport} onValueChange={setHasSport}>
                                 <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="sport-yes" /><Label htmlFor="sport-yes">Да</Label></div>
                                 <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="sport-no" /><Label htmlFor="sport-no">Нет</Label></div>
                             </RadioGroup>
-                            {hasSport === 'yes' && <Input className="mt-2" placeholder="Например: 3 раза в неделю по 1 часу" onChange={(e) => handleHabitDetailChange('sport', `Спорт: ${e.target.value}`)} />}
+                            {hasSport === 'yes' && (
+                              <div className="grid grid-cols-2 gap-4 mt-3">
+                                  <Select onValueChange={setSportFreq} value={sportFreq}>
+                                      <SelectTrigger><SelectValue placeholder="Частота" /></SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="1 раз в неделю">1 раз в неделю</SelectItem>
+                                          <SelectItem value="2 раза в неделю">2 раза в неделю</SelectItem>
+                                          <SelectItem value="3 раза в неделю">3 раза в неделю</SelectItem>
+                                          <SelectItem value="каждый день">каждый день</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                                  <Select onValueChange={setSportDur} value={sportDur}>
+                                      <SelectTrigger><SelectValue placeholder="Длительность" /></SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="по 30 минут">30 минут</SelectItem>
+                                          <SelectItem value="по 1 часу">1 час</SelectItem>
+                                          <SelectItem value="по 1.5 часа">1.5 часа</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                              </div>
+                            )}
                         </InteractiveQuestion>
 
                         <InteractiveQuestion question="Практикуете ли вы медитации?" icon={Brain}>
-                             <RadioGroup value={hasMeditation} onValueChange={(val) => handleHabitChange('meditation', val as any, 'Медитация: ')}>
+                             <RadioGroup value={hasMeditation} onValueChange={setHasMeditation}>
                                 <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="med-yes" /><Label htmlFor="med-yes">Да</Label></div>
                                 <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="med-no" /><Label htmlFor="med-no">Нет</Label></div>
                             </RadioGroup>
-                            {hasMeditation === 'yes' && <Input className="mt-2" placeholder="Например: 15 минут каждый день утром" onChange={(e) => handleHabitDetailChange('meditation', `Медитация: ${e.target.value}`)} />}
+                            {hasMeditation === 'yes' && (
+                               <div className="grid grid-cols-2 gap-4 mt-3">
+                                  <Select onValueChange={setMedFreq} value={medFreq}>
+                                      <SelectTrigger><SelectValue placeholder="Частота" /></SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="1 раз в день">1 раз в день</SelectItem>
+                                          <SelectItem value="2 раза в день">2 раза в день</SelectItem>
+                                          <SelectItem value="несколько раз в неделю">несколько раз в неделю</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                                  <Select onValueChange={setMedDur} value={medDur}>
+                                      <SelectTrigger><SelectValue placeholder="Длительность" /></SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="по 10 минут">10 минут</SelectItem>
+                                          <SelectItem value="по 15 минут">15 минут</SelectItem>
+                                          <SelectItem value="по 20 минут">20 минут</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                              </div>
+                            )}
                         </InteractiveQuestion>
                         
                         <div className="grid gap-2 pt-2">
