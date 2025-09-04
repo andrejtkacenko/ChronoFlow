@@ -20,10 +20,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { ScheduleItem, PredefinedTask } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain, X } from 'lucide-react';
+import type { ScheduleItem, TaskTemplate } from '@/lib/types';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain, X, Edit, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -91,7 +91,7 @@ const GenerationProgress = memo(() => {
     );
 
     return (
-        <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 bg-background rounded-lg">
+        <div className="flex flex-col items-center justify-center h-full p-8 bg-background rounded-lg">
             <h3 className="text-xl font-semibold">Generating your schedule...</h3>
             <div className="space-y-6 w-full max-w-sm">
                 <ProgressItem 
@@ -112,26 +112,112 @@ const GenerationProgress = memo(() => {
 });
 GenerationProgress.displayName = 'GenerationProgress';
 
-const predefinedTasks: PredefinedTask[] = [
-    { id: 'sport', title: 'Спорт', icon: Dumbbell },
-    { id: 'meditation', title: 'Медитация', icon: Brain },
-    { id: 'reading', title: 'Чтение', icon: BookOpen },
-    { id: 'yoga', title: 'Йога', icon: PersonStanding },
-];
 
+const TemplateManager = memo(({ userId, selectedTemplates, onTemplateSelection }: { userId: string; selectedTemplates: Set<string>; onTemplateSelection: (templateId: string) => void; }) => {
+    const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+    const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+    const [editingTitle, setEditingTitle] = useState('');
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const q = query(collection(db, "taskTemplates"), where("userId", "==", userId));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedTemplates: TaskTemplate[] = [];
+            snapshot.forEach(doc => fetchedTemplates.push({ id: doc.id, ...doc.data() } as TaskTemplate));
+            setTemplates(fetchedTemplates);
+        });
+        return () => unsubscribe();
+    }, [userId]);
+
+    const handleAddNew = async () => {
+        try {
+            const newTemplateRef = await addDoc(collection(db, "taskTemplates"), { userId, title: 'Новый шаблон', icon: 'PenSquare' });
+            setEditingTemplateId(newTemplateRef.id);
+            setEditingTitle('Новый шаблон');
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось создать шаблон.' });
+        }
+    };
+
+    const handleUpdate = async (templateId: string) => {
+        try {
+            await updateDoc(doc(db, "taskTemplates", templateId), { title: editingTitle });
+            setEditingTemplateId(null);
+            setEditingTitle('');
+            toast({ title: 'Шаблон обновлен' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось обновить шаблон.' });
+        }
+    };
+    
+    const handleDelete = async (templateId: string) => {
+        try {
+            await deleteDoc(doc(db, "taskTemplates", templateId));
+            toast({ title: 'Шаблон удален' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось удалить шаблон.' });
+        }
+    };
+
+
+    return (
+        <div>
+            <h4 className="font-semibold text-base mb-3 text-muted-foreground">Готовые задачи</h4>
+            <div className="space-y-2">
+                {templates.map(template => {
+                    const isEditing = editingTemplateId === template.id;
+                    return (
+                        <div key={template.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted group">
+                            <Checkbox
+                                id={`template-${template.id}`}
+                                onCheckedChange={() => onTemplateSelection(template.id)}
+                                checked={selectedTemplates.has(template.id)}
+                            />
+                            {isEditing ? (
+                                <Input 
+                                    value={editingTitle}
+                                    onChange={(e) => setEditingTitle(e.target.value)}
+                                    className="h-8"
+                                />
+                            ) : (
+                                <Label htmlFor={`template-${template.id}`} className="flex-1 truncate cursor-pointer">{template.title}</Label>
+                            )}
+
+                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                {isEditing ? (
+                                    <Button variant="ghost" size="icon" className="size-7" onClick={() => handleUpdate(template.id)}><Check className="size-4" /></Button>
+                                ) : (
+                                    <Button variant="ghost" size="icon" className="size-7" onClick={() => { setEditingTemplateId(template.id); setEditingTitle(template.title); }}><Edit className="size-4" /></Button>
+                                )}
+                                <Button variant="ghost" size="icon" className="size-7" onClick={() => handleDelete(template.id)}><Trash2 className="size-4" /></Button>
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+             <Button variant="ghost" onClick={handleAddNew} className="mt-2 w-full justify-start text-sm">
+                <PlusCircle className="mr-2 size-4" />
+                Добавить новый шаблон
+            </Button>
+        </div>
+    );
+});
+TemplateManager.displayName = 'TemplateManager';
 
 const Step1_TaskSelection = memo(({
   inboxTasks,
   selectedTasks,
   onTaskSelection,
-  selectedPredefinedTasks,
-  onPredefinedTaskSelection
+  userId,
+  selectedTemplates,
+  onTemplateSelection
 }: {
   inboxTasks: ScheduleItem[];
   selectedTasks: Set<string>;
   onTaskSelection: (taskId: string) => void;
-  selectedPredefinedTasks: Set<string>;
-  onPredefinedTaskSelection: (taskId: string) => void;
+  userId: string;
+  selectedTemplates: Set<string>;
+  onTemplateSelection: (templateId: string) => void;
 }) => (
   <div className="flex h-full flex-col">
     <Card className="flex-1 flex flex-col border-none rounded-none">
@@ -161,32 +247,18 @@ const Step1_TaskSelection = memo(({
             </div>
           </div>
           <Separator className="my-6" />
-           <div>
-            <h4 className="font-semibold text-base mb-3 text-muted-foreground">Готовые задачи</h4>
-             <div className="space-y-2">
-               {predefinedTasks.map(task => {
-                 const Icon = task.icon;
-                 return (
-                    <div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
-                        <Checkbox
-                            id={`predefined-${task.id}`}
-                            onCheckedChange={() => onPredefinedTaskSelection(task.id)}
-                            checked={selectedPredefinedTasks.has(task.id)}
-                        />
-                        <Label htmlFor={`predefined-${task.id}`} className="flex-1 flex items-center gap-2 truncate cursor-pointer">
-                            <Icon className="size-4" />
-                            {task.title}
-                        </Label>
-                    </div>
-                )})}
-            </div>
-          </div>
+          <TemplateManager 
+             userId={userId}
+             selectedTemplates={selectedTemplates}
+             onTemplateSelection={onTemplateSelection}
+          />
         </ScrollArea>
       </CardContent>
     </Card>
   </div>
 ));
 Step1_TaskSelection.displayName = 'Step1_TaskSelection';
+
 
 const HabitBuilder = memo(({
     habitName,
@@ -201,9 +273,22 @@ const HabitBuilder = memo(({
     onHabitChange: (key: string, value: string) => void;
     initialValue?: string;
 }) => {
-    const [isActive, setIsActive] = useState(false);
+    const [isActive, setIsActive] = useState(!!initialValue);
     const [freq, setFreq] = useState('');
     const [dur, setDur] = useState('');
+
+    useEffect(() => {
+      if (initialValue) {
+        // A simple parser for the initial value, e.g., "Спорт: 3 раза в неделю, по 1 часу"
+        const parts = initialValue.split(',');
+        if (parts.length >= 2) {
+            const freqPart = parts[0].split(':').pop()?.trim() || '';
+            const durPart = parts[1].trim();
+            setFreq(freqPart);
+            setDur(durPart);
+        }
+      }
+    }, [initialValue]);
 
     const handleReset = () => {
         setIsActive(false);
@@ -396,12 +481,14 @@ const Step2_Preferences = memo(({
                             habitKey="sport"
                             icon={Dumbbell}
                             onHabitChange={handleHabitChange}
+                            initialValue={(preferences.fixedEvents as Record<string, string>)?.['sport']}
                         />
                          <HabitBuilder
                             habitName="Медитация"
                             habitKey="meditation"
                             icon={Brain}
                             onHabitChange={handleHabitChange}
+                            initialValue={(preferences.fixedEvents as Record<string, string>)?.['meditation']}
                         />
                         
                         <div className="grid gap-2 pt-2">
@@ -544,21 +631,20 @@ const FormView = memo(({
   inboxTasks,
   selectedTasks,
   handleTaskSelection,
-  selectedPredefinedTasks,
-  handlePredefinedTaskSelection,
   preferences,
   isPrefLoading,
   numberOfDays,
   handlePrefChange,
   handleEnergyPeakChange,
   handleNumberOfDaysChange,
-  handleGenerate
+  handleGenerate,
+  userId,
+  selectedTemplates,
+  handleTemplateSelection
 }: {
   inboxTasks: ScheduleItem[];
   selectedTasks: Set<string>;
   handleTaskSelection: (taskId: string) => void;
-  selectedPredefinedTasks: Set<string>;
-  handlePredefinedTaskSelection: (taskId: string) => void;
   preferences: Record<string, any>;
   isPrefLoading: boolean;
   numberOfDays: number;
@@ -566,6 +652,9 @@ const FormView = memo(({
   handleEnergyPeakChange: (peak: string, checked: boolean) => void;
   handleNumberOfDaysChange: (days: number) => void;
   handleGenerate: () => void;
+  userId: string;
+  selectedTemplates: Set<string>;
+  handleTemplateSelection: (templateId: string) => void;
 }) => (
   <>
     <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border my-4 min-h-0">
@@ -574,8 +663,9 @@ const FormView = memo(({
             inboxTasks={inboxTasks}
             selectedTasks={selectedTasks}
             onTaskSelection={handleTaskSelection}
-            selectedPredefinedTasks={selectedPredefinedTasks}
-            onPredefinedTaskSelection={handlePredefinedTaskSelection}
+            userId={userId}
+            selectedTemplates={selectedTemplates}
+            onTemplateSelection={handleTemplateSelection}
         />
       </ResizablePanel>
       <ResizableHandle withHandle />
@@ -591,7 +681,7 @@ const FormView = memo(({
       </ResizablePanel>
     </ResizablePanelGroup>
     <DialogFooter>
-      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0 && selectedPredefinedTasks.size === 0}>
+      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0 && selectedTemplates.size === 0}>
         <Wand2 className="mr-2 h-4 w-4" />
         Сгенерировать расписание
       </Button>
@@ -605,8 +695,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const { toast } = useToast();
   const [view, setView] = useState<'form' | 'results' | 'loading'>('form');
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const [selectedPredefinedTasks, setSelectedPredefinedTasks] = useState<Set<string>>(new Set());
+  const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<Record<string, any>>(defaultPreferences);
   const [isPrefLoading, setIsPrefLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<GenerateFullScheduleOutput | null>(null);
@@ -646,17 +737,28 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     
     fetchUserPreferences();
 
-    const q = query(
+    const qTasks = query(
       collection(db, "scheduleItems"),
       where("userId", "==", userId),
       where("date", "==", null)
     );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeTasks = onSnapshot(qTasks, (snapshot) => {
       const tasks: ScheduleItem[] = [];
       snapshot.forEach(doc => tasks.push({ id: doc.id, ...doc.data() } as ScheduleItem));
       setInboxTasks(tasks);
     });
-    return () => unsubscribe();
+
+    const qTemplates = query(collection(db, "taskTemplates"), where("userId", "==", userId));
+    const unsubscribeTemplates = onSnapshot(qTemplates, (snapshot) => {
+        const templates: TaskTemplate[] = [];
+        snapshot.forEach(doc => templates.push({ id: doc.id, ...doc.data() } as TaskTemplate));
+        setTaskTemplates(templates);
+    });
+
+    return () => {
+      unsubscribeTasks();
+      unsubscribeTemplates();
+    }
   }, [open, userId, fetchUserPreferences]);
 
   const handleTaskSelection = useCallback((taskId: string) => {
@@ -671,20 +773,20 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     });
   }, []);
   
-  const handlePredefinedTaskSelection = useCallback((taskId: string) => {
-    setSelectedPredefinedTasks(prev => {
+  const handleTemplateSelection = useCallback((templateId: string) => {
+    setSelectedTemplates(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
+      if (newSet.has(templateId)) {
+        newSet.delete(templateId);
       } else {
-        newSet.add(taskId);
+        newSet.add(templateId);
       }
       return newSet;
     });
   }, []);
 
   const handleGenerate = async () => {
-    if (selectedTasks.size === 0 && selectedPredefinedTasks.size === 0) {
+    if (selectedTasks.size === 0 && selectedTemplates.size === 0) {
       toast({ variant: 'destructive', title: 'Выберите хотя бы одну задачу' });
       return;
     }
@@ -720,11 +822,11 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       .filter(task => selectedTasks.has(task.id))
       .map(task => task.title);
 
-    const tasksFromPredefined = predefinedTasks
-      .filter(task => selectedPredefinedTasks.has(task.id))
-      .map(task => task.title);
+    const tasksFromTemplates = taskTemplates
+      .filter(template => selectedTemplates.has(template.id))
+      .map(template => template.title);
     
-    const allTasks = [...tasksFromInbox, ...tasksFromPredefined];
+    const allTasks = [...tasksFromInbox, ...tasksFromTemplates];
 
     try {
       const result = await generateSchedule({
@@ -804,7 +906,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const resetState = useCallback(() => {
     setView('form');
     setSelectedTasks(new Set());
-    setSelectedPredefinedTasks(new Set());
+    setSelectedTemplates(new Set());
     setSuggestions(null);
     fetchUserPreferences();
   }, [fetchUserPreferences]);
@@ -853,8 +955,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 inboxTasks={inboxTasks}
                 selectedTasks={selectedTasks}
                 handleTaskSelection={handleTaskSelection}
-                selectedPredefinedTasks={selectedPredefinedTasks}
-                handlePredefinedTaskSelection={handlePredefinedTaskSelection}
                 preferences={preferences}
                 isPrefLoading={isPrefLoading}
                 numberOfDays={numberOfDays}
@@ -862,6 +962,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 handleEnergyPeakChange={handleEnergyPeakChange}
                 handleNumberOfDaysChange={handleNumberOfDaysChange}
                 handleGenerate={handleGenerate}
+                userId={userId}
+                selectedTemplates={selectedTemplates}
+                handleTemplateSelection={handleTemplateSelection}
             />;
     }
   }
@@ -887,7 +990,3 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </Dialog>
   );
 }
-
-    
-
-    
