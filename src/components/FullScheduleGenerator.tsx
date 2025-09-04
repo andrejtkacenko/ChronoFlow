@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain, X, Edit, Trash2, Check } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain, X, Edit, Trash2, Check, BookOpen, PersonStanding } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -29,7 +29,6 @@ import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
-import { BookOpen, PersonStanding } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
@@ -406,7 +405,7 @@ const Step2_Preferences = memo(({
           </div>
         </div>
       </div>
-  )
+    );
 });
 Step2_Preferences.displayName = 'Step2_Preferences';
 
@@ -796,7 +795,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl w-full h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
