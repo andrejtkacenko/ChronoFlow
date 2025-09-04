@@ -23,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -33,6 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -53,13 +54,69 @@ const defaultPreferences = {
   pastLearnings: '',
 };
 
+type GenerationStep = 'idle' | 'routine' | 'tasks' | 'done';
+
+const GenerationProgress = () => {
+    const [step, setStep] = useState<GenerationStep>('routine');
+    const [isDone, setIsDone] = useState(false);
+
+    useEffect(() => {
+        const routineTimer = setTimeout(() => {
+            setStep('tasks');
+        }, 3000); // Simulate time for routine generation
+
+        const tasksTimer = setTimeout(() => {
+            setIsDone(true)
+        }, 6000); // Simulate time for task scheduling
+
+        return () => {
+            clearTimeout(routineTimer);
+            clearTimeout(tasksTimer);
+        }
+    }, []);
+
+    const ProgressItem = ({ title, icon, active, done }: { title: string, icon: React.ReactNode, active: boolean, done: boolean }) => (
+        <div className={cn("flex items-center gap-4 transition-opacity duration-500", active ? "opacity-100" : "opacity-40")}>
+            <div className="flex items-center justify-center size-10 rounded-full bg-secondary shrink-0">
+                {done ? <CheckCircle2 className="size-6 text-primary animate-fade-in" /> : (active ? <Loader2 className="size-6 animate-spin text-primary" /> : icon)}
+            </div>
+            <div className="flex flex-col">
+                <p className={cn("font-semibold", active && !done && "text-primary")}>{title}</p>
+                <p className="text-sm text-muted-foreground">
+                    {done ? "Completed" : (active ? "In progress..." : "Pending")}
+                </p>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="flex flex-col items-center justify-center h-full p-8 space-y-8 bg-background rounded-lg">
+            <h3 className="text-xl font-semibold">Generating your schedule...</h3>
+            <div className="space-y-6 w-full max-w-sm">
+                <ProgressItem 
+                    title="Creating routine events" 
+                    icon={<Bed className="size-6 text-muted-foreground" />} 
+                    active={step === 'routine' || step === 'tasks'}
+                    done={step === 'tasks' || isDone}
+                />
+                 <ProgressItem 
+                    title="Scheduling your tasks" 
+                    icon={<Utensils className="size-6 text-muted-foreground" />}
+                    active={step === 'tasks'}
+                    done={isDone}
+                />
+            </div>
+        </div>
+    );
+};
+
+
 export default function FullScheduleGenerator({ open, onOpenChange, userId }: FullScheduleGeneratorProps) {
   const { toast } = useToast();
-  const [view, setView] = useState<'form' | 'results'>('form');
+  const [view, setView] = useState<'form' | 'results' | 'loading'>('form');
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<Record<string, any>>(defaultPreferences);
-  const [isLoading, setIsLoading] = useState(false);
   const [isPrefLoading, setIsPrefLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<GenerateFullScheduleOutput | null>(null);
   const [numberOfDays, setNumberOfDays] = useState(7);
@@ -122,7 +179,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       toast({ variant: 'destructive', title: 'Выберите хотя бы одну задачу' });
       return;
     }
-    setIsLoading(true);
+    setView('loading');
     setSuggestions(null);
 
     const prefsToSave = {
@@ -152,17 +209,18 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
       if (typeof result === 'string') {
         toast({ variant: 'destructive', title: "Ошибка генерации", description: result });
+        setView('form');
       } else if (result) {
         setSuggestions(result);
         setView('results');
       } else {
         toast({ variant: 'destructive', title: "Ошибка генерации", description: "AI не вернул результат." });
+        setView('form');
       }
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Произошла непредвиденная ошибка' });
-    } finally {
-      setIsLoading(false);
+      setView('form');
     }
   };
 
@@ -216,7 +274,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     setView('form');
     setSelectedTasks(new Set());
     setSuggestions(null);
-    setIsLoading(false);
     fetchUserPreferences();
   }, [fetchUserPreferences]);
 
@@ -402,8 +459,8 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         </ResizablePanel>
       </ResizablePanelGroup>
       <DialogFooter className="mt-4">
-            <Button onClick={handleGenerate} disabled={isLoading || selectedTasks.size === 0}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+            <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
+                <Wand2 className="mr-2 h-4 w-4" />
                 Сгенерировать расписание
             </Button>
       </DialogFooter>
@@ -470,6 +527,19 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     </>
   );
 
+  const renderContent = () => {
+    switch (view) {
+        case 'form':
+            return <FormView />;
+        case 'loading':
+            return <GenerationProgress />;
+        case 'results':
+            return <ResultsView />;
+        default:
+            return <FormView />;
+    }
+  }
+
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -485,11 +555,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         </DialogHeader>
         
         <div className="flex-1 flex flex-col min-h-0">
-            {view === 'form' ? <FormView /> : <ResultsView />}
+            {renderContent()}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
-
-    
