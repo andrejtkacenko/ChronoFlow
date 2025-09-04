@@ -119,12 +119,9 @@ const Step1_TaskSelection = memo(({
   selectedTasks: Set<string>;
   onTaskSelection: (taskId: string) => void;
 }) => (
-  <div className="flex h-full flex-col">
-    <Card className="flex-1 flex flex-col border-none rounded-none shadow-none bg-transparent">
-      <CardHeader className='p-0 pb-4'>
-        <CardTitle className="text-base">Выберите задачи из инбокса</CardTitle>
-        <CardDescription>Отметьте то, что хотите добавить в расписание.</CardDescription>
-      </CardHeader>
+  <div>
+    <h3 className="text-base font-semibold mb-2">Шаг 1: Выберите задачи из инбокса</h3>
+    <Card className="flex-1 flex flex-col border-none rounded-none shadow-none bg-transparent p-0 max-h-[150px]">
       <CardContent className="flex-1 overflow-hidden p-0">
         <ScrollArea className="h-full pr-4">
             <div className="space-y-2">
@@ -216,7 +213,7 @@ const HabitBuilder = memo(({
                     checked={isActive}
                     onCheckedChange={handleIsActiveChange as (checked: boolean | 'indeterminate') => void}
                 />
-                <Label htmlFor={`habit-${habitKey}`} className="flex-1 font-semibold text-base flex items-center gap-2 cursor-pointer">
+                <Label htmlFor={`habit-${habitKey}`} className="flex-1 font-semibold flex items-center gap-2 cursor-pointer">
                     <Icon className="size-5 text-primary" />
                     {habitName}
                 </Label>
@@ -303,13 +300,9 @@ const Step2_Preferences = memo(({
 
   return (
       <div className="flex h-full flex-col">
-        <Card className="flex-1 flex flex-col border-none rounded-none overflow-hidden shadow-none bg-transparent">
-           <CardHeader className='p-0 pb-4'>
-            <CardTitle className="text-base">Настройте предпочтения</CardTitle>
-            <CardDescription>Эта информация поможет AI создать для вас наиболее подходящее расписание.</CardDescription>
-          </CardHeader>
+        <h3 className="text-base font-semibold mb-2">Шаг 2: Настройте предпочтения</h3>
+        <Card className="flex-1 flex flex-col border-none rounded-none overflow-hidden shadow-none bg-transparent p-0">
           <CardContent className="flex-1 overflow-auto p-0">
-            <ScrollArea className="h-full pr-4">
               {isPrefLoading ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -425,7 +418,6 @@ const Step2_Preferences = memo(({
                   </div>
                 </div>
               )}
-            </ScrollArea>
           </CardContent>
         </Card>
       </div>
@@ -540,19 +532,14 @@ const FormView = memo(({
 }) => (
   <>
     <div className="flex-1 my-4 min-h-0">
-        <Tabs defaultValue="tasks" className="w-full h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="tasks">Шаг 1: Задачи</TabsTrigger>
-                <TabsTrigger value="preferences">Шаг 2: Предпочтения</TabsTrigger>
-            </TabsList>
-            <TabsContent value="tasks" className="flex-1 overflow-y-auto mt-4">
+        <ScrollArea className="h-full pr-4">
+            <div className="space-y-6">
                 <Step1_TaskSelection
                     inboxTasks={inboxTasks}
                     selectedTasks={selectedTasks}
                     onTaskSelection={handleTaskSelection}
                 />
-            </TabsContent>
-            <TabsContent value="preferences" className="flex-1 overflow-y-auto mt-4">
+                <Separator />
                 <Step2_Preferences
                 preferences={preferences}
                 isPrefLoading={isPrefLoading}
@@ -561,8 +548,8 @@ const FormView = memo(({
                 onEnergyPeakChange={handleEnergyPeakChange}
                 onNumberOfDaysChange={handleNumberOfDaysChange}
                 />
-            </TabsContent>
-        </Tabs>
+            </div>
+        </ScrollArea>
     </div>
     <DialogFooter>
       <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
@@ -824,7 +811,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl w-full h-[80vh] flex flex-col p-0">
+      <DialogContent className="max-w-lg w-full h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
