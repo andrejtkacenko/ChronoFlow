@@ -255,93 +255,102 @@ const HabitBuilder = memo(({
 });
 HabitBuilder.displayName = 'HabitBuilder';
 
-const Step2_Preferences = memo(({
-  preferences,
-  isPrefLoading,
-  numberOfDays,
-  onPrefChange,
-  onEnergyPeakChange,
-  onNumberOfDaysChange
+const LeftColumn = memo(({
+    inboxTasks,
+    selectedTasks,
+    onTaskSelection,
+    preferences,
+    onPrefChange
 }: {
-  preferences: Record<string, any>;
-  isPrefLoading: boolean;
-  numberOfDays: number;
-  onPrefChange: (id: string, value: any) => void;
-  onEnergyPeakChange: (peak: string, checked: boolean) => void;
-  onNumberOfDaysChange: (days: number) => void;
-}) => {
-  
-  const handleHabitChange = useCallback((key: string, value: string) => {
-    onPrefChange('fixedEvents', (prevFixedEvents: Record<string, string> | undefined) => {
-        const newFixedEvents = {...(prevFixedEvents || {})};
-        if (value) {
-            newFixedEvents[key] = value;
-        } else {
-            delete newFixedEvents[key];
-        }
-        return newFixedEvents;
-    });
-}, [onPrefChange]);
-
-
-  useEffect(() => {
-    const fixedEventsObject = (preferences.fixedEvents || {}) as Record<string, string>;
-    const combinedString = Object.values(fixedEventsObject).filter(Boolean).join('. ');
-    onPrefChange('combinedFixedEvents', combinedString);
-  }, [preferences.fixedEvents, onPrefChange]);
-
-
-  if (isPrefLoading) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-      <div className="space-y-6">
+    inboxTasks: ScheduleItem[];
+    selectedTasks: Set<string>;
+    onTaskSelection: (taskId: string) => void;
+    preferences: Record<string, any>;
+    onPrefChange: (id: string, value: any) => void;
+}) => (
+    <div className="space-y-6">
+        <Step1_TaskSelection
+            inboxTasks={inboxTasks}
+            selectedTasks={selectedTasks}
+            onTaskSelection={onTaskSelection}
+        />
         <div>
-          <h4 className="font-semibold text-base mb-3">Высокоуровневые цели</h4>
-          <div className="grid gap-2">
-            <Label htmlFor="mainGoals">Каковы ваши основные цели на этот период?</Label>
-            <Textarea id="mainGoals" placeholder="Пример: Запустить новый проект, подготовиться к марафону, прочитать 3 книги." value={preferences.mainGoals ?? ''} onChange={e => onPrefChange('mainGoals', e.target.value)} />
-          </div>
+            <h4 className="font-semibold text-base mb-3">Высокоуровневые цели</h4>
+            <div className="grid gap-2">
+                <Label htmlFor="mainGoals">Каковы ваши основные цели на этот период?</Label>
+                <Textarea 
+                    id="mainGoals" 
+                    placeholder="Пример: Запустить новый проект, подготовиться к марафону, прочитать 3 книги." 
+                    value={preferences.mainGoals ?? ''} 
+                    onChange={e => onPrefChange('mainGoals', e.target.value)}
+                    className="min-h-[100px]"
+                 />
+            </div>
         </div>
-
-        <Separator />
-
         <div>
-          <h4 className="font-semibold text-base mb-3">Ежедневные потребности</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
             <div className="grid gap-2">
-              <Label>Сон</Label>
-              <Select value={preferences.sleepDuration ?? '8'} onValueChange={value => onPrefChange('sleepDuration', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[...Array(7)].map((_, i) => <SelectItem key={i} value={String(i + 4)}>{i + 4} часов</SelectItem>)}
-                </SelectContent>
-              </Select>
+                <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
+                <Textarea 
+                    id="pastLearnings" 
+                    placeholder="Пример: Лучше не ставить больше 2 больших задач в день. Утренние тренировки дают больше энергии." 
+                    value={preferences.pastLearnings ?? ''} 
+                    onChange={e => onPrefChange('pastLearnings', e.target.value)}
+                    className="min-h-[100px]"
+                />
             </div>
-            <div className="grid gap-2">
-              <Label>Приемы пищи</Label>
-              <Select value={preferences.mealsPerDay ?? '3'} onValueChange={value => onPrefChange('mealsPerDay', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[...Array(5)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>{i + 1}</SelectItem>)}
-                </SelectContent>
-              </Select>
+        </div>
+    </div>
+));
+LeftColumn.displayName = 'LeftColumn';
+
+const RightColumn = memo(({
+    preferences,
+    numberOfDays,
+    onPrefChange,
+    onEnergyPeakChange,
+    onNumberOfDaysChange,
+    onHabitChange
+}: {
+    preferences: Record<string, any>;
+    numberOfDays: number;
+    onPrefChange: (id: string, value: any) => void;
+    onEnergyPeakChange: (peak: string, checked: boolean) => void;
+    onNumberOfDaysChange: (days: number) => void;
+    onHabitChange: (key: string, value: string) => void;
+}) => (
+    <div className="space-y-6">
+        <div>
+            <h4 className="font-semibold text-base mb-3">Ежедневные потребности</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid gap-2">
+                    <Label>Сон</Label>
+                    <Select value={preferences.sleepDuration ?? '8'} onValueChange={value => onPrefChange('sleepDuration', value)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {[...Array(7)].map((_, i) => <SelectItem key={i} value={String(i + 4)}>{i + 4} часов</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="grid gap-2">
+                    <Label>Приемы пищи</Label>
+                    <Select value={preferences.mealsPerDay ?? '3'} onValueChange={value => onPrefChange('mealsPerDay', value)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {[...Array(5)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>{i + 1}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="grid gap-2">
+                    <Label>Отдых (кроме сна)</Label>
+                    <Select value={preferences.restTime ?? '2'} onValueChange={value => onPrefChange('restTime', value)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {[...Array(4)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>{i + 1} час(а)</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Отдых (кроме сна)</Label>
-                <Select value={preferences.restTime ?? '2'} onValueChange={value => onPrefChange('restTime', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                    {[...Array(4)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>{i + 1} час(а)</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
         </div>
 
         <Separator />
@@ -349,27 +358,27 @@ const Step2_Preferences = memo(({
         <div>
             <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <HabitBuilder
-                  habitName="Спорт"
-                  habitKey="sport"
-                  icon={Dumbbell}
-                  onHabitChange={handleHabitChange}
-                  initialValue={(preferences.fixedEvents as Record<string, string>)?.['sport']}
-              />
-              <HabitBuilder
-                  habitName="Медитация"
-                  habitKey="meditation"
-                  icon={Brain}
-                  onHabitChange={handleHabitChange}
-                  initialValue={(preferences.fixedEvents as Record<string, string>)?.['meditation']}
-              />
-              <HabitBuilder
-                  habitName="Чтение"
-                  habitKey="reading"
-                  icon={BookOpen}
-                  onHabitChange={handleHabitChange}
-                  initialValue={(preferences.fixedEvents as Record<string, string>)?.['reading']}
-              />
+                <HabitBuilder
+                    habitName="Спорт"
+                    habitKey="sport"
+                    icon={Dumbbell}
+                    onHabitChange={onHabitChange}
+                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['sport']}
+                />
+                <HabitBuilder
+                    habitName="Медитация"
+                    habitKey="meditation"
+                    icon={Brain}
+                    onHabitChange={onHabitChange}
+                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['meditation']}
+                />
+                <HabitBuilder
+                    habitName="Чтение"
+                    habitKey="reading"
+                    icon={BookOpen}
+                    onHabitChange={onHabitChange}
+                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['reading']}
+                />
             </div>
             <div className="grid gap-2 pt-4">
                 <Label htmlFor="selfCareTime">Другие занятия (курсы, хобби)?</Label>
@@ -380,43 +389,33 @@ const Step2_Preferences = memo(({
         <Separator />
 
         <div>
-          <h4 className="font-semibold text-base mb-3">Продуктивность и ограничения</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="grid gap-2">
-              <Label>Когда у вас пики энергии?</Label>
-              <div className="flex items-center space-x-4">
-                {['Morning', 'Afternoon', 'Evening'].map(peak => (
-                  <div key={peak} className="flex items-center space-x-2">
-                    <Checkbox id={`peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => onEnergyPeakChange(peak, !!checked)} />
-                    <Label htmlFor={`peak-${peak}`}>{peak === 'Morning' ? 'Утро' : peak === 'Afternoon' ? 'День' : 'Вечер'}</Label>
-                  </div>
-                ))}
-              </div>
+            <h4 className="font-semibold text-base mb-3">Продуктивность и ограничения</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className="grid gap-2">
+                    <Label>Когда у вас пики энергии?</Label>
+                    <div className="flex items-center space-x-4">
+                        {['Morning', 'Afternoon', 'Evening'].map(peak => (
+                            <div key={peak} className="flex items-center space-x-2">
+                                <Checkbox id={`peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => onEnergyPeakChange(peak, !!checked)} />
+                                <Label htmlFor={`peak-${peak}`}>{peak === 'Morning' ? 'Утро' : peak === 'Afternoon' ? 'День' : 'Вечер'}</Label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <Label htmlFor="numberOfDays" className="whitespace-nowrap">На сколько дней сгенерировать?</Label>
+                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => onNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
+                </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Label htmlFor="numberOfDays" className="whitespace-nowrap">На сколько дней сгенерировать?</Label>
-              <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => onNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
+            <div className="grid gap-2 mt-4">
+                <Label htmlFor="fixedEventsText">Какие еще у вас есть обязательства с фиксированным временем?</Label>
+                <Textarea id="fixedEventsText" placeholder="Пример: Встреча команды каждый Пн в 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => onPrefChange('fixedEventsText', e.target.value)} />
             </div>
-          </div>
-          <div className="grid gap-2 mt-4">
-            <Label htmlFor="fixedEventsText">Какие еще у вас есть обязательства с фиксированным временем?</Label>
-            <Textarea id="fixedEventsText" placeholder="Пример: Встреча команды каждый Пн в 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => onPrefChange('fixedEventsText', e.target.value)} />
-          </div>
         </div>
+    </div>
+));
+RightColumn.displayName = 'RightColumn';
 
-        <Separator />
-
-        <div>
-          <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
-          <div className="grid gap-2">
-            <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
-            <Textarea id="pastLearnings" placeholder="Пример: Лучше не ставить больше 2 больших задач в день. Утренние тренировки дают больше энергии." value={preferences.pastLearnings ?? ''} onChange={e => onPrefChange('pastLearnings', e.target.value)} />
-          </div>
-        </div>
-      </div>
-    );
-});
-Step2_Preferences.displayName = 'Step2_Preferences';
 
 const SuggestionList = memo(({ title, items, type, onAddEvent }: {
   title: string;
@@ -522,36 +521,66 @@ const FormView = memo(({
   handleEnergyPeakChange: (peak: string, checked: boolean) => void;
   handleNumberOfDaysChange: (days: number) => void;
   handleGenerate: () => void;
-}) => (
-  <>
-    <div className="flex-1 my-4 min-h-0">
-        <ScrollArea className="h-full pr-4">
-            <div className="space-y-6">
-                <Step1_TaskSelection
-                    inboxTasks={inboxTasks}
-                    selectedTasks={selectedTasks}
-                    onTaskSelection={handleTaskSelection}
-                />
-                <Separator />
-                <Step2_Preferences
-                preferences={preferences}
-                isPrefLoading={isPrefLoading}
-                numberOfDays={numberOfDays}
-                onPrefChange={handlePrefChange}
-                onEnergyPeakChange={handleEnergyPeakChange}
-                onNumberOfDaysChange={handleNumberOfDaysChange}
-                />
-            </div>
-        </ScrollArea>
-    </div>
-    <DialogFooter>
-      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
-        <Wand2 className="mr-2 h-4 w-4" />
-        Сгенерировать расписание
-      </Button>
-    </DialogFooter>
-  </>
-));
+}) => {
+
+    const handleHabitChange = useCallback((key: string, value: string) => {
+        handlePrefChange('fixedEvents', (prevFixedEvents: Record<string, string> | undefined) => {
+            const newFixedEvents = {...(prevFixedEvents || {})};
+            if (value) {
+                newFixedEvents[key] = value;
+            } else {
+                delete newFixedEvents[key];
+            }
+            return newFixedEvents;
+        });
+    }, [handlePrefChange]);
+
+    useEffect(() => {
+        const fixedEventsObject = (preferences.fixedEvents || {}) as Record<string, string>;
+        const combinedString = Object.values(fixedEventsObject).filter(Boolean).join('. ');
+        handlePrefChange('combinedFixedEvents', combinedString);
+      }, [preferences.fixedEvents, handlePrefChange]);
+
+    if (isPrefLoading) {
+        return (
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        );
+    }
+
+    return (
+        <>
+        <div className="flex-1 my-4 min-h-0">
+            <ScrollArea className="h-full pr-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <LeftColumn 
+                        inboxTasks={inboxTasks}
+                        selectedTasks={selectedTasks}
+                        onTaskSelection={handleTaskSelection}
+                        preferences={preferences}
+                        onPrefChange={handlePrefChange}
+                    />
+                    <RightColumn 
+                         preferences={preferences}
+                         numberOfDays={numberOfDays}
+                         onPrefChange={handlePrefChange}
+                         onEnergyPeakChange={handleEnergyPeakChange}
+                         onNumberOfDaysChange={handleNumberOfDaysChange}
+                         onHabitChange={handleHabitChange}
+                    />
+                </div>
+            </ScrollArea>
+        </div>
+        <DialogFooter>
+        <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
+            <Wand2 className="mr-2 h-4 w-4" />
+            Сгенерировать расписание
+        </Button>
+        </DialogFooter>
+        </>
+    );
+});
 FormView.displayName = 'FormView';
 
 
