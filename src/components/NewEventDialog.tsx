@@ -265,7 +265,7 @@ export default function NewEventDialog({
       if (typeof result !== 'string') {
           setSuggestions(result);
       } else {
-          toast({ variant: 'destructive', title: 'AI Error', description: result });
+          toast({ variant: 'destructive', title: 'Suggestion Error', description: result });
       }
       setIsAISuggesting(false);
   };
@@ -454,7 +454,7 @@ export default function NewEventDialog({
                     )}
                     {suggestions.length > 0 && (
                         <div className='space-y-2'>
-                            <Label>Предложения от AI:</Label>
+                            <Label>Рекомендации:</Label>
                             <div className="flex flex-wrap gap-2">
                                 {suggestions.map((slot, i) => (
                                     <Button key={i} variant="outline" size="sm" onClick={() => handleApplySuggestion(slot)}>
@@ -555,3 +555,5 @@ export default function NewEventDialog({
     </Dialog>
   );
 }
+
+    

@@ -33,7 +33,7 @@ export async function getSuggestedTimeSlots(tasks: string, userId: string): Prom
     return result.suggestions;
   } catch (error) {
     console.error("Error getting suggestions:", error);
-    return "Sorry, I couldn't find a time slot. There might be an issue with the AI service. Please try again later.";
+    return "Sorry, I couldn't find a time slot. There might be an issue with the scheduling service. Please try again later.";
   }
 }
 
@@ -60,7 +60,7 @@ export async function generateSchedule(input: Omit<GenerateFullScheduleInput, 's
     return result;
   } catch (error) {
     console.error("Error generating schedule:", error);
-    return "Sorry, I couldn't generate a schedule. There might be an issue with the AI service. Please try again later.";
+    return "Sorry, I couldn't generate a schedule. There might be an issue with the planning service. Please try again later.";
   }
 }
 
@@ -124,3 +124,5 @@ export async function deleteScheduleItemsInRange(
     return { success: false, message: "An error occurred while deleting items." };
   }
 }
+
+    
