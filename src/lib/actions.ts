@@ -4,7 +4,7 @@
 import { suggestOptimalTimeSlots } from "@/ai/flows/suggest-optimal-time-slots";
 import { generateFullSchedule } from "@/ai/flows/generate-full-schedule";
 import type { GenerateFullScheduleInput, GenerateFullScheduleOutput, SuggestedSlot } from "@/ai/flows/schema";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, writeBatch, documentId } from "firebase/firestore";
 import { db } from "./firebase";
 import type { ScheduleItem } from "./types";
 import { format } from "date-fns";
@@ -63,3 +63,39 @@ export async function generateSchedule(input: Omit<GenerateFullScheduleInput, 's
     return "Sorry, I couldn't generate a schedule. There might be an issue with the AI service. Please try again later.";
   }
 }
+
+
+export async function deleteScheduleItemsInRange(
+  userId: string, 
+  startDate: string | null, 
+  endDate: string | null
+): Promise<{ deletedCount: number }> {
+    if (!userId) {
+        throw new Error("User not authenticated.");
+    }
+
+    const itemsCollection = collection(db, "scheduleItems");
+    let q = query(itemsCollection, where("userId", "==", userId));
+    
+    // This will only delete scheduled items, not inbox items (which have date === null)
+    if (startDate && endDate) {
+        q = query(q, where("date", ">=", startDate), where("date", "<=", endDate));
+    }
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+        return { deletedCount: 0 };
+    }
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+
+    return { deletedCount: snapshot.size };
+}
+
+    
