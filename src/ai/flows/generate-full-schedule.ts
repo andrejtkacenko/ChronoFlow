@@ -70,6 +70,7 @@ const prompt = ai.definePrompt({
   - Peak Energy: {{{preferences.energyPeaks}}}
   - Other fixed events: {{{preferences.fixedEventsText}}}
   - Past Learnings: {{{preferences.pastLearnings}}}
+  - Work Schedule: From {{{preferences.workStartTime}}} to {{{preferences.workEndTime}}} on days: {{{preferences.workDays}}}.
 
   Generate the full schedule now, following both steps and providing both 'tasks' and 'routineEvents' arrays in the output.
   `,

@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -50,6 +50,9 @@ const defaultPreferences = {
   mealsPerDay: 3,
   restTime: 2,
   energyPeaks: [],
+  workDays: [1, 2, 3, 4, 5],
+  workStartTime: '09:00',
+  workEndTime: '18:00',
   sportEnabled: false,
   sportFrequency: 3,
   sportDuration: 45,
@@ -287,11 +290,15 @@ const RightColumn = memo(({
     preferences,
     onPrefChange,
     onEnergyPeakChange,
+    onWorkDayToggle,
 }: {
     preferences: Record<string, any>;
     onPrefChange: (id: string, value: any) => void;
     onEnergyPeakChange: (peak: string, checked: boolean) => void;
-}) => (
+    onWorkDayToggle: (day: number) => void;
+}) => {
+    const weekDays = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    return (
     <div className="space-y-6">
         <div>
             <h4 className="font-semibold text-base mb-3">Ежедневные потребности</h4>
@@ -332,6 +339,38 @@ const RightColumn = memo(({
             </div>
         </div>
 
+        <Separator />
+        <div>
+            <h4 className="font-semibold text-base mb-3 flex items-center gap-2"><Briefcase className="size-5" /> Работа/Учеба</h4>
+            <div className="space-y-4">
+                <div>
+                    <Label>Рабочие дни</Label>
+                    <div className="flex items-center gap-1.5 mt-2">
+                        {weekDays.map((day, index) => (
+                           <Button
+                             key={day}
+                             variant={preferences.workDays?.includes(index) ? 'primary' : 'outline'}
+                             size="icon"
+                             className="h-9 w-9 rounded-full"
+                             onClick={() => onWorkDayToggle(index)}
+                           >
+                             {day}
+                           </Button>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div>
+                        <Label htmlFor="workStartTime">Начало</Label>
+                        <Input id="workStartTime" type="time" value={preferences.workStartTime} onChange={e => onPrefChange('workStartTime', e.target.value)} className="mt-1"/>
+                    </div>
+                    <div>
+                        <Label htmlFor="workEndTime">Конец</Label>
+                        <Input id="workEndTime" type="time" value={preferences.workEndTime} onChange={e => onPrefChange('workEndTime', e.target.value)} className="mt-1"/>
+                    </div>
+                </div>
+            </div>
+        </div>
         <Separator />
         
         <div>
@@ -399,7 +438,8 @@ const RightColumn = memo(({
             </div>
         </div>
     </div>
-));
+)
+});
 RightColumn.displayName = 'RightColumn';
 
 
@@ -494,6 +534,7 @@ const FormView = memo(({
   numberOfDays,
   handlePrefChange,
   handleEnergyPeakChange,
+  handleWorkDayToggle,
   handleNumberOfDaysChange,
   handleGenerate,
 }: {
@@ -505,6 +546,7 @@ const FormView = memo(({
   numberOfDays: number;
   handlePrefChange: (id: string, value: any) => void;
   handleEnergyPeakChange: (peak: string, checked: boolean) => void;
+  handleWorkDayToggle: (day: number) => void;
   handleNumberOfDaysChange: (days: number) => void;
   handleGenerate: () => void;
 }) => {
@@ -533,6 +575,7 @@ const FormView = memo(({
                          preferences={preferences}
                          onPrefChange={handlePrefChange}
                          onEnergyPeakChange={handleEnergyPeakChange}
+                         onWorkDayToggle={handleWorkDayToggle}
                     />
                 </div>
             </ScrollArea>
@@ -575,6 +618,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
               loadedPrefs.energyPeaks = loadedPrefs.energyPeaks ? loadedPrefs.energyPeaks.split(',').map((s: string) => s.trim()) : [];
             } else if (!Array.isArray(loadedPrefs.energyPeaks)) {
               loadedPrefs.energyPeaks = [];
+            }
+            if (!Array.isArray(loadedPrefs.workDays)) {
+              loadedPrefs.workDays = defaultPreferences.workDays;
             }
             // Populate with defaults if fields are missing
             setPreferences({...defaultPreferences, ...loadedPrefs});
@@ -763,6 +809,18 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       });
   }, []);
 
+  const handleWorkDayToggle = useCallback((day: number) => {
+    setPreferences(p => {
+        const currentWorkDays = new Set(p.workDays || []);
+        if (currentWorkDays.has(day)) {
+            currentWorkDays.delete(day);
+        } else {
+            currentWorkDays.add(day);
+        }
+        return { ...p, workDays: Array.from(currentWorkDays).sort() };
+    });
+  }, []);
+
   const handleNumberOfDaysChange = useCallback((days: number) => {
       setNumberOfDays(days);
   }, []);
@@ -791,6 +849,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
                 numberOfDays={numberOfDays}
                 handlePrefChange={handlePrefChange}
                 handleEnergyPeakChange={handleEnergyPeakChange}
+                handleWorkDayToggle={handleWorkDayToggle}
                 handleNumberOfDaysChange={handleNumberOfDaysChange}
                 handleGenerate={handleGenerate}
             />;

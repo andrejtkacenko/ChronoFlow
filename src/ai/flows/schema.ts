@@ -33,6 +33,9 @@ const PreferencesSchema = z.object({
     .describe(
       'When the user has peak energy levels (morning, afternoon, evening).'
     ),
+  workDays: z.array(z.number()).optional().describe('Which days of the week are work days (0=Sun, 1=Mon...).'),
+  workStartTime: z.string().optional().describe('Work start time in HH:mm format.'),
+  workEndTime: z.string().optional().describe('Work end time in HH:mm format.'),
   sportFrequency: z.number().optional().describe('How many times a week the user does sport.'),
   sportDuration: z.number().optional().describe('Duration of a sport session in minutes.'),
   sportPreferredTime: z.string().optional().describe('Preferred time for sport (Утро, День, Вечер, Любое).'),
