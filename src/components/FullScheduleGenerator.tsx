@@ -18,19 +18,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, CalendarClock, Brain, X, Edit, Trash2, Check, BookOpen, PersonStanding } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
 import type { GenerateFullScheduleOutput, SuggestedSlot } from '@/ai/flows/schema';
 import { ScrollArea } from './ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { format } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from './ui/switch';
+import { Slider } from './ui/slider';
 
 
 interface FullScheduleGeneratorProps {
@@ -41,14 +40,20 @@ interface FullScheduleGeneratorProps {
 
 const defaultPreferences = {
   mainGoals: '',
-  priorities: 'Balanced',
-  sleepDuration: '8',
-  mealsPerDay: '3',
-  restTime: '2',
+  sleepDuration: 8,
+  mealsPerDay: 3,
+  restTime: 2,
   energyPeaks: [],
-  fixedEvents: '',
-  delegationOpportunities: '',
-  selfCareTime: '',
+  sportEnabled: false,
+  sportFrequency: 3,
+  sportDuration: 45,
+  meditationEnabled: false,
+  meditationFrequency: 5,
+  meditationDuration: 15,
+  readingEnabled: false,
+  readingFrequency: 4,
+  readingDuration: 30,
+  fixedEventsText: '',
   pastLearnings: '',
 };
 
@@ -61,11 +66,11 @@ const GenerationProgress = memo(() => {
     useEffect(() => {
         const routineTimer = setTimeout(() => {
             setStep('tasks');
-        }, 3000); // Simulate time for routine generation
+        }, 3000); 
 
         const tasksTimer = setTimeout(() => {
             setIsDone(true)
-        }, 6000); // Simulate time for task scheduling
+        }, 6000);
 
         return () => {
             clearTimeout(routineTimer);
@@ -152,39 +157,58 @@ const HabitBuilder = memo(({
     habitName,
     habitKey,
     icon: Icon,
-    onHabitChange,
-    initialValue
+    isEnabled,
+    frequency,
+    duration,
+    onPrefChange,
 }: {
     habitName: string;
     habitKey: string;
     icon: React.ElementType;
-    onHabitChange: (key: string, value: string) => void;
-    initialValue?: string;
+    isEnabled: boolean;
+    frequency: number;
+    duration: number;
+    onPrefChange: (id: string, value: any) => void;
 }) => {
-    const [value, setValue] = useState(initialValue || '');
-
-    useEffect(() => {
-        setValue(initialValue || '');
-    }, [initialValue]);
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.value;
-        setValue(newValue);
-        onHabitChange(habitKey, newValue);
-    };
-
     return (
-        <div className="space-y-2">
-            <Label htmlFor={`habit-${habitKey}`} className="flex items-center gap-2 font-semibold">
-                <Icon className="size-5 text-primary" />
-                {habitName}
-            </Label>
-            <Input
-                id={`habit-${habitKey}`}
-                value={value}
-                onChange={handleInputChange}
-                placeholder="Например: 3 раза в неделю по 45 минут"
-            />
+        <div className="p-3 rounded-lg border bg-secondary/50">
+            <div className="flex items-center justify-between">
+                <Label htmlFor={`habit-switch-${habitKey}`} className="flex items-center gap-2 font-semibold">
+                    <Icon className="size-5 text-primary" />
+                    {habitName}
+                </Label>
+                <Switch
+                    id={`habit-switch-${habitKey}`}
+                    checked={isEnabled}
+                    onCheckedChange={(checked) => onPrefChange(`${habitKey}Enabled`, checked)}
+                />
+            </div>
+            {isEnabled && (
+                <div className="mt-4 space-y-4">
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <Label>Частота (в неделю)</Label>
+                          <span className="text-sm font-medium text-primary">{frequency}</span>
+                        </div>
+                        <Slider
+                           value={[frequency]}
+                           onValueChange={(value) => onPrefChange(`${habitKey}Frequency`, value[0])}
+                           min={1} max={7} step={1}
+                        />
+                    </div>
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <Label>Длительность (минут)</Label>
+                          <span className="text-sm font-medium text-primary">{duration}</span>
+                        </div>
+                        <Slider
+                           value={[duration]}
+                           onValueChange={(value) => onPrefChange(`${habitKey}Duration`, value[0])}
+                           min={15} max={120} step={15}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     )
 });
@@ -197,14 +221,12 @@ const LeftColumn = memo(({
     onTaskSelection,
     preferences,
     onPrefChange,
-    onHabitChange
 }: {
     inboxTasks: ScheduleItem[];
     selectedTasks: Set<string>;
     onTaskSelection: (taskId: string) => void;
     preferences: Record<string, any>;
     onPrefChange: (id: string, value: any) => void;
-    onHabitChange: (key: string, value: string) => void;
 }) => (
     <div className="space-y-6">
         <Step1_TaskSelection
@@ -223,36 +245,6 @@ const LeftColumn = memo(({
                     onChange={e => onPrefChange('mainGoals', e.target.value)}
                     className="min-h-[100px]"
                  />
-            </div>
-        </div>
-        <div>
-            <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
-            <div className="space-y-4">
-                <HabitBuilder
-                    habitName="Спорт"
-                    habitKey="sport"
-                    icon={Dumbbell}
-                    onHabitChange={onHabitChange}
-                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['sport']}
-                />
-                <HabitBuilder
-                    habitName="Медитация"
-                    habitKey="meditation"
-                    icon={Brain}
-                    onHabitChange={onHabitChange}
-                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['meditation']}
-                />
-                <HabitBuilder
-                    habitName="Чтение"
-                    habitKey="reading"
-                    icon={BookOpen}
-                    onHabitChange={onHabitChange}
-                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['reading']}
-                />
-            </div>
-            <div className="grid gap-2 pt-4">
-                <Label htmlFor="selfCareTime">Другие занятия (курсы, хобби)?</Label>
-                <Textarea id="selfCareTime" placeholder="Пример: Курс по React - 2 часа по вт и чт." value={preferences.selfCareTime ?? ''} onChange={e => onPrefChange('selfCareTime', e.target.value)} />
             </div>
         </div>
          <div className="grid gap-2 mt-4">
@@ -275,41 +267,82 @@ const RightColumn = memo(({
     <div className="space-y-6">
         <div>
             <h4 className="font-semibold text-base mb-3">Ежедневные потребности</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="grid gap-2">
-                    <Label>Сон</Label>
-                    <Select value={preferences.sleepDuration ?? '8'} onValueChange={value => onPrefChange('sleepDuration', value)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {[...Array(7)].map((_, i) => <SelectItem key={i} value={String(i + 4)}>{i + 4} часов</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="grid gap-2">
-                    <Label>Приемы пищи</Label>
-                    <Select value={preferences.mealsPerDay ?? '3'} onValueChange={value => onPrefChange('mealsPerDay', value)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {[...Array(5)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>{i + 1}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="grid gap-2">
-                    <Label>Отдых (кроме сна)</Label>
-                    <Select value={preferences.restTime ?? '2'} onValueChange={value => onPrefChange('restTime', value)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {[...Array(4)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>{i + 1} час(а)</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
+            <div className="space-y-4">
+                 <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label>Сон (часов)</Label>
+                        <span className="text-sm font-medium text-primary">{preferences.sleepDuration}</span>
+                    </div>
+                    <Slider
+                        value={[preferences.sleepDuration ?? 8]}
+                        onValueChange={value => onPrefChange('sleepDuration', value[0])}
+                        min={4} max={12} step={1}
+                    />
+                 </div>
+                 <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label>Приемы пищи (в день)</Label>
+                        <span className="text-sm font-medium text-primary">{preferences.mealsPerDay}</span>
+                    </div>
+                    <Slider
+                        value={[preferences.mealsPerDay ?? 3]}
+                        onValueChange={value => onPrefChange('mealsPerDay', value[0])}
+                        min={1} max={6} step={1}
+                    />
+                 </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label>Отдых (часов, кроме сна)</Label>
+                        <span className="text-sm font-medium text-primary">{preferences.restTime}</span>
+                    </div>
+                    <Slider
+                        value={[preferences.restTime ?? 2]}
+                        onValueChange={value => onPrefChange('restTime', value[0])}
+                        min={1} max={5} step={0.5}
+                    />
+                 </div>
             </div>
         </div>
 
         <Separator />
         
         <div>
-            <h4 className="font-semibold text-base mb-3">Продуктивность и ограничения</h4>
+            <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
+            <div className="space-y-4">
+                <HabitBuilder
+                    habitName="Спорт"
+                    habitKey="sport"
+                    icon={Dumbbell}
+                    isEnabled={preferences.sportEnabled}
+                    frequency={preferences.sportFrequency}
+                    duration={preferences.sportDuration}
+                    onPrefChange={onPrefChange}
+                />
+                <HabitBuilder
+                    habitName="Медитация"
+                    habitKey="meditation"
+                    icon={Brain}
+                    isEnabled={preferences.meditationEnabled}
+                    frequency={preferences.meditationFrequency}
+                    duration={preferences.meditationDuration}
+                    onPrefChange={onPrefChange}
+                />
+                <HabitBuilder
+                    habitName="Чтение"
+                    habitKey="reading"
+                    icon={BookOpen}
+                    isEnabled={preferences.readingEnabled}
+                    frequency={preferences.readingFrequency}
+                    duration={preferences.readingDuration}
+                    onPrefChange={onPrefChange}
+                />
+            </div>
+        </div>
+
+        <Separator />
+
+        <div>
+            <h4 className="font-semibold text-base mb-3">Продуктивность и обучение</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 <div className="grid gap-2">
                     <Label>Когда у вас пики энергии?</Label>
@@ -323,14 +356,11 @@ const RightColumn = memo(({
                     </div>
                 </div>
             </div>
-        </div>
-         <div>
-            <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
-            <div className="grid gap-2">
+            <div className="grid gap-2 mt-4">
                 <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
                 <Textarea 
                     id="pastLearnings" 
-                    placeholder="Пример: Лучше не ставить больше 2 больших задач в день. Утренние тренировки дают больше энергии." 
+                    placeholder="Пример: Лучше не ставить больше 2 больших задач в день." 
                     value={preferences.pastLearnings ?? ''} 
                     onChange={e => onPrefChange('pastLearnings', e.target.value)}
                     className="min-h-[100px]"
@@ -448,24 +478,6 @@ const FormView = memo(({
   handleGenerate: () => void;
 }) => {
 
-    const handleHabitChange = useCallback((key: string, value: string) => {
-        handlePrefChange('fixedEvents', (prevFixedEvents: Record<string, string> | undefined) => {
-            const newFixedEvents = {...(prevFixedEvents || {})};
-            if (value) {
-                newFixedEvents[key] = value;
-            } else {
-                delete newFixedEvents[key];
-            }
-            return newFixedEvents;
-        });
-    }, [handlePrefChange]);
-
-    useEffect(() => {
-        const fixedEventsObject = (preferences.fixedEvents || {}) as Record<string, string>;
-        const combinedString = Object.values(fixedEventsObject).filter(Boolean).map(v => `- ${v}`).join('. ');
-        handlePrefChange('combinedFixedEvents', combinedString);
-      }, [preferences.fixedEvents, handlePrefChange]);
-
     if (isPrefLoading) {
         return (
           <div className="flex justify-center items-center h-full">
@@ -485,7 +497,6 @@ const FormView = memo(({
                         onTaskSelection={handleTaskSelection}
                         preferences={preferences}
                         onPrefChange={handlePrefChange}
-                        onHabitChange={handleHabitChange}
                     />
                     <RightColumn 
                          preferences={preferences}
@@ -529,18 +540,15 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         const docSnap = await getDoc(prefRef);
         if (docSnap.exists()) {
             const loadedPrefs = docSnap.data();
-             // Ensure energyPeaks is an array
-            if (typeof loadedPrefs.energyPeaks === 'string') {
+             if (typeof loadedPrefs.energyPeaks === 'string') {
               loadedPrefs.energyPeaks = loadedPrefs.energyPeaks ? loadedPrefs.energyPeaks.split(',').map((s: string) => s.trim()) : [];
             } else if (!Array.isArray(loadedPrefs.energyPeaks)) {
               loadedPrefs.energyPeaks = [];
             }
-            if (!loadedPrefs.fixedEvents) {
-              loadedPrefs.fixedEvents = {};
-            }
-            setPreferences(loadedPrefs);
+            // Populate with defaults if fields are missing
+            setPreferences({...defaultPreferences, ...loadedPrefs});
         } else {
-            setPreferences({...defaultPreferences, fixedEvents: {}});
+            setPreferences(defaultPreferences);
         }
     } catch (error) {
         console.error("Error fetching preferences:", error);
@@ -591,23 +599,11 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     setView('loading');
     setSuggestions(null);
 
-    // Combine different fixed events fields into one string for the AI
-    const combinedFixedEvents = [
-        preferences.combinedFixedEvents,
-        preferences.fixedEventsText,
-        // selfCareTime is now a separate field in the schema, so we don't combine it here anymore
-    ].filter(Boolean).join('. ');
-
     const prefsToSave = {
       ...preferences,
-      fixedEvents: preferences.fixedEvents, // Save the object
       energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks,
     };
     
-    // Clean up temporary fields before saving
-    delete prefsToSave.combinedFixedEvents;
-    delete prefsToSave.fixedEventsText;
-
     try {
         const prefRef = doc(db, 'userPreferences', userId);
         await setDoc(prefRef, prefsToSave, { merge: true });
@@ -621,20 +617,25 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       .map(task => task.title);
 
     try {
-       // For the AI, we combine the structured habits with other text-based commitments
-      const fixedEventsForAI = [
-        ...Object.entries(preferences.fixedEvents).map(([key, value]) => `${key}: ${value}`),
-        preferences.fixedEventsText,
-      ].filter(Boolean).join('; ');
-
+      const aiPrefs = { ...preferences };
+      if (!aiPrefs.sportEnabled) {
+          aiPrefs.sportFrequency = 0;
+          aiPrefs.sportDuration = 0;
+      }
+      if (!aiPrefs.meditationEnabled) {
+          aiPrefs.meditationFrequency = 0;
+          aiPrefs.meditationDuration = 0;
+      }
+      if (!aiPrefs.readingEnabled) {
+          aiPrefs.readingFrequency = 0;
+          aiPrefs.readingDuration = 0;
+      }
+      
       const result = await generateSchedule({
         tasks: allTasks,
         preferences: {
-            ...preferences,
-            fixedEvents: fixedEventsForAI,
-            selfCareTime: preferences.selfCareTime,
-            pastLearnings: preferences.pastLearnings,
-            energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks,
+            ...aiPrefs,
+            energyPeaks: Array.isArray(aiPrefs.energyPeaks) ? aiPrefs.energyPeaks.join(', ') : aiPrefs.energyPeaks,
         }, 
         startDate: format(new Date(), 'yyyy-MM-dd'),
         numberOfDays,

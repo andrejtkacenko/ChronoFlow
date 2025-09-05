@@ -37,7 +37,11 @@ const prompt = ai.definePrompt({
     - **Sleep:** Based on {{{preferences.sleepDuration}}} hours.
     - **Meals:** Based on {{{preferences.mealsPerDay}}} meals per day. Allocate a reasonable time for each.
     - **Rest:** Based on {{{preferences.restTime}}} hours. This should be broken into smaller breaks.
-  - Also incorporate fixed events, habits and self-care from {{{preferences.fixedEvents}}} and {{{preferences.selfCareTime}}}. These might be recurring (e.g., "Sport: 3 times a week") or fixed (e.g., "Team meeting every Mon at 10:00"). Interpret them intelligently.
+  - Also incorporate fixed events, habits and self-care.
+    - Sport: {{{preferences.sportFrequency}}} times a week for {{{preferences.sportDuration}}} minutes.
+    - Meditation: {{{preferences.meditationFrequency}}} times a week for {{{preferences.meditationDuration}}} minutes.
+    - Reading: {{{preferences.readingFrequency}}} times a week for {{{preferences.readingDuration}}} minutes.
+  - Use the free-form text for other fixed events: {{{preferences.fixedEventsText}}}
   - Place all these newly created routine events into the 'routineEvents' array in the output.
 
   **Step 2: Schedule Inbox Tasks.**
@@ -62,11 +66,8 @@ const prompt = ai.definePrompt({
 
   **User's Preferences & Goals for a Perfect Schedule:**
   - Main Goals: {{{preferences.mainGoals}}}
-  - Priorities: {{{preferences.priorities}}}
-  - Daily Needs: Sleep: {{{preferences.sleepDuration}}} hours, Meals: {{{preferences.mealsPerDay}}} times, Rest: {{{preferences.restTime}}} hours.
   - Peak Energy: {{{preferences.energyPeaks}}}
-  - Fixed Commitments, Habits & Routines: {{{preferences.fixedEvents}}}
-  - Personal Growth/Fun (Self-Care): {{{preferences.selfCareTime}}}
+  - Other fixed events: {{{preferences.fixedEventsText}}}
   - Past Learnings: {{{preferences.pastLearnings}}}
 
   Generate the full schedule now, following both steps and providing both 'tasks' and 'routineEvents' arrays in the output.

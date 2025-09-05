@@ -4,7 +4,6 @@ import { Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "./ui/tooltip";
 import { Label } from "./ui/label";
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Slider } from "./ui/slider";
 
 interface RightSidebarProps {
@@ -22,28 +21,6 @@ export default function RightSidebar({
     hourHeight,
     onHourHeightChange
 }: RightSidebarProps) {
-  const ActionButton = ({
-    icon,
-    label,
-    onClick,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    onClick?: () => void;
-  }) => {
-    return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="w-full" onClick={onClick}>
-              {icon}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="left">
-            <p>{label}</p>
-          </TooltipContent>
-        </Tooltip>
-    );
-  };
 
   return (
      <TooltipProvider>
@@ -53,28 +30,24 @@ export default function RightSidebar({
                     <h3 className="text-lg font-semibold mb-4">Settings</h3>
                     <div className="space-y-6">
                        <div>
-                            <Label className="text-sm font-medium">Количество дней</Label>
-                            <RadioGroup 
-                                defaultValue={String(numberOfDays)} 
-                                onValueChange={(value) => onNumberOfDaysChange(Number(value))}
+                            <div className="flex justify-between items-center mb-1">
+                                <Label className="text-sm font-medium">Количество дней</Label>
+                                <span className="text-sm font-medium text-primary">{numberOfDays}</span>
+                            </div>
+                            <Slider
+                                value={[numberOfDays]}
+                                onValueChange={(value) => onNumberOfDaysChange(value[0])}
+                                min={1}
+                                max={7}
+                                step={1}
                                 className="mt-2"
-                            >
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="1" id="d1" />
-                                    <Label htmlFor="d1">1 день</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="3" id="d3" />
-                                    <Label htmlFor="d3">3 дня</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="7" id="d7" />
-                                    <Label htmlFor="d7">7 дней</Label>
-                                </div>
-                            </RadioGroup>
+                            />
                        </div>
                        <div>
-                            <Label className="text-sm font-medium">Масштаб</Label>
+                            <div className="flex justify-between items-center mb-1">
+                                <Label className="text-sm font-medium">Масштаб</Label>
+                                <span className="text-sm font-medium text-primary">{Math.round(hourHeight/60 * 100)}%</span>
+                            </div>
                              <Slider
                                 value={[hourHeight]}
                                 onValueChange={(value) => onHourHeightChange(value[0])}

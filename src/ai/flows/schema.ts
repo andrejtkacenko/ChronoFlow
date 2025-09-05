@@ -25,28 +25,24 @@ export type SuggestedSlot = z.infer<typeof SuggestedSlotSchema>;
 // Schema for user preferences for full schedule generation
 const PreferencesSchema = z.object({
   mainGoals: z.string().describe("User's main goals for the week/quarter."),
-  priorities: z
-    .string()
-    .describe("User's priorities (work, study, personal)."),
-  sleepDuration: z.string().describe('How many hours of sleep are needed daily.'),
-  mealsPerDay: z.string().describe('How many meals are eaten per day.'),
-  restTime: z.string().describe('How much rest time, besides sleep, is needed daily.'),
+  sleepDuration: z.number().describe('How many hours of sleep are needed daily.'),
+  mealsPerDay: z.number().describe('How many meals are eaten per day.'),
+  restTime: z.number().describe('How much rest time, besides sleep, is needed daily.'),
   energyPeaks: z
     .string()
     .describe(
       'When the user has peak energy levels (morning, afternoon, evening).'
     ),
-  fixedEvents: z
+  sportFrequency: z.number().optional().describe('How many times a week the user does sport.'),
+  sportDuration: z.number().optional().describe('Duration of a sport session in minutes.'),
+  meditationFrequency: z.number().optional().describe('How many times a week the user meditates.'),
+  meditationDuration: z.number().optional().describe('Duration of a meditation session in minutes.'),
+  readingFrequency: z.number().optional().describe('How many times a week the user reads.'),
+  readingDuration: z.number().optional().describe('Duration of a reading session in minutes.'),
+  fixedEventsText: z
     .string()
-    .describe('Fixed commitments, habits, or routines with specific times or frequencies (e.g., "Sport: 3 times a week for 45 minutes", "Team meeting every Mon at 10:00").'),
-  delegationOpportunities: z
-    .string()
-    .describe('What tasks could be delegated, automated, or deleted.'),
-  selfCareTime: z
-    .string()
-    .describe(
-      'Time for self-care, learning, or entertainment, and how much. (e.g., "React course - 2 hours on Tue and Thu").'
-    ),
+    .optional()
+    .describe('Other fixed commitments, habits, or routines with specific times or frequencies (e.g., "Team meeting every Mon at 10:00").'),
   pastLearnings: z
     .string()
     .describe('Past successes, lessons, or obstacles in planning (e.g., "Better not to set more than 2 large tasks per day", "Morning workouts give more energy.").'),
