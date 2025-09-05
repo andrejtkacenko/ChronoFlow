@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen, Briefcase, Target, Smile, Zap, Edit2 } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen, Briefcase, Target, Smile, Zap, Edit2, Columns, Tabs as TabsIcon, MessageSquareQuote } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -30,6 +30,7 @@ import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { Switch } from './ui/switch';
 import { Slider } from './ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
   SelectContent,
@@ -37,13 +38,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
-// Main Component
-interface FullScheduleGeneratorProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  userId: string;
-}
+// --- Common Components ---
 
 const defaultPreferences = {
   mainGoals: '',
@@ -70,13 +67,12 @@ const defaultPreferences = {
   pastLearnings: '',
 };
 
-type GenerationStep = 'routine' | 'tasks' | 'done';
 type ViewType = 'form' | 'results' | 'loading';
-type EditingSection = 'daily' | 'habits' | 'work' | 'productivity' | null;
-
+type LayoutType = 'columns' | 'tabs' | 'summary';
 
 const GenerationProgress = memo(() => {
-    const [step, setStep] = useState<GenerationStep>('routine');
+    // ... (unchanged)
+    const [step, setStep] = useState<'routine' | 'tasks'>('routine');
     const [isDone, setIsDone] = useState(false);
 
     useEffect(() => {
@@ -163,7 +159,187 @@ const ResultsView = memo(({ suggestions, onSetView, onAddEvent, onAddAll, onRese
 ResultsView.displayName = 'ResultsView';
 
 
-// --- Editing Components ---
+// --- Shared Form Components ---
+
+const TaskSelection = memo(({ inboxTasks, selectedTasks, onTaskSelection, preferences, onPrefChange }: { inboxTasks: ScheduleItem[]; selectedTasks: Set<string>; onTaskSelection: (taskId: string) => void; preferences: Record<string, any>; onPrefChange: (id: string, value: any) => void; }) => (
+    <div className="flex flex-col gap-6">
+        <div>
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Target /> What are we doing?</h3>
+            <div className="space-y-4">
+                <div>
+                    <Label className="font-semibold">Select tasks from inbox</Label>
+                    <Card className="mt-2 max-h-[150px] flex flex-col"><CardContent className="p-2 flex-1 overflow-hidden"><ScrollArea className="h-full pr-4"><div className="space-y-2">
+                        {inboxTasks.length > 0 ? (inboxTasks.map(task => (<div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted"><Checkbox id={`task-${task.id}`} onCheckedChange={() => onTaskSelection(task.id)} checked={selectedTasks.has(task.id)} /><Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label></div>))) 
+                        : (<p className="text-sm text-muted-foreground text-center py-4">Your inbox is empty.</p>)}
+                    </div></ScrollArea></CardContent></Card>
+                </div>
+                 <div>
+                    <Label htmlFor="mainGoals" className="font-semibold">What are your main goals for this period?</Label>
+                    <Textarea id="mainGoals" placeholder="e.g., Launch new project, prepare for marathon, read 3 books." value={preferences.mainGoals ?? ''} onChange={e => onPrefChange('mainGoals', e.target.value)} className="mt-2 min-h-[100px]" />
+                </div>
+            </div>
+        </div>
+    </div>
+));
+TaskSelection.displayName = 'TaskSelection';
+
+const DailyNeeds = memo(({ preferences, onPrefChange } : { preferences: any, onPrefChange: (id: string, val: any) => void }) => (
+    <div>
+        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Bed/> Daily Needs</h3>
+        <div className="space-y-6">
+            <div>
+                <div className="flex justify-between items-center mb-1"><Label>Sleep (hours)</Label><span className="text-sm font-medium text-primary">{preferences.sleepDuration}</span></div>
+                <Slider value={[preferences.sleepDuration ?? 8]} onValueChange={value => onPrefChange('sleepDuration', value[0])} min={4} max={12} step={1} />
+            </div>
+            <div>
+                <div className="flex justify-between items-center mb-1"><Label>Meals (per day)</Label><span className="text-sm font-medium text-primary">{preferences.mealsPerDay}</span></div>
+                <Slider value={[preferences.mealsPerDay ?? 3]} onValueChange={value => onPrefChange('mealsPerDay', value[0])} min={1} max={6} step={1} />
+            </div>
+            <div>
+                <div className="flex justify-between items-center mb-1"><Label>Rest (hours, besides sleep)</Label><span className="text-sm font-medium text-primary">{preferences.restTime}</span></div>
+                <Slider value={[preferences.restTime ?? 2]} onValueChange={value => onPrefChange('restTime', value[0])} min={1} max={5} step={0.5} />
+            </div>
+        </div>
+    </div>
+));
+DailyNeeds.displayName = 'DailyNeeds';
+
+const HabitBuilder = memo(({ habitName, habitKey, icon: Icon, preferences, onPrefChange }: { habitName: string; habitKey: string; icon: React.ElementType; preferences: Record<string, any>; onPrefChange: (id: string, value: any) => void; }) => {
+    const isEnabled = preferences[`${habitKey}Enabled`];
+    return (
+        <div className="p-3 rounded-lg border bg-secondary/50">
+            <div className="flex items-center justify-between">
+                <Label htmlFor={`habit-switch-${habitKey}`} className="flex items-center gap-2 font-semibold"><Icon className="size-5 text-primary" />{habitName}</Label>
+                <Switch id={`habit-switch-${habitKey}`} checked={isEnabled} onCheckedChange={(checked) => onPrefChange(`${habitKey}Enabled`, checked)} />
+            </div>
+            {isEnabled && (
+                <div className="mt-4 space-y-4">
+                    <div>
+                        <div className="flex justify-between items-center mb-1"><Label>Frequency (per week)</Label><span className="text-sm font-medium text-primary">{preferences[`${habitKey}Frequency`]}</span></div>
+                        <Slider value={[preferences[`${habitKey}Frequency`]]} onValueChange={(value) => onPrefChange(`${habitKey}Frequency`, value[0])} min={1} max={7} step={1} />
+                    </div>
+                    <div>
+                        <div className="flex justify-between items-center mb-1"><Label>Duration (minutes)</Label><span className="text-sm font-medium text-primary">{preferences[`${habitKey}Duration`]}</span></div>
+                        <Slider value={[preferences[`${habitKey}Duration`]]} onValueChange={(value) => onPrefChange(`${habitKey}Duration`, value[0])} min={15} max={120} step={15} />
+                    </div>
+                    <div>
+                        <Label>Preferred Time</Label>
+                        <Select value={preferences[`${habitKey}PreferredTime`]} onValueChange={(value) => onPrefChange(`${habitKey}PreferredTime`, value)}>
+                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select time" /></SelectTrigger>
+                            <SelectContent><SelectItem value="Любое">Any</SelectItem><SelectItem value="Утро">Morning</SelectItem><SelectItem value="День">Afternoon</SelectItem><SelectItem value="Вечер">Evening</SelectItem></SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+});
+HabitBuilder.displayName = 'HabitBuilder';
+
+const HabitsAndHobbies = memo(({ preferences, onPrefChange }: { preferences: any, onPrefChange: (id: string, val: any) => void }) => (
+     <div>
+        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Dumbbell /> Habits & Hobbies</h3>
+        <div className="space-y-4">
+            <HabitBuilder habitName="Sport" habitKey="sport" icon={Dumbbell} preferences={preferences} onPrefChange={onPrefChange} />
+            <HabitBuilder habitName="Meditation" habitKey="meditation" icon={Brain} preferences={preferences} onPrefChange={onPrefChange} />
+            <HabitBuilder habitName="Reading" habitKey="reading" icon={BookOpen} preferences={preferences} onPrefChange={onPrefChange} />
+        </div>
+    </div>
+));
+HabitsAndHobbies.displayName = 'HabitsAndHobbies';
+
+const WorkSchedule = memo(({ preferences, onPrefChange, onWorkDayToggle }: { preferences: any, onPrefChange: (id: string, val: any) => void, onWorkDayToggle: (day: number) => void }) => {
+    const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    return (
+        <div>
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Briefcase /> Work/Study Schedule</h3>
+            <div className="space-y-4">
+                <div>
+                    <Label>Work days</Label>
+                    <div className="flex items-center gap-1.5 mt-2">
+                        {weekDays.map((day, index) => (
+                            <Button key={day} variant={preferences.workDays?.includes(index) ? 'primary' : 'outline'} size="icon" className="h-9 w-9 rounded-full" onClick={() => onWorkDayToggle(index)}>{day}</Button>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div><Label htmlFor="workStartTime">Start</Label><Input id="workStartTime" type="time" value={preferences.workStartTime} onChange={e => onPrefChange('workStartTime', e.target.value)} className="mt-1"/></div>
+                    <div><Label htmlFor="workEndTime">End</Label><Input id="workEndTime" type="time" value={preferences.workEndTime} onChange={e => onPrefChange('workEndTime', e.target.value)} className="mt-1"/></div>
+                </div>
+            </div>
+        </div>
+    )
+});
+WorkSchedule.displayName = 'WorkSchedule';
+
+const ProductivitySettings = memo(({ preferences, onPrefChange, onEnergyPeakChange }: { preferences: any, onPrefChange: (id: string, val: any) => void, onEnergyPeakChange: (peak: string, checked: boolean) => void }) => (
+    <div>
+        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Zap/> Productivity & Learning</h3>
+        <div className="space-y-4">
+            <div className="grid gap-2">
+                <Label>When are your energy peaks?</Label>
+                <div className="flex items-center space-x-4">
+                    {['Morning', 'Afternoon', 'Evening'].map(peak => (
+                        <div key={peak} className="flex items-center space-x-2">
+                            <Checkbox id={`peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => onEnergyPeakChange(peak, !!checked)} />
+                            <Label htmlFor={`peak-${peak}`}>{peak}</Label>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="fixedEventsText">Other fixed commitments?</Label>
+                <Textarea id="fixedEventsText" placeholder="e.g., Team meeting every Mon at 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => onPrefChange('fixedEventsText', e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="pastLearnings">Past planning learnings/obstacles?</Label>
+                <Textarea id="pastLearnings" placeholder="e.g., Better not to set more than 2 large tasks per day." value={preferences.pastLearnings ?? ''} onChange={e => onPrefChange('pastLearnings', e.target.value)} />
+            </div>
+        </div>
+    </div>
+));
+ProductivitySettings.displayName = 'ProductivitySettings';
+
+
+// --- View 1: Columns Layout ---
+const ColumnsView = memo((props: any) => (
+    <div className="grid md:grid-cols-2 gap-8 my-4 flex-1 min-h-0">
+        <ScrollArea className="pr-4">
+            <TaskSelection {...props} />
+        </ScrollArea>
+        <ScrollArea className="pr-4">
+            <div className="space-y-8">
+                <DailyNeeds preferences={props.preferences} onPrefChange={props.onPrefChange} />
+                <Separator />
+                <HabitsAndHobbies preferences={props.preferences} onPrefChange={props.onPrefChange} />
+                <Separator />
+                <WorkSchedule preferences={props.preferences} onPrefChange={props.onPrefChange} onWorkDayToggle={props.onWorkDayToggle} />
+                <Separator />
+                <ProductivitySettings preferences={props.preferences} onPrefChange={props.onPrefChange} onEnergyPeakChange={props.onEnergyPeakChange} />
+            </div>
+        </ScrollArea>
+    </div>
+));
+ColumnsView.displayName = 'ColumnsView';
+
+// --- View 2: Tabs Layout ---
+const TabsView = memo((props: any) => (
+    <Tabs defaultValue="what" className="my-4 flex-1 flex flex-col min-h-0">
+        <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="what">1. What to do?</TabsTrigger>
+            <TabsTrigger value="lifestyle">2. Lifestyle</TabsTrigger>
+            <TabsTrigger value="productivity">3. Productivity</TabsTrigger>
+        </TabsList>
+        <TabsContent value="what" className="flex-1 overflow-hidden"><ScrollArea className="h-full pr-4"><TaskSelection {...props} /></ScrollArea></TabsContent>
+        <TabsContent value="lifestyle" className="flex-1 overflow-hidden"><ScrollArea className="h-full pr-4"><div className="space-y-8"><DailyNeeds {...props} /><Separator/><HabitsAndHobbies {...props} /></div></ScrollArea></TabsContent>
+        <TabsContent value="productivity" className="flex-1 overflow-hidden"><ScrollArea className="h-full pr-4"><div className="space-y-8"><WorkSchedule {...props} /><Separator/><ProductivitySettings {...props} /></div></ScrollArea></TabsContent>
+    </Tabs>
+));
+TabsView.displayName = 'TabsView';
+
+
+// --- View 3: Summary Layout ---
+type EditingSection = 'daily' | 'habits' | 'work' | 'productivity' | null;
 
 const EditSectionHeader = ({ title, onBack }: { title: string; onBack: () => void; }) => (
     <div className="flex items-center mb-4">
@@ -172,220 +348,58 @@ const EditSectionHeader = ({ title, onBack }: { title: string; onBack: () => voi
     </div>
 );
 
-const EditDailyNeeds = memo(({ preferences, handlePrefChange, onBack } : { preferences: any, handlePrefChange: (id: string, val: any) => void, onBack: () => void}) => (
-    <div>
-        <EditSectionHeader title="Daily Needs" onBack={onBack} />
-        <div className="space-y-6">
-            <div>
-                <div className="flex justify-between items-center mb-1"><Label>Sleep (hours)</Label><span className="text-sm font-medium text-primary">{preferences.sleepDuration}</span></div>
-                <Slider value={[preferences.sleepDuration ?? 8]} onValueChange={value => handlePrefChange('sleepDuration', value[0])} min={4} max={12} step={1} />
-            </div>
-            <div>
-                <div className="flex justify-between items-center mb-1"><Label>Meals (per day)</Label><span className="text-sm font-medium text-primary">{preferences.mealsPerDay}</span></div>
-                <Slider value={[preferences.mealsPerDay ?? 3]} onValueChange={value => handlePrefChange('mealsPerDay', value[0])} min={1} max={6} step={1} />
-            </div>
-            <div>
-                <div className="flex justify-between items-center mb-1"><Label>Rest (hours, besides sleep)</Label><span className="text-sm font-medium text-primary">{preferences.restTime}</span></div>
-                <Slider value={[preferences.restTime ?? 2]} onValueChange={value => handlePrefChange('restTime', value[0])} min={1} max={5} step={0.5} />
-            </div>
-        </div>
-    </div>
-));
-EditDailyNeeds.displayName = 'EditDailyNeeds';
-
-const HabitBuilder = memo(({ habitName, habitKey, icon: Icon, isEnabled, frequency, duration, preferredTime, onPrefChange }: { habitName: string; habitKey: string; icon: React.ElementType; isEnabled: boolean; frequency: number; duration: number; preferredTime: string; onPrefChange: (id: string, value: any) => void; }) => (
-    <div className="p-3 rounded-lg border bg-secondary/50">
-        <div className="flex items-center justify-between">
-            <Label htmlFor={`habit-switch-${habitKey}`} className="flex items-center gap-2 font-semibold"><Icon className="size-5 text-primary" />{habitName}</Label>
-            <Switch id={`habit-switch-${habitKey}`} checked={isEnabled} onCheckedChange={(checked) => onPrefChange(`${habitKey}Enabled`, checked)} />
-        </div>
-        {isEnabled && (
-            <div className="mt-4 space-y-4">
-                <div>
-                    <div className="flex justify-between items-center mb-1"><Label>Frequency (per week)</Label><span className="text-sm font-medium text-primary">{frequency}</span></div>
-                    <Slider value={[frequency]} onValueChange={(value) => onPrefChange(`${habitKey}Frequency`, value[0])} min={1} max={7} step={1} />
-                </div>
-                <div>
-                    <div className="flex justify-between items-center mb-1"><Label>Duration (minutes)</Label><span className="text-sm font-medium text-primary">{duration}</span></div>
-                    <Slider value={[duration]} onValueChange={(value) => onPrefChange(`${habitKey}Duration`, value[0])} min={15} max={120} step={15} />
-                </div>
-                <div>
-                    <Label>Preferred Time</Label>
-                    <Select value={preferredTime} onValueChange={(value) => onPrefChange(`${habitKey}PreferredTime`, value)}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Select time" /></SelectTrigger>
-                        <SelectContent><SelectItem value="Любое">Any</SelectItem><SelectItem value="Утро">Morning</SelectItem><SelectItem value="День">Afternoon</SelectItem><SelectItem value="Вечер">Evening</SelectItem></SelectContent>
-                    </Select>
-                </div>
-            </div>
-        )}
-    </div>
-));
-HabitBuilder.displayName = 'HabitBuilder';
-
-const EditHabits = memo(({ preferences, handlePrefChange, onBack }: { preferences: any, handlePrefChange: (id: string, val: any) => void, onBack: () => void}) => (
-    <div>
-        <EditSectionHeader title="Habits & Hobbies" onBack={onBack} />
-        <div className="space-y-4">
-            <HabitBuilder habitName="Sport" habitKey="sport" icon={Dumbbell} {...preferences} onPrefChange={handlePrefChange} />
-            <HabitBuilder habitName="Meditation" habitKey="meditation" icon={Brain} {...preferences} onPrefChange={handlePrefChange} />
-            <HabitBuilder habitName="Reading" habitKey="reading" icon={BookOpen} {...preferences} onPrefChange={handlePrefChange} />
-        </div>
-    </div>
-));
-EditHabits.displayName = 'EditHabits';
-
-const EditWorkSchedule = memo(({ preferences, handlePrefChange, handleWorkDayToggle, onBack }: { preferences: any, handlePrefChange: (id: string, val: any) => void, handleWorkDayToggle: (day: number) => void, onBack: () => void}) => {
-    const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-    return (
-        <div>
-            <EditSectionHeader title="Work/Study Schedule" onBack={onBack} />
-            <div className="space-y-4">
-                <div>
-                    <Label>Work days</Label>
-                    <div className="flex items-center gap-1.5 mt-2">
-                        {weekDays.map((day, index) => (
-                            <Button key={day} variant={preferences.workDays?.includes(index) ? 'primary' : 'outline'} size="icon" className="h-9 w-9 rounded-full" onClick={() => handleWorkDayToggle(index)}>{day}</Button>
-                        ))}
-                    </div>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div><Label htmlFor="workStartTime">Start</Label><Input id="workStartTime" type="time" value={preferences.workStartTime} onChange={e => handlePrefChange('workStartTime', e.target.value)} className="mt-1"/></div>
-                    <div><Label htmlFor="workEndTime">End</Label><Input id="workEndTime" type="time" value={preferences.workEndTime} onChange={e => handlePrefChange('workEndTime', e.target.value)} className="mt-1"/></div>
-                </div>
-            </div>
-        </div>
-    )
-});
-EditWorkSchedule.displayName = 'EditWorkSchedule';
-
-const EditProductivity = memo(({ preferences, handlePrefChange, handleEnergyPeakChange, onBack }: { preferences: any, handlePrefChange: (id: string, val: any) => void, handleEnergyPeakChange: (peak: string, checked: boolean) => void, onBack: () => void}) => (
-    <div>
-        <EditSectionHeader title="Productivity & Learning" onBack={onBack} />
-        <div className="space-y-4">
-            <div className="grid gap-2">
-                <Label>When are your energy peaks?</Label>
-                <div className="flex items-center space-x-4">
-                    {['Morning', 'Afternoon', 'Evening'].map(peak => (
-                        <div key={peak} className="flex items-center space-x-2">
-                            <Checkbox id={`peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => handleEnergyPeakChange(peak, !!checked)} />
-                            <Label htmlFor={`peak-${peak}`}>{peak}</Label>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="fixedEventsText">Other fixed commitments?</Label>
-                <Textarea id="fixedEventsText" placeholder="e.g., Team meeting every Mon at 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => handlePrefChange('fixedEventsText', e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="pastLearnings">Past planning learnings/obstacles?</Label>
-                <Textarea id="pastLearnings" placeholder="e.g., Better not to set more than 2 large tasks per day." value={preferences.pastLearnings ?? ''} onChange={e => handlePrefChange('pastLearnings', e.target.value)} />
-            </div>
-        </div>
-    </div>
-));
-EditProductivity.displayName = 'EditProductivity';
-
-const InteractiveSummary = memo(({ preferences, setEditingSection }: { preferences: any, setEditingSection: (section: EditingSection) => void }) => {
-    const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const activeHabits = [
-        preferences.sportEnabled && "sport",
-        preferences.meditationEnabled && "meditation",
-        preferences.readingEnabled && "reading"
-    ].filter(Boolean).join(", ");
-    const workDaysString = preferences.workDays?.map((d: number) => weekDays[d]).join(', ') || 'no';
-
-    const SummaryButton = ({ children }: { children: React.ReactNode }) => (
-        <Button variant="link" className="p-0 h-auto text-base font-semibold text-primary">{children}</Button>
-    );
-
-    return (
-        <div className="space-y-4 text-base text-muted-foreground p-1">
-            <p>
-                Each day includes <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.sleepDuration} hours</span> of sleep</Button>, <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.mealsPerDay} meals</span></Button>, and <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.restTime} hours</span> of rest</Button>.
-            </p>
-             <p>
-                Work is scheduled on <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('work')}><span className="font-semibold text-primary">{workDaysString}</span> days</Button> from <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('work')}><span className="font-semibold text-primary">{preferences.workStartTime}</span> to <span className="font-semibold text-primary">{preferences.workEndTime}</span></Button>.
-            </p>
-            <p>
-                Your energy peaks are in the <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('productivity')}><span className="font-semibold text-primary">{preferences.energyPeaks?.join(', ') || 'not set'}</span></Button>.
-            </p>
-            <p>
-                Your habits are: <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('habits')}><span className="font-semibold text-primary">{activeHabits || "none"}</span></Button>.
-            </p>
-             <p className="text-sm pt-4">
-                To adjust any of these settings, click on the highlighted text. You can also edit your fixed events or past learnings in the <Button variant="link" className="p-0 h-auto text-sm" onClick={() => setEditingSection('productivity')}>Productivity</Button> section.
-            </p>
-        </div>
-    );
-});
-InteractiveSummary.displayName = 'InteractiveSummary';
-
-
-const FormView = memo(({ inboxTasks, selectedTasks, onTaskSelection, preferences, isPrefLoading, numberOfDays, onPrefChange, onEnergyPeakChange, onWorkDayToggle, onNumberOfDaysChange, onGenerate }: { inboxTasks: ScheduleItem[]; selectedTasks: Set<string>; onTaskSelection: (taskId: string) => void; preferences: Record<string, any>; isPrefLoading: boolean; numberOfDays: number; onPrefChange: (id: string, value: any) => void; onEnergyPeakChange: (peak: string, checked: boolean) => void; onWorkDayToggle: (day: number) => void; onNumberOfDaysChange: (days: number) => void; onGenerate: () => void; }) => {
+const SummaryView = memo((props: any) => {
     const [editingSection, setEditingSection] = useState<EditingSection>(null);
+    const { preferences, onPrefChange, onEnergyPeakChange, onWorkDayToggle } = props;
+
+    const InteractiveSummary = () => {
+        const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const activeHabits = [
+            preferences.sportEnabled && "sport",
+            preferences.meditationEnabled && "meditation",
+            preferences.readingEnabled && "reading"
+        ].filter(Boolean).join(", ");
+        const workDaysString = preferences.workDays?.map((d: number) => weekDays[d]).join(', ') || 'no';
+
+        return (
+            <div className="space-y-4 text-base text-muted-foreground p-1">
+                <p>Each day includes <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.sleepDuration} hours</span> of sleep</Button>, <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.mealsPerDay} meals</span></Button>, and <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.restTime} hours</span> of rest</Button>.</p>
+                <p>Work is scheduled on <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('work')}><span className="font-semibold text-primary">{workDaysString}</span> days</Button> from <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('work')}><span className="font-semibold text-primary">{preferences.workStartTime}</span> to <span className="font-semibold text-primary">{preferences.workEndTime}</span></Button>.</p>
+                <p>Your energy peaks are in the <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('productivity')}><span className="font-semibold text-primary">{preferences.energyPeaks?.join(', ') || 'not set'}</span></Button>.</p>
+                <p>Your habits are: <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('habits')}><span className="font-semibold text-primary">{activeHabits || "none"}</span></Button>.</p>
+                <p className="text-sm pt-4">To adjust any of these settings, click on the highlighted text. You can also edit your fixed events or past learnings in the <Button variant="link" className="p-0 h-auto text-sm" onClick={() => setEditingSection('productivity')}>Productivity</Button> section.</p>
+            </div>
+        );
+    };
 
     const renderRightPane = () => {
-        if (isPrefLoading) {
+        if (props.isPrefLoading) {
             return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
         }
 
         switch (editingSection) {
-            case 'daily': return <EditDailyNeeds preferences={preferences} handlePrefChange={onPrefChange} onBack={() => setEditingSection(null)} />;
-            case 'habits': return <EditHabits preferences={preferences} handlePrefChange={onPrefChange} onBack={() => setEditingSection(null)} />;
-            case 'work': return <EditWorkSchedule preferences={preferences} handlePrefChange={onPrefChange} handleWorkDayToggle={onWorkDayToggle} onBack={() => setEditingSection(null)} />;
-            case 'productivity': return <EditProductivity preferences={preferences} handlePrefChange={onPrefChange} handleEnergyPeakChange={onEnergyPeakChange} onBack={() => setEditingSection(null)} />;
-            default: return <InteractiveSummary preferences={preferences} setEditingSection={setEditingSection} />;
+            case 'daily': return <div><EditSectionHeader title="Daily Needs" onBack={() => setEditingSection(null)} /><DailyNeeds preferences={preferences} onPrefChange={onPrefChange} /></div>;
+            case 'habits': return <div><EditSectionHeader title="Habits & Hobbies" onBack={() => setEditingSection(null)} /><HabitsAndHobbies preferences={preferences} onPrefChange={onPrefChange} /></div>;
+            case 'work': return <div><EditSectionHeader title="Work/Study Schedule" onBack={() => setEditingSection(null)} /><WorkSchedule preferences={preferences} onPrefChange={onPrefChange} onWorkDayToggle={onWorkDayToggle} /></div>;
+            case 'productivity': return <div><EditSectionHeader title="Productivity & Learning" onBack={() => setEditingSection(null)} /><ProductivitySettings preferences={preferences} onPrefChange={onPrefChange} onEnergyPeakChange={onEnergyPeakChange} /></div>;
+            default: return <InteractiveSummary />;
         }
     }
 
     return (
-        <>
-            <div className="grid md:grid-cols-2 gap-8 my-4 flex-1 min-h-0">
-                {/* Left Pane */}
-                <div className="flex flex-col gap-6">
-                    <div>
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Target /> What are we doing?</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <Label className="font-semibold">Select tasks from inbox</Label>
-                                <Card className="mt-2 max-h-[150px] flex flex-col"><CardContent className="p-2 flex-1 overflow-hidden"><ScrollArea className="h-full pr-4"><div className="space-y-2">
-                                    {inboxTasks.length > 0 ? (inboxTasks.map(task => (<div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted"><Checkbox id={`task-${task.id}`} onCheckedChange={() => onTaskSelection(task.id)} checked={selectedTasks.has(task.id)} /><Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label></div>))) 
-                                    : (<p className="text-sm text-muted-foreground text-center py-4">Your inbox is empty.</p>)}
-                                </div></ScrollArea></CardContent></Card>
-                            </div>
-                             <div>
-                                <Label htmlFor="mainGoals" className="font-semibold">What are your main goals for this period?</Label>
-                                <Textarea id="mainGoals" placeholder="e.g., Launch new project, prepare for marathon, read 3 books." value={preferences.mainGoals ?? ''} onChange={e => onPrefChange('mainGoals', e.target.value)} className="mt-2 min-h-[100px]" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Pane */}
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                    <ScrollArea className="h-full pr-4">
-                        {renderRightPane()}
-                    </ScrollArea>
-                </div>
-            </div>
-            <DialogFooter className="justify-between pt-4 border-t">
-                <div className="flex items-center gap-4">
-                    <Label htmlFor="numberOfDays" className="whitespace-nowrap">Generate for</Label>
-                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => onNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
-                    <Label htmlFor="numberOfDays" className="whitespace-nowrap">days</Label>
-                </div>
-                <Button onClick={onGenerate} disabled={selectedTasks.size === 0}><Wand2 className="mr-2 h-4 w-4" />Generate Schedule</Button>
-            </DialogFooter>
-        </>
+        <div className="grid md:grid-cols-2 gap-8 my-4 flex-1 min-h-0">
+            <ScrollArea className="pr-4"><TaskSelection {...props} /></ScrollArea>
+            <div className="bg-secondary/50 p-4 rounded-lg"><ScrollArea className="h-full pr-4">{renderRightPane()}</ScrollArea></div>
+        </div>
     );
 });
-FormView.displayName = 'FormView';
+SummaryView.displayName = 'SummaryView';
 
-
-export default function FullScheduleGenerator({ open, onOpenChange, userId }: FullScheduleGeneratorProps) {
+// --- Main Component ---
+export default function FullScheduleGenerator({ open, onOpenChange, userId }: { open: boolean; onOpenChange: (open: boolean) => void; userId: string; }) {
   const { toast } = useToast();
   const [view, setView] = useState<ViewType>('form');
+  const [layout, setLayout] = useState<LayoutType>('summary');
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<Record<string, any>>(defaultPreferences);
@@ -549,13 +563,43 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         return { ...p, workDays: Array.from(currentWorkDays).sort() };
     });
   }, []);
+
+  const formProps = {
+    inboxTasks,
+    selectedTasks,
+    onTaskSelection: handleTaskSelection,
+    preferences,
+    isPrefLoading,
+    numberOfDays,
+    onPrefChange: handlePrefChange,
+    onEnergyPeakChange: handleEnergyPeakChange,
+    onWorkDayToggle: handleWorkDayToggle,
+    onNumberOfDaysChange: setNumberOfDays,
+    onGenerate: handleGenerate
+  };
   
   const renderContent = () => {
     switch (view) {
         case 'loading': return <div className="h-full"><GenerationProgress /></div>;
         case 'results': return <ResultsView suggestions={suggestions} onSetView={setView} onAddEvent={handleAddEvent} onAddAll={handleAddAll} onResetState={resetState} onOpenChange={handleOpenChange} />;
         case 'form':
-        default: return <FormView inboxTasks={inboxTasks} selectedTasks={selectedTasks} onTaskSelection={handleTaskSelection} preferences={preferences} isPrefLoading={isPrefLoading} numberOfDays={numberOfDays} onPrefChange={handlePrefChange} onEnergyPeakChange={handleEnergyPeakChange} onWorkDayToggle={handleWorkDayToggle} onNumberOfDaysChange={setNumberOfDays} onGenerate={handleGenerate} />;
+        default: 
+            return (
+                <>
+                  {layout === 'columns' && <ColumnsView {...formProps} />}
+                  {layout === 'tabs' && <TabsView {...formProps} />}
+                  {layout === 'summary' && <SummaryView {...formProps} />}
+
+                  <DialogFooter className="justify-between pt-4 border-t">
+                      <div className="flex items-center gap-4">
+                          <Label htmlFor="numberOfDays" className="whitespace-nowrap">Generate for</Label>
+                          <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
+                          <Label htmlFor="numberOfDays" className="whitespace-nowrap">days</Label>
+                      </div>
+                      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}><Wand2 className="mr-2 h-4 w-4" />Generate Schedule</Button>
+                  </DialogFooter>
+                </>
+            );
     }
   }
 
@@ -563,13 +607,22 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="flex items-center gap-2"><Wand2 className="h-5 w-5 text-primary" />Schedule Generator</DialogTitle>
-          <DialogDescription>The AI assistant will help you create the perfect schedule. Select tasks and adjust your preferences.</DialogDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <DialogTitle className="flex items-center gap-2"><Wand2 className="h-5 w-5 text-primary" />Schedule Generator</DialogTitle>
+              <DialogDescription>The AI assistant will help you create the perfect schedule. Select tasks and adjust your preferences.</DialogDescription>
+            </div>
+            {view === 'form' && (
+                <ToggleGroup type="single" value={layout} onValueChange={(value) => value && setLayout(value as LayoutType)} aria-label="Layout mode">
+                    <ToggleGroupItem value="columns" aria-label="Columns view"><Columns className="h-4 w-4"/></ToggleGroupItem>
+                    <ToggleGroupItem value="tabs" aria-label="Tabs view"><TabsIcon className="h-4 w-4"/></ToggleGroupItem>
+                    <ToggleGroupItem value="summary" aria-label="Summary view"><MessageSquareQuote className="h-4 w-4"/></ToggleGroupItem>
+                </ToggleGroup>
+            )}
+          </div>
         </DialogHeader>
         <div className="flex-1 flex flex-col min-h-0 px-6 pb-6">{renderContent()}</div>
       </DialogContent>
     </Dialog>
   );
 }
-
-    
