@@ -38,9 +38,9 @@ const prompt = ai.definePrompt({
     - **Meals:** Based on {{{preferences.mealsPerDay}}} meals per day. Allocate a reasonable time for each.
     - **Rest:** Based on {{{preferences.restTime}}} hours. This should be broken into smaller breaks.
   - Also incorporate fixed events, habits and self-care.
-    - Sport: {{{preferences.sportFrequency}}} times a week for {{{preferences.sportDuration}}} minutes.
-    - Meditation: {{{preferences.meditationFrequency}}} times a week for {{{preferences.meditationDuration}}} minutes.
-    - Reading: {{{preferences.readingFrequency}}} times a week for {{{preferences.readingDuration}}} minutes.
+    - Sport: {{{preferences.sportFrequency}}} times a week for {{{preferences.sportDuration}}} minutes. Schedule it during {{{preferences.sportPreferredTime}}} if specified.
+    - Meditation: {{{preferences.meditationFrequency}}} times a week for {{{preferences.meditationDuration}}} minutes. Schedule it during {{{preferences.meditationPreferredTime}}} if specified.
+    - Reading: {{{preferences.readingFrequency}}} times a week for {{{preferences.readingDuration}}} minutes. Schedule it during {{{preferences.readingPreferredTime}}} if specified.
   - Use the free-form text for other fixed events: {{{preferences.fixedEventsText}}}
   - Place all these newly created routine events into the 'routineEvents' array in the output.
 

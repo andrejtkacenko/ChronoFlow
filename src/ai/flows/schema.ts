@@ -35,10 +35,13 @@ const PreferencesSchema = z.object({
     ),
   sportFrequency: z.number().optional().describe('How many times a week the user does sport.'),
   sportDuration: z.number().optional().describe('Duration of a sport session in minutes.'),
+  sportPreferredTime: z.string().optional().describe('Preferred time for sport (Утро, День, Вечер, Любое).'),
   meditationFrequency: z.number().optional().describe('How many times a week the user meditates.'),
   meditationDuration: z.number().optional().describe('Duration of a meditation session in minutes.'),
+  meditationPreferredTime: z.string().optional().describe('Preferred time for meditation (Утро, День, Вечер, Любое).'),
   readingFrequency: z.number().optional().describe('How many times a week the user reads.'),
   readingDuration: z.number().optional().describe('Duration of a reading session in minutes.'),
+  readingPreferredTime: z.string().optional().describe('Preferred time for reading (Утро, День, Вечер, Любое).'),
   fixedEventsText: z
     .string()
     .optional()

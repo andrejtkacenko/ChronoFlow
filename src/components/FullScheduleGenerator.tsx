@@ -30,7 +30,13 @@ import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { Switch } from './ui/switch';
 import { Slider } from './ui/slider';
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface FullScheduleGeneratorProps {
   open: boolean;
@@ -47,12 +53,15 @@ const defaultPreferences = {
   sportEnabled: false,
   sportFrequency: 3,
   sportDuration: 45,
+  sportPreferredTime: 'Любое',
   meditationEnabled: false,
   meditationFrequency: 5,
   meditationDuration: 15,
+  meditationPreferredTime: 'Любое',
   readingEnabled: false,
   readingFrequency: 4,
   readingDuration: 30,
+  readingPreferredTime: 'Любое',
   fixedEventsText: '',
   pastLearnings: '',
 };
@@ -160,6 +169,7 @@ const HabitBuilder = memo(({
     isEnabled,
     frequency,
     duration,
+    preferredTime,
     onPrefChange,
 }: {
     habitName: string;
@@ -168,6 +178,7 @@ const HabitBuilder = memo(({
     isEnabled: boolean;
     frequency: number;
     duration: number;
+    preferredTime: string;
     onPrefChange: (id: string, value: any) => void;
 }) => {
     return (
@@ -206,6 +217,23 @@ const HabitBuilder = memo(({
                            onValueChange={(value) => onPrefChange(`${habitKey}Duration`, value[0])}
                            min={15} max={120} step={15}
                         />
+                    </div>
+                    <div>
+                      <Label>Предпочтительное время</Label>
+                      <Select
+                        value={preferredTime}
+                        onValueChange={(value) => onPrefChange(`${habitKey}PreferredTime`, value)}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Выберите время" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Любое">Любое</SelectItem>
+                          <SelectItem value="Утро">Утро</SelectItem>
+                          <SelectItem value="День">День</SelectItem>
+                          <SelectItem value="Вечер">Вечер</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                 </div>
             )}
@@ -316,6 +344,7 @@ const RightColumn = memo(({
                     isEnabled={preferences.sportEnabled}
                     frequency={preferences.sportFrequency}
                     duration={preferences.sportDuration}
+                    preferredTime={preferences.sportPreferredTime}
                     onPrefChange={onPrefChange}
                 />
                 <HabitBuilder
@@ -325,6 +354,7 @@ const RightColumn = memo(({
                     isEnabled={preferences.meditationEnabled}
                     frequency={preferences.meditationFrequency}
                     duration={preferences.meditationDuration}
+                    preferredTime={preferences.meditationPreferredTime}
                     onPrefChange={onPrefChange}
                 />
                 <HabitBuilder
@@ -334,6 +364,7 @@ const RightColumn = memo(({
                     isEnabled={preferences.readingEnabled}
                     frequency={preferences.readingFrequency}
                     duration={preferences.readingDuration}
+                    preferredTime={preferences.readingPreferredTime}
                     onPrefChange={onPrefChange}
                 />
             </div>
