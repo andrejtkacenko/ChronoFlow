@@ -88,17 +88,12 @@ const RunningTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string)
 
 const ReadingTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
   const [bookTitle, setBookTitle] = useState('');
-  const [readType, setReadType] = useState<'pages' | 'chapters'>('pages');
-  const [readValue, setReadValue] = useState('');
+  const [readGoal, setReadGoal] = useState('');
   return (
     <div className="space-y-4">
-      <Input id="book-title" placeholder="Мастер и Маргарита" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} required />
-      <ToggleGroup type="single" defaultValue="pages" value={readType} onValueChange={(v) => { if(v) setReadType(v as any)}} className="grid grid-cols-2">
-         <ToggleGroupItem value="pages">Страницы</ToggleGroupItem>
-         <ToggleGroupItem value="chapters">Главы</ToggleGroupItem>
-      </ToggleGroup>
-      <Input type="number" placeholder={readType === 'pages' ? 'например, 50' : 'например, 3'} value={readValue} onChange={(e) => setReadValue(e.target.value)} required />
-      <Button onClick={() => bookTitle && readValue && onSubmit(`Чтение: ${bookTitle} (${readValue} ${readType === 'pages' ? 'страниц' : 'глав'})`, 'BookOpen')} className="w-full">Применить</Button>
+      <Input id="book-title" placeholder="Название книги, например: Мастер и Маргарита" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} required />
+      <Input id="read-goal" placeholder="Что прочесть, например: 50 страниц или 3 главы" value={readGoal} onChange={(e) => setReadGoal(e.target.value)} required />
+      <Button onClick={() => bookTitle && readGoal && onSubmit(`Чтение: ${bookTitle} (${readGoal})`, 'BookOpen')} className="w-full">Применить</Button>
     </div>
   )
 };
@@ -545,5 +540,3 @@ export default function NewEventDialog({
     </Dialog>
   );
 }
-
-    
