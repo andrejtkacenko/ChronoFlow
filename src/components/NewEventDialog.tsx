@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import { iconMap, eventColors, ScheduleItem } from '@/lib/types';
 import { format, addMinutes, parse } from 'date-fns';
 import { addScheduleItem, updateScheduleItem, deleteScheduleItem, getSuggestedTimeSlotsForTask } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2, Sparkles, Wand2 } from 'lucide-react';
+import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2, Sparkles, Wand2, ArrowLeft, PersonStanding as Run, BookOpen, BrainCircuit, Dumbbell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -44,6 +44,112 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import SmartScheduler from './SmartScheduler';
 import type { SuggestedSlot } from '@/ai/flows/schema';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+
+
+// --- Task Template Components ---
+type Template = 'running' | 'reading' | 'meditation' | 'gym';
+
+const templates: { id: Template; name: string; icon: React.ElementType }[] = [
+  { id: 'running', name: 'Пробежка', icon: Run },
+  { id: 'reading', name: 'Чтение', icon: BookOpen },
+  { id: 'meditation', name: 'Медитация', icon: BrainCircuit },
+  { id: 'gym', name: 'Тренировка', icon: Dumbbell },
+];
+
+const TaskTemplateSelector = ({ onSelectTemplate }: { onSelectTemplate: (templateId: Template) => void }) => (
+  <div className='p-4 border-t'>
+    <p className="text-sm font-medium mb-2 text-muted-foreground">Или используйте шаблон:</p>
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {templates.map((template) => (
+        <Button key={template.id} variant="outline" size="sm" className="h-auto flex-col gap-1 py-2" onClick={() => onSelectTemplate(template.id)}>
+          <template.icon className="size-5 mb-1 text-primary" />
+          <span className="text-xs">{template.name}</span>
+        </Button>
+      ))}
+    </div>
+  </div>
+);
+
+const RunningTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
+  const [runType, setRunType] = useState<'distance' | 'duration'>('distance');
+  const [runValue, setRunValue] = useState('');
+  return (
+    <div className="space-y-4">
+      <RadioGroup defaultValue="distance" value={runType} onValueChange={(v) => setRunType(v as any)}>
+        <div className="flex items-center space-x-2"><RadioGroupItem value="distance" id="r1" /><Label htmlFor="r1">Дистанция (км)</Label></div>
+        <div className="flex items-center space-x-2"><RadioGroupItem value="duration" id="r2" /><Label htmlFor="r2">Длительность (минут)</Label></div>
+      </RadioGroup>
+      <Input type="number" placeholder={runType === 'distance' ? 'например, 5' : 'например, 30'} value={runValue} onChange={(e) => setRunValue(e.target.value)} required />
+      <Button onClick={() => runValue && onSubmit(`Пробежка: ${runValue} ${runType === 'distance' ? 'км' : 'минут'}`, 'PersonStanding')} className="w-full">Применить</Button>
+    </div>
+  );
+};
+
+const ReadingTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
+  const [bookTitle, setBookTitle] = useState('');
+  const [readType, setReadType] = useState<'pages' | 'chapters'>('pages');
+  const [readValue, setReadValue] = useState('');
+  return (
+    <div className="space-y-4">
+      <Input id="book-title" placeholder="Мастер и Маргарита" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} required />
+      <RadioGroup defaultValue="pages" value={readType} onValueChange={(v) => setReadType(v as any)}>
+        <div className="flex items-center space-x-2"><RadioGroupItem value="pages" id="p1" /><Label htmlFor="p1">Количество страниц</Label></div>
+        <div className="flex items-center space-x-2"><RadioGroupItem value="chapters" id="p2" /><Label htmlFor="p2">Количество глав</Label></div>
+      </RadioGroup>
+      <Input type="number" placeholder={readType === 'pages' ? 'например, 50' : 'например, 3'} value={readValue} onChange={(e) => setReadValue(e.target.value)} required />
+      <Button onClick={() => bookTitle && readValue && onSubmit(`Чтение: ${bookTitle} (${readValue} ${readType === 'pages' ? 'страниц' : 'глав'})`, 'BookOpen')} className="w-full">Применить</Button>
+    </div>
+  )
+};
+
+const MeditationTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
+  const [duration, setDuration] = useState('');
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="meditation-duration">Длительность (минут)</Label>
+      <Input id="meditation-duration" type="number" placeholder="например, 20" value={duration} onChange={(e) => setDuration(e.target.value)} required />
+      <Button onClick={() => duration && onSubmit(`Медитация: ${duration} минут`, 'BrainCircuit')} className="w-full">Применить</Button>
+    </div>
+  );
+};
+
+const GymTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
+  const [type, setType] = useState('');
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="gym-type">Тип тренировки</Label>
+      <Input id="gym-type" placeholder="например, Ноги" value={type} onChange={(e) => setType(e.target.value)} required />
+      <Button onClick={() => type && onSubmit(`Тренировка в зале: ${type}`, 'Dumbbell')} className="w-full">Применить</Button>
+    </div>
+  )
+};
+
+const TemplateConfigurator = ({ template, onBack, onApply }: { template: Template, onBack: () => void, onApply: (title: string, icon: string) => void }) => {
+  const selectedTemplate = useMemo(() => templates.find(t => t.id === template), [template]);
+
+  return (
+    <div className="p-4 border-t">
+      <div className="flex items-center gap-2 mb-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="h-7 w-7"><ArrowLeft className="size-4" /></Button>
+        <div className="flex items-center gap-2">
+          <selectedTemplate.icon className="size-5 text-primary" />
+          <h4 className="font-semibold text-sm">{selectedTemplate.name}</h4>
+        </div>
+      </div>
+      <div>
+        {template === 'running' && <RunningTemplate onSubmit={onApply} />}
+        {template === 'reading' && <ReadingTemplate onSubmit={onApply} />}
+        {template === 'meditation' && <MeditationTemplate onSubmit={onApply} />}
+        {template === 'gym' && <GymTemplate onSubmit={onApply} />}
+      </div>
+    </div>
+  );
+};
+
+
+
+// --- Main Dialog Component ---
 
 interface NewEventDialogProps {
   isOpen: boolean;
@@ -80,6 +186,7 @@ export default function NewEventDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [isAllDay, setIsAllDay] = useState(false);
   const [itemType, setItemType] = useState<'event' | 'task'>('event');
+  const [template, setTemplate] = useState<Template | null>(null);
 
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [startTime, setStartTime] = useState('09:00');
@@ -103,6 +210,7 @@ export default function NewEventDialog({
       setIsLoading(false);
       setSuggestions([]);
       setIsAISuggesting(false);
+      setTemplate(null);
   }, []);
 
   useEffect(() => {
@@ -121,12 +229,9 @@ export default function NewEventDialog({
         } else {
           setIsAllDay(false);
         }
-
-        // If it's an unscheduled task, auto-fetch suggestions
         if (existingEvent.type === 'task' && !existingEvent.date) {
             fetchSuggestions(existingEvent);
         }
-
       } else if (newEventTime) { // Create event from grid
         resetForm();
         setItemType('event');
@@ -143,6 +248,7 @@ export default function NewEventDialog({
   }, [isOpen, existingEvent, newEventTime, isNewTask, resetForm]);
 
   const fetchSuggestions = async (task: ScheduleItem) => {
+      if (!task.title) return;
       setIsAISuggesting(true);
       setSuggestions([]);
       const result = await getSuggestedTimeSlotsForTask(task, userId);
@@ -179,7 +285,7 @@ export default function NewEventDialog({
     let finalEndTime: string | null = endTime;
     let finalDate: string | null = date ? format(date, 'yyyy-MM-dd') : null;
 
-    if (!date) { // Unscheduled task
+    if (itemType === 'task' && !date) {
       finalStartTime = null;
       finalEndTime = null;
       finalDuration = null;
@@ -189,7 +295,6 @@ export default function NewEventDialog({
         finalDuration = 24 * 60 -1;
         finalEndTime = '23:59';
     }
-
 
     const eventData = {
       title,
@@ -240,8 +345,8 @@ export default function NewEventDialog({
       setDate(parse(slot.date, 'yyyy-MM-dd', new Date()));
       setStartTime(slot.startTime);
       setDuration(slot.duration);
-      setItemType('event'); // It's now an event because it's being scheduled
-      setSuggestions([]); // Clear suggestions
+      setItemType('event');
+      setSuggestions([]);
   };
 
   const handleDateSelect = (selectedDate?: Date) => {
@@ -250,16 +355,21 @@ export default function NewEventDialog({
         setItemType('event');
     }
   }
+
+  const handleTemplateApply = (templateTitle: string, templateIcon: string) => {
+    setTitle(templateTitle);
+    setIcon(templateIcon);
+    setTemplate(null);
+  }
   
   if (!isOpen) return null;
 
   const inputStyles = "border-0 border-b border-transparent focus-visible:border-primary focus-visible:ring-0 shadow-none rounded-none px-0";
-  const isScheduled = !!date;
+  const isScheduled = itemType === 'event' && !!date;
 
   return (
-    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0">
+      <DialogContent className="max-w-md p-0 gap-0">
         <DialogHeader className="p-6 pb-2">
            <DialogTitle className="sr-only">{isEditing ? `Edit ${itemType}` : `Create ${itemType}`}</DialogTitle>
            <Input
@@ -272,14 +382,13 @@ export default function NewEventDialog({
             />
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="px-6 pb-6 space-y-4">
-            <div className="pl-0">
+            <div className="px-6 space-y-4">
                  <Tabs 
                     value={itemType} 
                     onValueChange={(value) => {
                         const newType = value as 'event' | 'task';
                         setItemType(newType);
-                        if (newType === 'task') {
+                        if (newType === 'task' && !isEditing) {
                             setDate(undefined);
                         } else if (newType === 'event' && !date) {
                             setDate(new Date());
@@ -292,187 +401,147 @@ export default function NewEventDialog({
                         <TabsTrigger value="task">Задача</TabsTrigger>
                     </TabsList>
                  </Tabs>
-            </div>
-
-            <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-4">
-                    <Clock className="size-5 text-muted-foreground" />
-                    {isScheduled ? (
-                        <div className="flex items-center gap-2 flex-1 flex-wrap">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" className="px-2 py-1 h-auto text-sm font-medium">{format(date!, 'eeee, d MMMM')}</Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={date} onSelect={handleDateSelect} initialFocus />
-                                </PopoverContent>
-                            </Popover>
-                            {!isAllDay && (
-                                <div className='flex items-center gap-2'>
-                                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
-                                    <span>-</span>
-                                    <Input type="time" value={endTime} disabled className="w-28 bg-transparent" />
-                                </div>
-                            )}
-                            <div className="flex-1 min-w-[20px]"></div>
-                            <div className="flex items-center space-x-2">
-                                <Switch id="all-day" checked={isAllDay} onCheckedChange={setIsAllDay} />
-                                <Label htmlFor="all-day">Весь день</Label>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2 flex-1">
-                            <Button variant="outline" type="button" onClick={() => handleDateSelect(new Date())}>Назначить дату</Button>
-                        </div>
-                    )}
-                </div>
-
-                {isAISuggesting && (
-                    <div className="flex items-center justify-center p-4">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">Ищем свободные слоты...</span>
-                    </div>
-                )}
-                {suggestions.length > 0 && (
-                    <div className='space-y-2'>
-                        <Label>Предложения от AI:</Label>
-                        <div className="flex flex-wrap gap-2">
-                            {suggestions.map((slot, i) => (
-                                <Button key={i} variant="outline" size="sm" onClick={() => handleApplySuggestion(slot)}>
-                                    {format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'd MMM')}, {slot.startTime}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-
-                <Separator />
-                
-                <div className="flex items-start gap-4">
-                    <AlignLeft className="size-5 text-muted-foreground mt-2" />
-                    <Textarea
-                        id="description"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Добавить описание или файл с Google Диска"
-                        className={cn(inputStyles, "min-h-[60px]")}
-                        disabled={isLoading}
-                    />
-                </div>
-
-                {itemType === 'event' && isScheduled && (
-                  <>
-                    <Separator />
-                    <div className="flex items-center gap-4">
-                        <Users className="size-5 text-muted-foreground" />
-                        <Input placeholder="Добавьте гостей" className={inputStyles} />
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <MapPin className="size-5 text-muted-foreground" />
-                        <Input placeholder="Добавить местоположение" className={inputStyles} />
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <Video className="size-5 text-muted-foreground" />
-                        <Button variant="outline" type="button">Добавить видеоконференцию Google Meet</Button>
-                    </div>
-                  </>
-                )}
-                
-                <Separator />
-
-                <div className="flex items-center gap-4">
-                    <Bell className="size-5 text-muted-foreground" />
-                    <Select defaultValue="30" disabled={!isScheduled}>
-                        <SelectTrigger className="w-auto border-none shadow-none focus:ring-0 px-0 disabled:opacity-100 disabled:cursor-not-allowed">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="10">За 10 минут</SelectItem>
-                            <SelectItem value="30">За 30 минут</SelectItem>
-                            <SelectItem value="60">За 1 час</SelectItem>
-                        </SelectContent>
-                    </Select>
-                     <Button variant="link" type="button" className="p-0 h-auto text-muted-foreground" disabled={!isScheduled}>Добавить уведомление</Button>
-                </div>
-
-                <Separator />
 
                 <div className="space-y-4 pt-2">
-                     <div className="flex items-start gap-4">
-                        <Palette className="size-5 text-muted-foreground mt-1" />
-                        <div className="flex flex-col gap-2 w-full">
-                           <Label className="text-sm font-medium">Цвет события</Label>
-                           <div className="flex flex-wrap gap-2">
-                            {eventColors.map((c) => (
-                              <Button
-                                key={c}
-                                type="button"
-                                variant="outline"
-                                className={cn(
-                                  'size-8 rounded-full p-0 border-2',
-                                  color === c && 'border-primary ring-2 ring-primary/50'
+                    <div className="flex items-center gap-4">
+                        <Clock className="size-5 text-muted-foreground" />
+                        {isScheduled ? (
+                            <div className="flex items-center gap-2 flex-1 flex-wrap">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" className="px-2 py-1 h-auto text-sm font-medium">{format(date!, 'eeee, d MMMM')}</Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar mode="single" selected={date} onSelect={handleDateSelect} initialFocus />
+                                    </PopoverContent>
+                                </Popover>
+                                {!isAllDay && (
+                                    <div className='flex items-center gap-2'>
+                                        <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" />
+                                        <span>-</span>
+                                        <Input type="time" value={endTime} disabled className="w-28 bg-transparent" />
+                                    </div>
                                 )}
-                                style={{ backgroundColor: c }}
-                                onClick={() => setColor(c)}
-                                disabled={isLoading}
-                              />
-                            ))}
-                          </div>
-                        </div>
+                                <div className="flex-1 min-w-[20px]"></div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="all-day" checked={isAllDay} onCheckedChange={setIsAllDay} />
+                                    <Label htmlFor="all-day">Весь день</Label>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 flex-1">
+                                <Button variant="outline" type="button" onClick={() => handleDateSelect(new Date())}>Назначить дату</Button>
+                                {(isEditing && existingEvent?.title) && <Button variant="outline" type="button" onClick={() => fetchSuggestions(existingEvent)}>Найти время</Button>}
+                            </div>
+                        )}
                     </div>
-                     <div className="flex items-center gap-4">
-                        <Aperture className="size-5 text-muted-foreground" />
-                        <div className="flex flex-col gap-2">
-                            <Label className="text-sm font-medium">Иконка</Label>
-                            <Select value={icon} onValueChange={setIcon}>
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="Icon" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {Object.keys(iconMap).map((iconName) => (
-                                        <SelectItem key={iconName} value={iconName}>
-                                            {iconName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+
+                    {isAISuggesting && (
+                        <div className="flex items-center justify-center p-4">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <span className="text-sm text-muted-foreground">Ищем свободные слоты...</span>
+                        </div>
+                    )}
+                    {suggestions.length > 0 && (
+                        <div className='space-y-2'>
+                            <Label>Предложения от AI:</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {suggestions.map((slot, i) => (
+                                    <Button key={i} variant="outline" size="sm" onClick={() => handleApplySuggestion(slot)}>
+                                        {format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'd MMM')}, {slot.startTime}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <Separator />
+                    
+                    <div className="flex items-start gap-4">
+                        <AlignLeft className="size-5 text-muted-foreground mt-2" />
+                        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Добавить описание" className={cn(inputStyles, "min-h-[60px]")} disabled={isLoading} />
+                    </div>
+
+                    {itemType === 'event' && isScheduled && (
+                      <>
+                        <Separator />
+                        <div className="flex items-center gap-4"><Users className="size-5 text-muted-foreground" /><Input placeholder="Добавьте гостей" className={inputStyles} /></div>
+                        <div className="flex items-center gap-4"><MapPin className="size-5 text-muted-foreground" /><Input placeholder="Добавить местоположение" className={inputStyles} /></div>
+                        <div className="flex items-center gap-4"><Video className="size-5 text-muted-foreground" /><Button variant="outline" type="button">Добавить видеоконференцию</Button></div>
+                      </>
+                    )}
+                    
+                    <Separator />
+
+                    <div className="flex items-center gap-4">
+                        <Bell className="size-5 text-muted-foreground" />
+                        <Select defaultValue="30" disabled={!isScheduled}>
+                            <SelectTrigger className="w-auto border-none shadow-none focus:ring-0 px-0 disabled:opacity-100 disabled:cursor-not-allowed"><SelectValue /></SelectTrigger>
+                            <SelectContent><SelectItem value="10">За 10 минут</SelectItem><SelectItem value="30">За 30 минут</SelectItem><SelectItem value="60">За 1 час</SelectItem></SelectContent>
+                        </Select>
+                        <Button variant="link" type="button" className="p-0 h-auto text-muted-foreground" disabled={!isScheduled}>Добавить уведомление</Button>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4 pt-2">
+                        <div className="flex items-start gap-4">
+                            <Palette className="size-5 text-muted-foreground mt-1" />
+                            <div className="flex flex-col gap-2 w-full">
+                               <Label className="text-sm font-medium">Цвет события</Label>
+                               <div className="flex flex-wrap gap-2">
+                                {eventColors.map((c) => ( <Button key={c} type="button" variant="outline" className={cn('size-8 rounded-full p-0 border-2', color === c && 'border-primary ring-2 ring-primary/50')} style={{ backgroundColor: c }} onClick={() => setColor(c)} disabled={isLoading} /> ))}
+                              </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Aperture className="size-5 text-muted-foreground" />
+                            <div className="flex flex-col gap-2">
+                                <Label className="text-sm font-medium">Иконка</Label>
+                                <Select value={icon} onValueChange={setIcon}>
+                                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Icon" /></SelectTrigger>
+                                    <SelectContent>{Object.keys(iconMap).map((iconName) => ( <SelectItem key={iconName} value={iconName}>{iconName}</SelectItem> ))}</SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-          </div>
-          <DialogFooter className="bg-muted p-4 flex justify-between">
-            {isEditing ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" type="button" disabled={isLoading}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Удалить
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Это действие нельзя будет отменить. Событие будет навсегда удалено с серверов.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Отмена</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Удалить</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : <div></div>}
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Сохранить
-            </Button>
-          </DialogFooter>
+
+             {/* Template section, only shows for new, unscheduled tasks */}
+            {!isEditing && itemType === 'task' && !date && (
+                !template ? (
+                    <TaskTemplateSelector onSelectTemplate={setTemplate} />
+                ) : (
+                    <TemplateConfigurator template={template} onBack={() => setTemplate(null)} onApply={handleTemplateApply} />
+                )
+            )}
+
+            <DialogFooter className="bg-muted p-4 flex justify-between mt-6">
+                {isEditing ? (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                    <Button variant="destructive" type="button" disabled={isLoading}><Trash2 className="mr-2 h-4 w-4" />Удалить</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                        <AlertDialogDescription>Это действие нельзя будет отменить. Событие будет навсегда удалено с серверов.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Отмена</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>Удалить</AlertDialogAction>
+                    </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+                ) : <div></div>}
+                <Button type="submit" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Сохранить
+                </Button>
+            </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-    </>
   );
 }
