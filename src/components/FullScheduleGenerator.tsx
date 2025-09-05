@@ -630,7 +630,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     const combinedFixedEvents = [
         preferences.combinedFixedEvents,
         preferences.fixedEventsText,
-        preferences.selfCareTime
+        // selfCareTime is now a separate field in the schema, so we don't combine it here anymore
     ].filter(Boolean).join('. ');
 
     const prefsToSave = {
@@ -661,7 +661,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
         preferences: {
             ...prefsToSave,
             // Pass the combined string to the AI
-            fixedEvents: combinedFixedEvents
+            fixedEvents: combinedFixedEvents,
+            selfCareTime: preferences.selfCareTime, // Pass this explicitly
+            pastLearnings: preferences.pastLearnings,
         }, 
         startDate: format(new Date(), 'yyyy-MM-dd'),
         numberOfDays,
