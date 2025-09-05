@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from './ui/switch';
 
 
 interface FullScheduleGeneratorProps {
@@ -165,35 +166,38 @@ const HabitBuilder = memo(({
     const [dur, setDur] = useState('');
 
     useEffect(() => {
-      if (initialValue) {
-        const parts = initialValue.split(',');
-        if (parts.length >= 2) {
-            const freqPart = parts[0].split(':').pop()?.trim() || '';
-            const durPart = parts[1].trim();
-            setFreq(freqPart);
-            setDur(durPart);
+        if (initialValue) {
+            const parts = initialValue.split(',');
+            if (parts.length >= 2) {
+                const freqPart = parts[0].split(':').pop()?.trim() || '';
+                const durPart = parts[1].trim();
+                setFreq(freqPart);
+                setDur(durPart);
+            }
+        } else {
+            setFreq('');
+            setDur('');
         }
-      }
     }, [initialValue]);
 
     const handleUpdate = useCallback((newFreq: string, newDur: string) => {
-        if (newFreq && newDur) {
+        if (isActive && newFreq && newDur) {
             onHabitChange(habitKey, `${habitName}: ${newFreq}, ${newDur}`);
         } else {
             onHabitChange(habitKey, '');
         }
-    }, [habitName, habitKey, onHabitChange]);
+    }, [habitName, habitKey, onHabitChange, isActive]);
 
     const handleFreqChange = (newFreq: string) => {
         setFreq(newFreq);
         handleUpdate(newFreq, dur);
-    }
-    
+    };
+
     const handleDurChange = (newDur: string) => {
         setDur(newDur);
         handleUpdate(freq, newDur);
-    }
-    
+    };
+
     const handleIsActiveChange = (checked: boolean) => {
         setIsActive(checked);
         if (!checked) {
@@ -201,15 +205,21 @@ const HabitBuilder = memo(({
             setDur('');
             onHabitChange(habitKey, '');
         }
-    }
+    };
+    
+    const freqOptions = ['sport', 'reading', 'meditation'].includes(habitKey) 
+        ? ['1 раз в неделю', '2-3 раза в неделю', 'Каждый день'] 
+        : ['1 раз в день', '2 раза в день'];
+    
+    const durOptions = ['15 минут', '30 минут', '45 минут', '1 час', '1.5 часа'];
 
     return (
-        <div className="p-3 rounded-lg bg-card border">
-             <div className="flex items-center space-x-2">
-                <Checkbox
+        <div className="p-3 rounded-lg bg-card border space-y-3">
+             <div className="flex items-center space-x-3">
+                <Switch
                     id={`habit-${habitKey}`}
                     checked={isActive}
-                    onCheckedChange={handleIsActiveChange as (checked: boolean | 'indeterminate') => void}
+                    onCheckedChange={handleIsActiveChange}
                 />
                 <Label htmlFor={`habit-${habitKey}`} className="flex-1 font-semibold flex items-center gap-2 cursor-pointer">
                     <Icon className="size-5 text-primary" />
@@ -217,34 +227,27 @@ const HabitBuilder = memo(({
                 </Label>
             </div>
             {isActive && (
-                 <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t">
-                    <Select onValueChange={handleFreqChange} value={freq}>
-                        <SelectTrigger><SelectValue placeholder="Частота" /></SelectTrigger>
-                        <SelectContent>
-                            {['sport', 'reading', 'meditation'].includes(habitKey) ? (
-                                <>
-                                    <SelectItem value="1 раз в неделю">1 раз в неделю</SelectItem>
-                                    <SelectItem value="2-3 раза в неделю">2-3 раза в неделю</SelectItem>
-                                    <SelectItem value="Каждый день">Каждый день</SelectItem>
-                                </>
-                            ) : (
-                                <>
-                                    <SelectItem value="1 раз в день">1 раз в день</SelectItem>
-                                    <SelectItem value="2 раза в день">2 раза в день</SelectItem>
-                                </>
-                            )}
-                        </SelectContent>
-                    </Select>
-                    <Select onValueChange={handleDurChange} value={dur}>
-                        <SelectTrigger><SelectValue placeholder="Длительность" /></SelectTrigger>
-                        <SelectContent>
-                           <SelectItem value="15 минут">15 минут</SelectItem>
-                           <SelectItem value="30 минут">30 минут</SelectItem>
-                           <SelectItem value="45 минут">45 минут</SelectItem>
-                           <SelectItem value="1 час">1 час</SelectItem>
-                           <SelectItem value="1.5 часа">1.5 часа</SelectItem>
-                        </SelectContent>
-                    </Select>
+                 <div className="space-y-2">
+                     <div>
+                        <Label className="text-xs text-muted-foreground">Частота</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                            {freqOptions.map(option => (
+                                <Button key={option} size="sm" variant={freq === option ? "secondary" : "outline"} onClick={() => handleFreqChange(option)} className="text-xs h-7 px-2">
+                                    {option}
+                                </Button>
+                            ))}
+                        </div>
+                     </div>
+                     <div>
+                        <Label className="text-xs text-muted-foreground">Длительность</Label>
+                         <div className="flex flex-wrap gap-2 mt-1">
+                            {durOptions.map(option => (
+                                <Button key={option} size="sm" variant={dur === option ? "secondary" : "outline"} onClick={() => handleDurChange(option)} className="text-xs h-7 px-2">
+                                    {option}
+                                </Button>
+                            ))}
+                        </div>
+                     </div>
                 </div>
             )}
         </div>
@@ -269,11 +272,17 @@ const Step2_Preferences = memo(({
 }) => {
   
   const handleHabitChange = useCallback((key: string, value: string) => {
-    onPrefChange('fixedEvents', (prevFixedEvents: Record<string, string> | undefined) => ({
-      ...(prevFixedEvents || {}),
-      [key]: value
-    }));
-  }, [onPrefChange]);
+    onPrefChange('fixedEvents', (prevFixedEvents: Record<string, string> | undefined) => {
+        const newFixedEvents = {...(prevFixedEvents || {})};
+        if (value) {
+            newFixedEvents[key] = value;
+        } else {
+            delete newFixedEvents[key];
+        }
+        return newFixedEvents;
+    });
+}, [onPrefChange]);
+
 
   useEffect(() => {
     const fixedEventsObject = (preferences.fixedEvents || {}) as Record<string, string>;
