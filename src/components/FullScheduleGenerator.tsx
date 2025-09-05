@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen, Briefcase, Target, Smile, Zap } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen, Briefcase, Target, Smile, Zap, Edit2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -37,9 +37,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-
+// Main Component
 interface FullScheduleGeneratorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -51,7 +50,7 @@ const defaultPreferences = {
   sleepDuration: 8,
   mealsPerDay: 3,
   restTime: 2,
-  energyPeaks: [],
+  energyPeaks: [] as string[],
   workDays: [1, 2, 3, 4, 5],
   workStartTime: '09:00',
   workEndTime: '18:00',
@@ -72,24 +71,18 @@ const defaultPreferences = {
 };
 
 type GenerationStep = 'routine' | 'tasks' | 'done';
+type ViewType = 'form' | 'results' | 'loading';
+type EditingSection = 'daily' | 'habits' | 'work' | 'productivity' | null;
+
 
 const GenerationProgress = memo(() => {
     const [step, setStep] = useState<GenerationStep>('routine');
     const [isDone, setIsDone] = useState(false);
 
     useEffect(() => {
-        const routineTimer = setTimeout(() => {
-            setStep('tasks');
-        }, 3000); 
-
-        const tasksTimer = setTimeout(() => {
-            setIsDone(true)
-        }, 6000);
-
-        return () => {
-            clearTimeout(routineTimer);
-            clearTimeout(tasksTimer);
-        }
+        const routineTimer = setTimeout(() => setStep('tasks'), 3000); 
+        const tasksTimer = setTimeout(() => setIsDone(true), 6000);
+        return () => { clearTimeout(routineTimer); clearTimeout(tasksTimer); };
     }, []);
 
     const ProgressItem = ({ title, icon, active, done }: { title: string, icon: React.ReactNode, active: boolean, done: boolean }) => (
@@ -97,7 +90,7 @@ const GenerationProgress = memo(() => {
             <div className="flex items-center justify-center size-10 rounded-full bg-secondary shrink-0">
                 {done ? <CheckCircle2 className="size-6 text-primary animate-fade-in" /> : (active ? <Loader2 className="size-6 animate-spin text-primary" /> : icon)}
             </div>
-            <div className="flex flex-col">
+            <div>
                 <p className={cn("font-semibold", active && !done && "text-primary")}>{title}</p>
                 <p className="text-sm text-muted-foreground">
                     {done ? "Completed" : (active ? "In progress..." : "Pending")}
@@ -108,152 +101,17 @@ const GenerationProgress = memo(() => {
 
     return (
         <div className="flex flex-col items-center justify-center h-full p-8 bg-background rounded-lg">
-            <h3 className="text-xl font-semibold">Generating your schedule...</h3>
+            <h3 className="text-xl font-semibold mb-6">Generating your schedule...</h3>
             <div className="space-y-6 w-full max-w-sm">
-                <ProgressItem 
-                    title="Creating routine events" 
-                    icon={<Bed className="size-6 text-muted-foreground" />} 
-                    active={step === 'routine' || step === 'tasks'}
-                    done={step === 'tasks' || isDone}
-                />
-                 <ProgressItem 
-                    title="Scheduling your tasks" 
-                    icon={<Utensils className="size-6 text-muted-foreground" />}
-                    active={step === 'tasks'}
-                    done={isDone}
-                />
+                <ProgressItem title="Creating routine events" icon={<Bed className="size-6 text-muted-foreground" />} active={step === 'routine' || step === 'tasks'} done={step === 'tasks' || isDone} />
+                <ProgressItem title="Scheduling your tasks" icon={<Utensils className="size-6 text-muted-foreground" />} active={step === 'tasks'} done={isDone} />
             </div>
         </div>
     );
 });
 GenerationProgress.displayName = 'GenerationProgress';
 
-
-const TaskSelection = memo(({
-  inboxTasks,
-  selectedTasks,
-  onTaskSelection
-}: {
-  inboxTasks: ScheduleItem[];
-  selectedTasks: Set<string>;
-  onTaskSelection: (taskId: string) => void;
-}) => (
-  <div>
-    <h3 className="text-base font-semibold mb-2">Выберите задачи из инбокса</h3>
-    <Card className="max-h-[200px] flex flex-col">
-      <CardContent className="p-2 flex-1 overflow-hidden">
-        <ScrollArea className="h-full pr-4">
-            <div className="space-y-2">
-                {inboxTasks.length > 0 ? (
-                inboxTasks.map(task => (
-                    <div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
-                    <Checkbox
-                        id={`task-${task.id}`}
-                        onCheckedChange={() => onTaskSelection(task.id)}
-                        checked={selectedTasks.has(task.id)}
-                    />
-                    <Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label>
-                    </div>
-                ))
-                ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">Ваш инбокс пуст.</p>
-                )}
-            </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  </div>
-));
-TaskSelection.displayName = 'TaskSelection';
-
-
-const HabitBuilder = memo(({
-    habitName,
-    habitKey,
-    icon: Icon,
-    isEnabled,
-    frequency,
-    duration,
-    preferredTime,
-    onPrefChange,
-}: {
-    habitName: string;
-    habitKey: string;
-    icon: React.ElementType;
-    isEnabled: boolean;
-    frequency: number;
-    duration: number;
-    preferredTime: string;
-    onPrefChange: (id: string, value: any) => void;
-}) => {
-    return (
-        <div className="p-3 rounded-lg border bg-secondary/50">
-            <div className="flex items-center justify-between">
-                <Label htmlFor={`habit-switch-${habitKey}`} className="flex items-center gap-2 font-semibold">
-                    <Icon className="size-5 text-primary" />
-                    {habitName}
-                </Label>
-                <Switch
-                    id={`habit-switch-${habitKey}`}
-                    checked={isEnabled}
-                    onCheckedChange={(checked) => onPrefChange(`${habitKey}Enabled`, checked)}
-                />
-            </div>
-            {isEnabled && (
-                <div className="mt-4 space-y-4">
-                    <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <Label>Частота (в неделю)</Label>
-                          <span className="text-sm font-medium text-primary">{frequency}</span>
-                        </div>
-                        <Slider
-                           value={[frequency]}
-                           onValueChange={(value) => onPrefChange(`${habitKey}Frequency`, value[0])}
-                           min={1} max={7} step={1}
-                        />
-                    </div>
-                    <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <Label>Длительность (минут)</Label>
-                          <span className="text-sm font-medium text-primary">{duration}</span>
-                        </div>
-                        <Slider
-                           value={[duration]}
-                           onValueChange={(value) => onPrefChange(`${habitKey}Duration`, value[0])}
-                           min={15} max={120} step={15}
-                        />
-                    </div>
-                    <div>
-                      <Label>Предпочтительное время</Label>
-                      <Select
-                        value={preferredTime}
-                        onValueChange={(value) => onPrefChange(`${habitKey}PreferredTime`, value)}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Выберите время" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Любое">Любое</SelectItem>
-                          <SelectItem value="Утро">Утро</SelectItem>
-                          <SelectItem value="День">День</SelectItem>
-                          <SelectItem value="Вечер">Вечер</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                </div>
-            )}
-        </div>
-    )
-});
-HabitBuilder.displayName = 'HabitBuilder';
-
-
-const SuggestionList = memo(({ title, items, type, onAddEvent }: {
-  title: string;
-  items: SuggestedSlot[];
-  type: 'task' | 'routine';
-  onAddEvent: (slot: SuggestedSlot, type: 'task' | 'routine') => void;
-}) => {
+const SuggestionList = memo(({ title, items, type, onAddEvent }: { title: string; items: SuggestedSlot[]; type: 'task' | 'routine'; onAddEvent: (slot: SuggestedSlot, type: 'task' | 'routine') => void; }) => {
   if (items.length === 0) return null;
   return (
     <div className="mb-4">
@@ -264,14 +122,10 @@ const SuggestionList = memo(({ title, items, type, onAddEvent }: {
             <CardContent className="p-3 flex items-center justify-between">
               <div>
                 <p className="font-semibold">{slot.task}</p>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(slot.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                </p>
+                <p className="text-sm text-muted-foreground">{new Date(slot.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                 <p className="text-sm text-muted-foreground">{slot.startTime} - {slot.endTime}</p>
               </div>
-              <Button size="icon" variant="ghost" onClick={() => onAddEvent(slot, type)}>
-                <PlusCircle className="h-5 w-5 text-primary" />
-              </Button>
+              <Button size="icon" variant="ghost" onClick={() => onAddEvent(slot, type)}><PlusCircle className="h-5 w-5 text-primary" /></Button>
             </CardContent>
           </Card>
         ))}
@@ -281,48 +135,27 @@ const SuggestionList = memo(({ title, items, type, onAddEvent }: {
 });
 SuggestionList.displayName = 'SuggestionList';
 
-const ResultsView = memo(({
-  suggestions,
-  onSetView,
-  onAddEvent,
-  onAddAll,
-  onResetState,
-  onOpenChange,
-}: {
-  suggestions: GenerateFullScheduleOutput | null;
-  onSetView: (view: 'form' | 'results' | 'loading') => void;
-  onAddEvent: (slot: SuggestedSlot, type: 'task' | 'routine') => void;
-  onAddAll: () => void;
-  onResetState: () => void;
-  onOpenChange: (open: boolean) => void;
-}) => (
+const ResultsView = memo(({ suggestions, onSetView, onAddEvent, onAddAll, onResetState, onOpenChange }: { suggestions: GenerateFullScheduleOutput | null; onSetView: (view: ViewType) => void; onAddEvent: (slot: SuggestedSlot, type: 'task' | 'routine') => void; onAddAll: () => void; onResetState: () => void; onOpenChange: (open: boolean) => void; }) => (
   <>
     <div className="my-4 flex-1 flex flex-col min-h-0">
-      <Button variant="ghost" onClick={() => onSetView('form')} className="self-start mb-2">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Назад к редактированию
-      </Button>
-      <h3 className="font-semibold mb-4 text-lg">Ваше новое расписание</h3>
+      <Button variant="ghost" onClick={() => onSetView('form')} className="self-start mb-2"><ArrowLeft className="mr-2 h-4 w-4" />Back to editor</Button>
+      <h3 className="font-semibold mb-4 text-lg">Your new schedule</h3>
       <ScrollArea className="flex-1 pr-4">
         {!suggestions || (suggestions.tasks.length === 0 && suggestions.routineEvents.length === 0) ? (
-          <p className="text-sm text-muted-foreground text-center pt-10">Все предложенные события добавлены в ваш календарь.</p>
+          <p className="text-sm text-muted-foreground text-center pt-10">All suggested events have been added to your calendar.</p>
         ) : (
           <>
-            <SuggestionList title="Задачи" items={suggestions.tasks} type="task" onAddEvent={onAddEvent} />
-            <SuggestionList title="Рутина" items={suggestions.routineEvents} type="routine" onAddEvent={onAddEvent} />
+            <SuggestionList title="Tasks" items={suggestions.tasks} type="task" onAddEvent={onAddEvent} />
+            <SuggestionList title="Routine" items={suggestions.routineEvents} type="routine" onAddEvent={onAddEvent} />
           </>
         )}
       </ScrollArea>
     </div>
     <DialogFooter className="justify-between pt-4 border-t">
+      <div>{(suggestions?.tasks?.length || 0) + (suggestions?.routineEvents?.length || 0) > 0 && (<Button variant="outline" onClick={onAddAll}>Add All</Button>)}</div>
       <div>
-        {(suggestions?.tasks?.length || 0) + (suggestions?.routineEvents?.length || 0) > 0 && (
-          <Button variant="outline" onClick={onAddAll}>Добавить все</Button>
-        )}
-      </div>
-      <div>
-        <Button variant="ghost" onClick={onResetState}>Начать заново</Button>
-        <Button onClick={() => onOpenChange(false)}>Закрыть</Button>
+        <Button variant="ghost" onClick={onResetState}>Start Over</Button>
+        <Button onClick={() => onOpenChange(false)}>Close</Button>
       </div>
     </DialogFooter>
   </>
@@ -330,223 +163,220 @@ const ResultsView = memo(({
 ResultsView.displayName = 'ResultsView';
 
 
-const FormView = memo(({
-  inboxTasks,
-  selectedTasks,
-  handleTaskSelection,
-  preferences,
-  isPrefLoading,
-  numberOfDays,
-  handlePrefChange,
-  handleEnergyPeakChange,
-  handleWorkDayToggle,
-  handleNumberOfDaysChange,
-  handleGenerate,
-}: {
-  inboxTasks: ScheduleItem[];
-  selectedTasks: Set<string>;
-  handleTaskSelection: (taskId: string) => void;
-  preferences: Record<string, any>;
-  isPrefLoading: boolean;
-  numberOfDays: number;
-  handlePrefChange: (id: string, value: any) => void;
-  handleEnergyPeakChange: (peak: string, checked: boolean) => void;
-  handleWorkDayToggle: (day: number) => void;
-  handleNumberOfDaysChange: (days: number) => void;
-  handleGenerate: () => void;
-}) => {
-    const weekDays = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+// --- Editing Components ---
 
-    if (isPrefLoading) {
-        return (
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        );
+const EditSectionHeader = ({ title, onBack }: { title: string; onBack: () => void; }) => (
+    <div className="flex items-center mb-4">
+        <Button variant="ghost" size="icon" className="h-8 w-8 mr-2" onClick={onBack}><ArrowLeft /></Button>
+        <h4 className="font-semibold text-lg">{title}</h4>
+    </div>
+);
+
+const EditDailyNeeds = memo(({ preferences, handlePrefChange, onBack } : { preferences: any, handlePrefChange: (id: string, val: any) => void, onBack: () => void}) => (
+    <div>
+        <EditSectionHeader title="Daily Needs" onBack={onBack} />
+        <div className="space-y-6">
+            <div>
+                <div className="flex justify-between items-center mb-1"><Label>Sleep (hours)</Label><span className="text-sm font-medium text-primary">{preferences.sleepDuration}</span></div>
+                <Slider value={[preferences.sleepDuration ?? 8]} onValueChange={value => handlePrefChange('sleepDuration', value[0])} min={4} max={12} step={1} />
+            </div>
+            <div>
+                <div className="flex justify-between items-center mb-1"><Label>Meals (per day)</Label><span className="text-sm font-medium text-primary">{preferences.mealsPerDay}</span></div>
+                <Slider value={[preferences.mealsPerDay ?? 3]} onValueChange={value => handlePrefChange('mealsPerDay', value[0])} min={1} max={6} step={1} />
+            </div>
+            <div>
+                <div className="flex justify-between items-center mb-1"><Label>Rest (hours, besides sleep)</Label><span className="text-sm font-medium text-primary">{preferences.restTime}</span></div>
+                <Slider value={[preferences.restTime ?? 2]} onValueChange={value => handlePrefChange('restTime', value[0])} min={1} max={5} step={0.5} />
+            </div>
+        </div>
+    </div>
+));
+EditDailyNeeds.displayName = 'EditDailyNeeds';
+
+const HabitBuilder = memo(({ habitName, habitKey, icon: Icon, isEnabled, frequency, duration, preferredTime, onPrefChange }: { habitName: string; habitKey: string; icon: React.ElementType; isEnabled: boolean; frequency: number; duration: number; preferredTime: string; onPrefChange: (id: string, value: any) => void; }) => (
+    <div className="p-3 rounded-lg border bg-secondary/50">
+        <div className="flex items-center justify-between">
+            <Label htmlFor={`habit-switch-${habitKey}`} className="flex items-center gap-2 font-semibold"><Icon className="size-5 text-primary" />{habitName}</Label>
+            <Switch id={`habit-switch-${habitKey}`} checked={isEnabled} onCheckedChange={(checked) => onPrefChange(`${habitKey}Enabled`, checked)} />
+        </div>
+        {isEnabled && (
+            <div className="mt-4 space-y-4">
+                <div>
+                    <div className="flex justify-between items-center mb-1"><Label>Frequency (per week)</Label><span className="text-sm font-medium text-primary">{frequency}</span></div>
+                    <Slider value={[frequency]} onValueChange={(value) => onPrefChange(`${habitKey}Frequency`, value[0])} min={1} max={7} step={1} />
+                </div>
+                <div>
+                    <div className="flex justify-between items-center mb-1"><Label>Duration (minutes)</Label><span className="text-sm font-medium text-primary">{duration}</span></div>
+                    <Slider value={[duration]} onValueChange={(value) => onPrefChange(`${habitKey}Duration`, value[0])} min={15} max={120} step={15} />
+                </div>
+                <div>
+                    <Label>Preferred Time</Label>
+                    <Select value={preferredTime} onValueChange={(value) => onPrefChange(`${habitKey}PreferredTime`, value)}>
+                        <SelectTrigger className="mt-1"><SelectValue placeholder="Select time" /></SelectTrigger>
+                        <SelectContent><SelectItem value="Любое">Any</SelectItem><SelectItem value="Утро">Morning</SelectItem><SelectItem value="День">Afternoon</SelectItem><SelectItem value="Вечер">Evening</SelectItem></SelectContent>
+                    </Select>
+                </div>
+            </div>
+        )}
+    </div>
+));
+HabitBuilder.displayName = 'HabitBuilder';
+
+const EditHabits = memo(({ preferences, handlePrefChange, onBack }: { preferences: any, handlePrefChange: (id: string, val: any) => void, onBack: () => void}) => (
+    <div>
+        <EditSectionHeader title="Habits & Hobbies" onBack={onBack} />
+        <div className="space-y-4">
+            <HabitBuilder habitName="Sport" habitKey="sport" icon={Dumbbell} {...preferences} onPrefChange={handlePrefChange} />
+            <HabitBuilder habitName="Meditation" habitKey="meditation" icon={Brain} {...preferences} onPrefChange={handlePrefChange} />
+            <HabitBuilder habitName="Reading" habitKey="reading" icon={BookOpen} {...preferences} onPrefChange={handlePrefChange} />
+        </div>
+    </div>
+));
+EditHabits.displayName = 'EditHabits';
+
+const EditWorkSchedule = memo(({ preferences, handlePrefChange, handleWorkDayToggle, onBack }: { preferences: any, handlePrefChange: (id: string, val: any) => void, handleWorkDayToggle: (day: number) => void, onBack: () => void}) => {
+    const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    return (
+        <div>
+            <EditSectionHeader title="Work/Study Schedule" onBack={onBack} />
+            <div className="space-y-4">
+                <div>
+                    <Label>Work days</Label>
+                    <div className="flex items-center gap-1.5 mt-2">
+                        {weekDays.map((day, index) => (
+                            <Button key={day} variant={preferences.workDays?.includes(index) ? 'primary' : 'outline'} size="icon" className="h-9 w-9 rounded-full" onClick={() => handleWorkDayToggle(index)}>{day}</Button>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div><Label htmlFor="workStartTime">Start</Label><Input id="workStartTime" type="time" value={preferences.workStartTime} onChange={e => handlePrefChange('workStartTime', e.target.value)} className="mt-1"/></div>
+                    <div><Label htmlFor="workEndTime">End</Label><Input id="workEndTime" type="time" value={preferences.workEndTime} onChange={e => handlePrefChange('workEndTime', e.target.value)} className="mt-1"/></div>
+                </div>
+            </div>
+        </div>
+    )
+});
+EditWorkSchedule.displayName = 'EditWorkSchedule';
+
+const EditProductivity = memo(({ preferences, handlePrefChange, handleEnergyPeakChange, onBack }: { preferences: any, handlePrefChange: (id: string, val: any) => void, handleEnergyPeakChange: (peak: string, checked: boolean) => void, onBack: () => void}) => (
+    <div>
+        <EditSectionHeader title="Productivity & Learning" onBack={onBack} />
+        <div className="space-y-4">
+            <div className="grid gap-2">
+                <Label>When are your energy peaks?</Label>
+                <div className="flex items-center space-x-4">
+                    {['Morning', 'Afternoon', 'Evening'].map(peak => (
+                        <div key={peak} className="flex items-center space-x-2">
+                            <Checkbox id={`peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => handleEnergyPeakChange(peak, !!checked)} />
+                            <Label htmlFor={`peak-${peak}`}>{peak}</Label>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="fixedEventsText">Other fixed commitments?</Label>
+                <Textarea id="fixedEventsText" placeholder="e.g., Team meeting every Mon at 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => handlePrefChange('fixedEventsText', e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="pastLearnings">Past planning learnings/obstacles?</Label>
+                <Textarea id="pastLearnings" placeholder="e.g., Better not to set more than 2 large tasks per day." value={preferences.pastLearnings ?? ''} onChange={e => handlePrefChange('pastLearnings', e.target.value)} />
+            </div>
+        </div>
+    </div>
+));
+EditProductivity.displayName = 'EditProductivity';
+
+const InteractiveSummary = memo(({ preferences, setEditingSection }: { preferences: any, setEditingSection: (section: EditingSection) => void }) => {
+    const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const activeHabits = [
+        preferences.sportEnabled && "sport",
+        preferences.meditationEnabled && "meditation",
+        preferences.readingEnabled && "reading"
+    ].filter(Boolean).join(", ");
+    const workDaysString = preferences.workDays?.map((d: number) => weekDays[d]).join(', ') || 'no';
+
+    const SummaryButton = ({ children }: { children: React.ReactNode }) => (
+        <Button variant="link" className="p-0 h-auto text-base font-semibold text-primary">{children}</Button>
+    );
+
+    return (
+        <div className="space-y-4 text-base text-muted-foreground p-1">
+            <p>
+                Each day includes <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.sleepDuration} hours</span> of sleep</Button>, <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.mealsPerDay} meals</span></Button>, and <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.restTime} hours</span> of rest</Button>.
+            </p>
+             <p>
+                Work is scheduled on <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('work')}><span className="font-semibold text-primary">{workDaysString}</span> days</Button> from <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('work')}><span className="font-semibold text-primary">{preferences.workStartTime}</span> to <span className="font-semibold text-primary">{preferences.workEndTime}</span></Button>.
+            </p>
+            <p>
+                Your energy peaks are in the <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('productivity')}><span className="font-semibold text-primary">{preferences.energyPeaks?.join(', ') || 'not set'}</span></Button>.
+            </p>
+            <p>
+                Your habits are: <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('habits')}><span className="font-semibold text-primary">{activeHabits || "none"}</span></Button>.
+            </p>
+             <p className="text-sm pt-4">
+                To adjust any of these settings, click on the highlighted text. You can also edit your fixed events or past learnings in the <Button variant="link" className="p-0 h-auto text-sm" onClick={() => setEditingSection('productivity')}>Productivity</Button> section.
+            </p>
+        </div>
+    );
+});
+InteractiveSummary.displayName = 'InteractiveSummary';
+
+
+const FormView = memo(({ inboxTasks, selectedTasks, onTaskSelection, preferences, isPrefLoading, numberOfDays, onPrefChange, onEnergyPeakChange, onWorkDayToggle, onNumberOfDaysChange, onGenerate }: { inboxTasks: ScheduleItem[]; selectedTasks: Set<string>; onTaskSelection: (taskId: string) => void; preferences: Record<string, any>; isPrefLoading: boolean; numberOfDays: number; onPrefChange: (id: string, value: any) => void; onEnergyPeakChange: (peak: string, checked: boolean) => void; onWorkDayToggle: (day: number) => void; onNumberOfDaysChange: (days: number) => void; onGenerate: () => void; }) => {
+    const [editingSection, setEditingSection] = useState<EditingSection>(null);
+
+    const renderRightPane = () => {
+        if (isPrefLoading) {
+            return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+        }
+
+        switch (editingSection) {
+            case 'daily': return <EditDailyNeeds preferences={preferences} handlePrefChange={onPrefChange} onBack={() => setEditingSection(null)} />;
+            case 'habits': return <EditHabits preferences={preferences} handlePrefChange={onPrefChange} onBack={() => setEditingSection(null)} />;
+            case 'work': return <EditWorkSchedule preferences={preferences} handlePrefChange={onPrefChange} handleWorkDayToggle={onWorkDayToggle} onBack={() => setEditingSection(null)} />;
+            case 'productivity': return <EditProductivity preferences={preferences} handlePrefChange={onPrefChange} handleEnergyPeakChange={onEnergyPeakChange} onBack={() => setEditingSection(null)} />;
+            default: return <InteractiveSummary preferences={preferences} setEditingSection={setEditingSection} />;
+        }
     }
 
     return (
         <>
-        <div className="flex-1 my-4 min-h-0">
-            <Tabs defaultValue="goals" className="w-full h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="goals"><Target className="mr-2" />Что делаем?</TabsTrigger>
-                <TabsTrigger value="lifestyle"><Smile className="mr-2" />Как живем?</TabsTrigger>
-                <TabsTrigger value="productivity"><Zap className="mr-2"/>Как работаем?</TabsTrigger>
-              </TabsList>
-              <ScrollArea className="flex-1 mt-4 pr-4">
-                  <TabsContent value="goals" className="space-y-6">
-                      <TaskSelection
-                          inboxTasks={inboxTasks}
-                          selectedTasks={selectedTasks}
-                          onTaskSelection={handleTaskSelection}
-                      />
-                      <div>
-                          <h4 className="font-semibold text-base mb-3">Высокоуровневые цели</h4>
-                          <div className="grid gap-2">
-                              <Label htmlFor="mainGoals">Каковы ваши основные цели на этот период?</Label>
-                              <Textarea 
-                                  id="mainGoals" 
-                                  placeholder="Пример: Запустить новый проект, подготовиться к марафону, прочитать 3 книги." 
-                                  value={preferences.mainGoals ?? ''} 
-                                  onChange={e => handlePrefChange('mainGoals', e.target.value)}
-                                  className="min-h-[150px]"
-                              />
-                          </div>
-                      </div>
-                  </TabsContent>
-                  <TabsContent value="lifestyle" className="space-y-6">
-                      <div>
-                          <h4 className="font-semibold text-base mb-3">Ежедневные потребности</h4>
-                          <div className="space-y-4">
-                              <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                      <Label>Сон (часов)</Label>
-                                      <span className="text-sm font-medium text-primary">{preferences.sleepDuration}</span>
-                                  </div>
-                                  <Slider
-                                      value={[preferences.sleepDuration ?? 8]}
-                                      onValueChange={value => handlePrefChange('sleepDuration', value[0])}
-                                      min={4} max={12} step={1}
-                                  />
-                              </div>
-                              <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                      <Label>Приемы пищи (в день)</Label>
-                                      <span className="text-sm font-medium text-primary">{preferences.mealsPerDay}</span>
-                                  </div>
-                                  <Slider
-                                      value={[preferences.mealsPerDay ?? 3]}
-                                      onValueChange={value => handlePrefChange('mealsPerDay', value[0])}
-                                      min={1} max={6} step={1}
-                                  />
-                              </div>
-                                <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                      <Label>Отдых (часов, кроме сна)</Label>
-                                      <span className="text-sm font-medium text-primary">{preferences.restTime}</span>
-                                  </div>
-                                  <Slider
-                                      value={[preferences.restTime ?? 2]}
-                                      onValueChange={value => handlePrefChange('restTime', value[0])}
-                                      min={1} max={5} step={0.5}
-                                  />
-                              </div>
-                          </div>
-                      </div>
-                      <Separator />
-                      <div>
-                          <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
-                          <div className="space-y-4">
-                              <HabitBuilder
-                                  habitName="Спорт"
-                                  habitKey="sport"
-                                  icon={Dumbbell}
-                                  isEnabled={preferences.sportEnabled}
-                                  frequency={preferences.sportFrequency}
-                                  duration={preferences.sportDuration}
-                                  preferredTime={preferences.sportPreferredTime}
-                                  onPrefChange={handlePrefChange}
-                              />
-                              <HabitBuilder
-                                  habitName="Медитация"
-                                  habitKey="meditation"
-                                  icon={Brain}
-                                  isEnabled={preferences.meditationEnabled}
-                                  frequency={preferences.meditationFrequency}
-                                  duration={preferences.meditationDuration}
-                                  preferredTime={preferences.meditationPreferredTime}
-                                  onPrefChange={handlePrefChange}
-                              />
-                              <HabitBuilder
-                                  habitName="Чтение"
-                                  habitKey="reading"
-                                  icon={BookOpen}
-                                  isEnabled={preferences.readingEnabled}
-                                  frequency={preferences.readingFrequency}
-                                  duration={preferences.readingDuration}
-                                  preferredTime={preferences.readingPreferredTime}
-                                  onPrefChange={handlePrefChange}
-                              />
-                          </div>
-                      </div>
-                  </TabsContent>
-                  <TabsContent value="productivity" className="space-y-6">
-                       <div>
-                          <h4 className="font-semibold text-base mb-3 flex items-center gap-2"><Briefcase className="size-5" /> Работа/Учеба</h4>
-                          <div className="space-y-4">
-                              <div>
-                                  <Label>Рабочие дни</Label>
-                                  <div className="flex items-center gap-1.5 mt-2">
-                                      {weekDays.map((day, index) => (
-                                        <Button
-                                          key={day}
-                                          variant={preferences.workDays?.includes(index) ? 'primary' : 'outline'}
-                                          size="icon"
-                                          className="h-9 w-9 rounded-full"
-                                          onClick={() => handleWorkDayToggle(index)}
-                                        >
-                                          {day}
-                                        </Button>
-                                      ))}
-                                  </div>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                  <div>
-                                      <Label htmlFor="workStartTime">Начало</Label>
-                                      <Input id="workStartTime" type="time" value={preferences.workStartTime} onChange={e => handlePrefChange('workStartTime', e.target.value)} className="mt-1"/>
-                                  </div>
-                                  <div>
-                                      <Label htmlFor="workEndTime">Конец</Label>
-                                      <Input id="workEndTime" type="time" value={preferences.workEndTime} onChange={e => handlePrefChange('workEndTime', e.target.value)} className="mt-1"/>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      <Separator />
-                      <div>
-                          <h4 className="font-semibold text-base mb-3">Продуктивность и обучение</h4>
-                          <div className="space-y-4">
-                              <div className="grid gap-2">
-                                  <Label>Когда у вас пики энергии?</Label>
-                                  <div className="flex items-center space-x-4">
-                                      {['Morning', 'Afternoon', 'Evening'].map(peak => (
-                                          <div key={peak} className="flex items-center space-x-2">
-                                              <Checkbox id={`peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => handleEnergyPeakChange(peak, !!checked)} />
-                                              <Label htmlFor={`peak-${peak}`}>{peak === 'Morning' ? 'Утро' : peak === 'Afternoon' ? 'День' : 'Вечер'}</Label>
-                                          </div>
-                                      ))}
-                                  </div>
-                              </div>
-                              <div className="grid gap-2">
-                                  <Label htmlFor="fixedEventsText">Какие еще у вас есть обязательства с фиксированным временем?</Label>
-                                  <Textarea id="fixedEventsText" placeholder="Пример: Встреча команды каждый Пн в 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => handlePrefChange('fixedEventsText', e.target.value)} />
-                              </div>
-                              <div className="grid gap-2">
-                                  <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
-                                  <Textarea 
-                                      id="pastLearnings" 
-                                      placeholder="Пример: Лучше не ставить больше 2 больших задач в день." 
-                                      value={preferences.pastLearnings ?? ''} 
-                                      onChange={e => handlePrefChange('pastLearnings', e.target.value)}
-                                  />
-                              </div>
-                          </div>
-                      </div>
-                  </TabsContent>
-              </ScrollArea>
-            </Tabs>
-        </div>
-        <DialogFooter className="justify-between">
-           <div className="flex items-center gap-4">
-              <Label htmlFor="numberOfDays" className="whitespace-nowrap">На сколько дней?</Label>
-              <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => handleNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
+            <div className="grid md:grid-cols-2 gap-8 my-4 flex-1 min-h-0">
+                {/* Left Pane */}
+                <div className="flex flex-col gap-6">
+                    <div>
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Target /> What are we doing?</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <Label className="font-semibold">Select tasks from inbox</Label>
+                                <Card className="mt-2 max-h-[150px] flex flex-col"><CardContent className="p-2 flex-1 overflow-hidden"><ScrollArea className="h-full pr-4"><div className="space-y-2">
+                                    {inboxTasks.length > 0 ? (inboxTasks.map(task => (<div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted"><Checkbox id={`task-${task.id}`} onCheckedChange={() => onTaskSelection(task.id)} checked={selectedTasks.has(task.id)} /><Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label></div>))) 
+                                    : (<p className="text-sm text-muted-foreground text-center py-4">Your inbox is empty.</p>)}
+                                </div></ScrollArea></CardContent></Card>
+                            </div>
+                             <div>
+                                <Label htmlFor="mainGoals" className="font-semibold">What are your main goals for this period?</Label>
+                                <Textarea id="mainGoals" placeholder="e.g., Launch new project, prepare for marathon, read 3 books." value={preferences.mainGoals ?? ''} onChange={e => onPrefChange('mainGoals', e.target.value)} className="mt-2 min-h-[100px]" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Pane */}
+                <div className="bg-secondary/50 p-4 rounded-lg">
+                    <ScrollArea className="h-full pr-4">
+                        {renderRightPane()}
+                    </ScrollArea>
+                </div>
             </div>
-            <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
-                <Wand2 className="mr-2 h-4 w-4" />
-                Сгенерировать
-            </Button>
-        </DialogFooter>
+            <DialogFooter className="justify-between pt-4 border-t">
+                <div className="flex items-center gap-4">
+                    <Label htmlFor="numberOfDays" className="whitespace-nowrap">Generate for</Label>
+                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => onNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
+                    <Label htmlFor="numberOfDays" className="whitespace-nowrap">days</Label>
+                </div>
+                <Button onClick={onGenerate} disabled={selectedTasks.size === 0}><Wand2 className="mr-2 h-4 w-4" />Generate Schedule</Button>
+            </DialogFooter>
         </>
     );
 });
@@ -555,7 +385,7 @@ FormView.displayName = 'FormView';
 
 export default function FullScheduleGenerator({ open, onOpenChange, userId }: FullScheduleGeneratorProps) {
   const { toast } = useToast();
-  const [view, setView] = useState<'form' | 'results' | 'loading'>('form');
+  const [view, setView] = useState<ViewType>('form');
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [preferences, setPreferences] = useState<Record<string, any>>(defaultPreferences);
@@ -579,14 +409,13 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
             if (!Array.isArray(loadedPrefs.workDays)) {
               loadedPrefs.workDays = defaultPreferences.workDays;
             }
-            // Populate with defaults if fields are missing
             setPreferences({...defaultPreferences, ...loadedPrefs});
         } else {
             setPreferences(defaultPreferences);
         }
     } catch (error) {
         console.error("Error fetching preferences:", error);
-        toast({ variant: 'destructive', title: 'Не удалось загрузить ваши предпочтения.' });
+        toast({ variant: 'destructive', title: 'Could not load your preferences.' });
     } finally {
         setIsPrefLoading(false);
     }
@@ -597,97 +426,62 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
     
     fetchUserPreferences();
 
-    const qTasks = query(
-      collection(db, "scheduleItems"),
-      where("userId", "==", userId),
-      where("date", "==", null)
-    );
+    const qTasks = query(collection(db, "scheduleItems"), where("userId", "==", userId), where("date", "==", null));
     const unsubscribeTasks = onSnapshot(qTasks, (snapshot) => {
-      const tasks: ScheduleItem[] = [];
-      snapshot.forEach(doc => tasks.push({ id: doc.id, ...doc.data() } as ScheduleItem));
-      setInboxTasks(tasks);
+      setInboxTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduleItem)));
     });
 
-    return () => {
-      unsubscribeTasks();
-    }
+    return () => unsubscribeTasks();
   }, [open, userId, fetchUserPreferences]);
 
   const handleTaskSelection = useCallback((taskId: string) => {
     setSelectedTasks(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
-      } else {
-        newSet.add(taskId);
-      }
+      newSet.has(taskId) ? newSet.delete(taskId) : newSet.add(taskId);
       return newSet;
     });
   }, []);
 
   const handleGenerate = async () => {
     if (selectedTasks.size === 0) {
-      toast({ variant: 'destructive', title: 'Выберите хотя бы одну задачу' });
+      toast({ variant: 'destructive', title: 'Please select at least one task' });
       return;
     }
     setView('loading');
     setSuggestions(null);
 
-    const prefsToSave = {
-      ...preferences,
-      energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks,
-    };
+    const prefsToSave = { ...preferences, energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks };
     
     try {
-        const prefRef = doc(db, 'userPreferences', userId);
-        await setDoc(prefRef, prefsToSave, { merge: true });
+        await setDoc(doc(db, 'userPreferences', userId), prefsToSave, { merge: true });
     } catch (error) {
         console.error("Error saving preferences:", error);
-        toast({ variant: 'destructive', title: 'Не удалось сохранить ваши предпочтения.' });
+        toast({ variant: 'destructive', title: 'Could not save your preferences.' });
     }
 
-    const allTasks = inboxTasks
-      .filter(task => selectedTasks.has(task.id))
-      .map(task => task.title);
+    const allTasks = inboxTasks.filter(task => selectedTasks.has(task.id)).map(task => task.title);
 
     try {
       const aiPrefs = { ...preferences };
-      if (!aiPrefs.sportEnabled) {
-          aiPrefs.sportFrequency = 0;
-          aiPrefs.sportDuration = 0;
-      }
-      if (!aiPrefs.meditationEnabled) {
-          aiPrefs.meditationFrequency = 0;
-          aiPrefs.meditationDuration = 0;
-      }
-      if (!aiPrefs.readingEnabled) {
-          aiPrefs.readingFrequency = 0;
-          aiPrefs.readingDuration = 0;
-      }
+      if (!aiPrefs.sportEnabled) { aiPrefs.sportFrequency = 0; aiPrefs.sportDuration = 0; }
+      if (!aiPrefs.meditationEnabled) { aiPrefs.meditationFrequency = 0; aiPrefs.meditationDuration = 0; }
+      if (!aiPrefs.readingEnabled) { aiPrefs.readingFrequency = 0; aiPrefs.readingDuration = 0; }
       
-      const result = await generateSchedule({
-        tasks: allTasks,
-        preferences: {
-            ...aiPrefs,
-            energyPeaks: Array.isArray(aiPrefs.energyPeaks) ? aiPrefs.energyPeaks.join(', ') : aiPrefs.energyPeaks,
-        }, 
-        startDate: format(new Date(), 'yyyy-MM-dd'),
-        numberOfDays,
-      }, userId);
+      const result = await generateSchedule({ tasks: allTasks, preferences: { ...aiPrefs, energyPeaks: Array.isArray(aiPrefs.energyPeaks) ? aiPrefs.energyPeaks.join(', ') : aiPrefs.energyPeaks }, startDate: format(new Date(), 'yyyy-MM-dd'), numberOfDays }, userId);
 
       if (typeof result === 'string') {
-        toast({ variant: 'destructive', title: "Ошибка генерации", description: result });
+        toast({ variant: 'destructive', title: "Generation Error", description: result });
         setView('form');
       } else if (result) {
         setSuggestions(result);
         setView('results');
       } else {
-        toast({ variant: 'destructive', title: "Ошибка генерации", description: "AI не вернул результат." });
+        toast({ variant: 'destructive', title: "Generation Error", description: "The AI did not return a result." });
         setView('form');
       }
     } catch (error) {
       console.error(error);
-      toast({ variant: 'destructive', title: 'Произошла непредвиденная ошибка' });
+      toast({ variant: 'destructive', title: 'An unexpected error occurred' });
       setView('form');
     }
   };
@@ -703,39 +497,25 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
             duration: slot.duration,
             type: 'event',
             icon: type === 'task' ? 'BrainCircuit' : 'Coffee',
-            color: type === 'task' ? 'hsl(262.1 83.3% 57.8%)' : 'hsl(204, 70%, 53%)',
+            color: type === 'task' ? 'hsl(var(--primary))' : 'hsl(204, 70%, 53%)',
         });
-        toast({
-            title: 'Событие добавлено',
-            description: `"${slot.task}" было добавлено в ваш календарь.`
-        });
+        toast({ title: 'Event Added', description: `"${slot.task}" was added to your calendar.` });
         
         setSuggestions(prev => {
             if (!prev) return null;
-            if (type === 'task') {
-                return {...prev, tasks: prev.tasks.filter(s => s !== slot)};
-            } else {
-                return {...prev, routineEvents: prev.routineEvents.filter(s => s !== slot)};
-            }
+            if (type === 'task') return {...prev, tasks: prev.tasks.filter(s => s !== slot)};
+            return {...prev, routineEvents: prev.routineEvents.filter(s => s !== slot)};
         });
 
     } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Ошибка',
-            description: 'Не удалось добавить событие в календарь.'
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to add event to calendar.' });
     }
   }, [userId, toast]);
 
   const handleAddAll = useCallback(() => {
     if (!suggestions) return;
-    
     const allEvents = [...suggestions.tasks, ...suggestions.routineEvents];
-    allEvents.forEach(slot => {
-        const type = suggestions.tasks.includes(slot) ? 'task' : 'routine';
-        handleAddEvent(slot, type);
-    });
+    allEvents.forEach(slot => handleAddEvent(slot, suggestions.tasks.includes(slot) ? 'task' : 'routine'));
   }, [suggestions, handleAddEvent]);
   
   const resetState = useCallback(() => {
@@ -746,9 +526,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   }, [fetchUserPreferences]);
 
   const handleOpenChange = useCallback((isOpen: boolean) => {
-    if (!isOpen) {
-        resetState();
-    }
+    if (!isOpen) resetState();
     onOpenChange(isOpen);
   }, [resetState, onOpenChange]);
 
@@ -759,9 +537,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const handleEnergyPeakChange = useCallback((peak: string, checked: boolean) => {
       setPreferences(p => {
           const currentPeaks = p.energyPeaks || [];
-          const newPeaks = checked 
-              ? [...currentPeaks, peak] 
-              : currentPeaks.filter((pk: string) => pk !== peak);
+          const newPeaks = checked ? [...currentPeaks, peak] : currentPeaks.filter((pk: string) => pk !== peak);
           return { ...p, energyPeaks: newPeaks };
       });
   }, []);
@@ -769,67 +545,28 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   const handleWorkDayToggle = useCallback((day: number) => {
     setPreferences(p => {
         const currentWorkDays = new Set(p.workDays || []);
-        if (currentWorkDays.has(day)) {
-            currentWorkDays.delete(day);
-        } else {
-            currentWorkDays.add(day);
-        }
+        currentWorkDays.has(day) ? currentWorkDays.delete(day) : currentWorkDays.add(day);
         return { ...p, workDays: Array.from(currentWorkDays).sort() };
     });
   }, []);
-
-  const handleNumberOfDaysChange = useCallback((days: number) => {
-      setNumberOfDays(days);
-  }, []);
-
+  
   const renderContent = () => {
     switch (view) {
-        case 'loading':
-            return <div className="h-full"><GenerationProgress /></div>;
-        case 'results':
-            return <ResultsView 
-                suggestions={suggestions}
-                onSetView={setView}
-                onAddEvent={handleAddEvent}
-                onAddAll={handleAddAll}
-                onResetState={resetState}
-                onOpenChange={handleOpenChange}
-            />;
+        case 'loading': return <div className="h-full"><GenerationProgress /></div>;
+        case 'results': return <ResultsView suggestions={suggestions} onSetView={setView} onAddEvent={handleAddEvent} onAddAll={handleAddAll} onResetState={resetState} onOpenChange={handleOpenChange} />;
         case 'form':
-        default:
-            return <FormView 
-                inboxTasks={inboxTasks}
-                selectedTasks={selectedTasks}
-                handleTaskSelection={handleTaskSelection}
-                preferences={preferences}
-                isPrefLoading={isPrefLoading}
-                numberOfDays={numberOfDays}
-                handlePrefChange={handlePrefChange}
-                handleEnergyPeakChange={handleEnergyPeakChange}
-                handleWorkDayToggle={handleWorkDayToggle}
-                handleNumberOfDaysChange={handleNumberOfDaysChange}
-                handleGenerate={handleGenerate}
-            />;
+        default: return <FormView inboxTasks={inboxTasks} selectedTasks={selectedTasks} onTaskSelection={handleTaskSelection} preferences={preferences} isPrefLoading={isPrefLoading} numberOfDays={numberOfDays} onPrefChange={handlePrefChange} onEnergyPeakChange={handleEnergyPeakChange} onWorkDayToggle={handleWorkDayToggle} onNumberOfDaysChange={setNumberOfDays} onGenerate={handleGenerate} />;
     }
   }
-
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="flex items-center gap-2">
-            <Wand2 className="h-5 w-5 text-primary" />
-            Генератор расписания
-          </DialogTitle>
-          <DialogDescription>
-            AI-ассистент поможет вам составить идеальное расписание. Выберите задачи и настройте предпочтения.
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2"><Wand2 className="h-5 w-5 text-primary" />Schedule Generator</DialogTitle>
+          <DialogDescription>The AI assistant will help you create the perfect schedule. Select tasks and adjust your preferences.</DialogDescription>
         </DialogHeader>
-        
-        <div className="flex-1 flex flex-col min-h-0 px-6 pb-6">
-            {renderContent()}
-        </div>
+        <div className="flex-1 flex flex-col min-h-0 px-6 pb-6">{renderContent()}</div>
       </DialogContent>
     </Dialog>
   );
