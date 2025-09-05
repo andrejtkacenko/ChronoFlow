@@ -8,9 +8,10 @@ import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from './ui/skeleton';
 import { Button } from './ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import type { ScheduleItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import TaskTemplateDialog from './TaskTemplateDialog';
 
 
 interface TaskItemProps { 
@@ -59,6 +60,7 @@ interface InboxProps {
 export default function Inbox({ userId, onNewTask, onEditTask }: InboxProps) {
     const [tasks, setTasks] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isTemplateDialogOpen, setTemplateDialogOpen] = useState(false);
 
     useEffect(() => {
         if (!userId) return;
@@ -119,31 +121,43 @@ export default function Inbox({ userId, onNewTask, onEditTask }: InboxProps) {
     }
 
     return (
-        <div className="flex-1 flex flex-col h-full">
-            <div className="px-4">
-                <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-xl font-semibold">Inbox</h2>
-                    <Button variant="ghost" size="icon" onClick={onNewTask} className="h-8 w-8">
-                        <Plus className="h-4 w-4" />
-                    </Button>
+        <>
+            <div className="flex-1 flex flex-col h-full">
+                <div className="px-4">
+                    <div className="flex items-center justify-between mb-2">
+                        <h2 className="text-xl font-semibold">Inbox</h2>
+                        <div className="flex items-center">
+                             <Button variant="ghost" size="icon" onClick={() => setTemplateDialogOpen(true)} className="h-8 w-8">
+                                <Sparkles className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={onNewTask} className="h-8 w-8">
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full pr-4">
+                        <div className="space-y-2 px-4">
+                            {tasks.length > 0 ? tasks.map(task => (
+                               <TaskItem 
+                                    key={task.id} 
+                                    task={task} 
+                                    onCompletionChange={handleTaskCompletion}
+                                    onTaskClick={onEditTask}
+                                />
+                            )) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">No tasks in your inbox.</p>
+                            )}
+                        </div>
+                    </ScrollArea>
                 </div>
             </div>
-            <div className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full pr-4">
-                    <div className="space-y-2 px-4">
-                        {tasks.length > 0 ? tasks.map(task => (
-                           <TaskItem 
-                                key={task.id} 
-                                task={task} 
-                                onCompletionChange={handleTaskCompletion}
-                                onTaskClick={onEditTask}
-                            />
-                        )) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">No tasks in your inbox.</p>
-                        )}
-                    </div>
-                </ScrollArea>
-            </div>
-        </div>
+            <TaskTemplateDialog 
+                isOpen={isTemplateDialogOpen}
+                onOpenChange={setTemplateDialogOpen}
+                userId={userId}
+            />
+        </>
     );
 }
