@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen, Briefcase, Target, Smile, Zap, Edit2, Columns, Tabs as TabsIcon, MessageSquareQuote } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, ArrowLeft, Bed, Utensils, Coffee, CheckCircle2, Dumbbell, Brain, BookOpen, Briefcase, Target, Smile, Zap, Edit2, Columns, AppWindow as TabsIcon, MessageSquareQuote, LayoutGrid } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -614,7 +614,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
             </div>
             {view === 'form' && (
                 <ToggleGroup type="single" value={layout} onValueChange={(value) => value && setLayout(value as LayoutType)} aria-label="Layout mode">
-                    <ToggleGroupItem value="columns" aria-label="Columns view"><Columns className="h-4 w-4"/></ToggleGroupItem>
+                    <ToggleGroupItem value="columns" aria-label="Columns view"><LayoutGrid className="h-4 w-4"/></ToggleGroupItem>
                     <ToggleGroupItem value="tabs" aria-label="Tabs view"><TabsIcon className="h-4 w-4"/></ToggleGroupItem>
                     <ToggleGroupItem value="summary" aria-label="Summary view"><MessageSquareQuote className="h-4 w-4"/></ToggleGroupItem>
                 </ToggleGroup>
@@ -626,3 +626,5 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     </Dialog>
   );
 }
+
+    
