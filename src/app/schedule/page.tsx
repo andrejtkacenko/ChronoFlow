@@ -403,6 +403,7 @@ export default function SchedulePage() {
                       onNumberOfDaysChange={setNumberOfDays}
                       hourHeight={hourHeight}
                       onHourHeightChange={setHourHeight}
+                      currentDate={currentDate}
                   />
               </div>
           </main>

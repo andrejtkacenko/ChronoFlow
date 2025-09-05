@@ -1,10 +1,27 @@
 
 import { Button } from "./ui/button";
-import { Settings } from "lucide-react";
+import { Settings, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "./ui/tooltip";
 import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
+import { Separator } from "./ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { deleteScheduleItemsInRange } from "@/lib/actions";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+
 
 interface RightSidebarProps {
   isOpen: boolean;
@@ -12,6 +29,7 @@ interface RightSidebarProps {
   onNumberOfDaysChange: (days: number) => void;
   hourHeight: number;
   onHourHeightChange: (height: number) => void;
+  currentDate: Date;
 }
 
 export default function RightSidebar({ 
@@ -19,46 +37,96 @@ export default function RightSidebar({
     numberOfDays, 
     onNumberOfDaysChange,
     hourHeight,
-    onHourHeightChange
+    onHourHeightChange,
+    currentDate,
 }: RightSidebarProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const handleDelete = async (range: 'day' | 'week' | 'month' | 'all') => {
+    if (!user) {
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in." });
+      return;
+    }
+    const result = await deleteScheduleItemsInRange(user.uid, range, format(currentDate, 'yyyy-MM-dd'));
+    if (result.success) {
+      toast({ title: "Success", description: result.message });
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.message });
+    }
+  }
+
+  const DeleteButton = ({ range, label }: { range: 'day' | 'week' | 'month' | 'all', label: string }) => (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" className="w-full justify-start">
+            <Trash2 className="mr-2 h-4 w-4"/>{label}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the events for the selected period from our servers.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => handleDelete(range)}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   return (
      <TooltipProvider>
         <div className={cn("h-full overflow-y-auto transition-opacity duration-300", isOpen ? "p-4 opacity-100" : "p-0 opacity-0")}>
             {isOpen && (
-                <>
-                    <h3 className="text-lg font-semibold mb-4">Settings</h3>
-                    <div className="space-y-6">
-                       <div>
-                            <div className="flex justify-between items-center mb-1">
-                                <Label className="text-sm font-medium">Количество дней</Label>
-                                <span className="text-sm font-medium text-primary">{numberOfDays}</span>
-                            </div>
-                            <Slider
-                                value={[numberOfDays]}
-                                onValueChange={(value) => onNumberOfDaysChange(value[0])}
-                                min={1}
-                                max={7}
-                                step={1}
-                                className="mt-2"
-                            />
-                       </div>
-                       <div>
-                            <div className="flex justify-between items-center mb-1">
-                                <Label className="text-sm font-medium">Масштаб</Label>
-                                <span className="text-sm font-medium text-primary">{Math.round(hourHeight/60 * 100)}%</span>
-                            </div>
-                             <Slider
-                                value={[hourHeight]}
-                                onValueChange={(value) => onHourHeightChange(value[0])}
-                                min={40}
-                                max={160}
-                                step={10}
-                                className="mt-2"
-                            />
-                       </div>
+                <div className="flex flex-col h-full">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Settings</h3>
+                      <div className="space-y-6">
+                        <div>
+                              <div className="flex justify-between items-center mb-1">
+                                  <Label className="text-sm font-medium">Количество дней</Label>
+                                  <span className="text-sm font-medium text-primary">{numberOfDays}</span>
+                              </div>
+                              <Slider
+                                  value={[numberOfDays]}
+                                  onValueChange={(value) => onNumberOfDaysChange(value[0])}
+                                  min={1}
+                                  max={7}
+                                  step={1}
+                                  className="mt-2"
+                              />
+                        </div>
+                        <div>
+                              <div className="flex justify-between items-center mb-1">
+                                  <Label className="text-sm font-medium">Масштаб</Label>
+                                  <span className="text-sm font-medium text-primary">{Math.round(hourHeight/60 * 100)}%</span>
+                              </div>
+                              <Slider
+                                  value={[hourHeight]}
+                                  onValueChange={(value) => onHourHeightChange(value[0])}
+                                  min={40}
+                                  max={160}
+                                  step={10}
+                                  className="mt-2"
+                              />
+                        </div>
+                      </div>
                     </div>
-                </>
+                    <div className="mt-auto pt-6">
+                        <Separator />
+                        <h3 className="text-lg font-semibold my-4 text-destructive">Danger Zone</h3>
+                        <div className="space-y-2">
+                           <DeleteButton range="day" label="Delete Today's Events"/>
+                           <DeleteButton range="week" label="Delete This Week's Events"/>
+                           <DeleteButton range="month" label="Delete This Month's Events"/>
+                           <DeleteButton range="all" label="Delete All Events"/>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
      </TooltipProvider>
