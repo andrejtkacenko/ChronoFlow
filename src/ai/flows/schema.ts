@@ -38,18 +38,18 @@ const PreferencesSchema = z.object({
     ),
   fixedEvents: z
     .string()
-    .describe('Fixed commitments or habits with specific times.'),
+    .describe('Fixed commitments, habits, or routines with specific times or frequencies (e.g., "Sport: 3 times a week for 45 minutes", "Team meeting every Mon at 10:00").'),
   delegationOpportunities: z
     .string()
     .describe('What tasks could be delegated, automated, or deleted.'),
   selfCareTime: z
     .string()
     .describe(
-      'Time for self-care, learning, or entertainment, and how much.'
+      'Time for self-care, learning, or entertainment, and how much. (e.g., "React course - 2 hours on Tue and Thu").'
     ),
   pastLearnings: z
     .string()
-    .describe('Past successes, lessons, or obstacles in planning.'),
+    .describe('Past successes, lessons, or obstacles in planning (e.g., "Better not to set more than 2 large tasks per day", "Morning workouts give more energy.").'),
 });
 
 // Input schema for the generateFullSchedule flow

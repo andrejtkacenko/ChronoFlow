@@ -161,99 +161,35 @@ const HabitBuilder = memo(({
     onHabitChange: (key: string, value: string) => void;
     initialValue?: string;
 }) => {
-    const [isActive, setIsActive] = useState(!!initialValue);
-    const [freq, setFreq] = useState('');
-    const [dur, setDur] = useState('');
+    const [value, setValue] = useState(initialValue || '');
 
     useEffect(() => {
-        if (initialValue) {
-            const parts = initialValue.split(',');
-            if (parts.length >= 2) {
-                const freqPart = parts[0].split(':').pop()?.trim() || '';
-                const durPart = parts[1].trim();
-                setFreq(freqPart);
-                setDur(durPart);
-            }
-        } else {
-            setFreq('');
-            setDur('');
-        }
+        setValue(initialValue || '');
     }, [initialValue]);
 
-    const handleUpdate = useCallback((newFreq: string, newDur: string) => {
-        if (isActive && newFreq && newDur) {
-            onHabitChange(habitKey, `${habitName}: ${newFreq}, ${newDur}`);
-        } else {
-            onHabitChange(habitKey, '');
-        }
-    }, [habitName, habitKey, onHabitChange, isActive]);
-
-    const handleFreqChange = (newFreq: string) => {
-        setFreq(newFreq);
-        handleUpdate(newFreq, dur);
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        setValue(newValue);
+        onHabitChange(habitKey, newValue);
     };
-
-    const handleDurChange = (newDur: string) => {
-        setDur(newDur);
-        handleUpdate(freq, newDur);
-    };
-
-    const handleIsActiveChange = (checked: boolean) => {
-        setIsActive(checked);
-        if (!checked) {
-            setFreq('');
-            setDur('');
-            onHabitChange(habitKey, '');
-        }
-    };
-    
-    const freqOptions = ['sport', 'reading', 'meditation'].includes(habitKey) 
-        ? ['1 раз в неделю', '2-3 раза в неделю', 'Каждый день'] 
-        : ['1 раз в день', '2 раза в день'];
-    
-    const durOptions = ['15 минут', '30 минут', '45 минут', '1 час', '1.5 часа'];
 
     return (
-        <div className="p-3 rounded-lg bg-card border space-y-3">
-             <div className="flex items-center space-x-3">
-                <Switch
-                    id={`habit-${habitKey}`}
-                    checked={isActive}
-                    onCheckedChange={handleIsActiveChange}
-                />
-                <Label htmlFor={`habit-${habitKey}`} className="flex-1 font-semibold flex items-center gap-2 cursor-pointer">
-                    <Icon className="size-5 text-primary" />
-                    {habitName}
-                </Label>
-            </div>
-            {isActive && (
-                 <div className="space-y-2">
-                     <div>
-                        <Label className="text-xs text-muted-foreground">Частота</Label>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                            {freqOptions.map(option => (
-                                <Button key={option} size="sm" variant={freq === option ? "secondary" : "outline"} onClick={() => handleFreqChange(option)} className="text-xs h-7 px-2">
-                                    {option}
-                                </Button>
-                            ))}
-                        </div>
-                     </div>
-                     <div>
-                        <Label className="text-xs text-muted-foreground">Длительность</Label>
-                         <div className="flex flex-wrap gap-2 mt-1">
-                            {durOptions.map(option => (
-                                <Button key={option} size="sm" variant={dur === option ? "secondary" : "outline"} onClick={() => handleDurChange(option)} className="text-xs h-7 px-2">
-                                    {option}
-                                </Button>
-                            ))}
-                        </div>
-                     </div>
-                </div>
-            )}
+        <div className="space-y-2">
+            <Label htmlFor={`habit-${habitKey}`} className="flex items-center gap-2 font-semibold">
+                <Icon className="size-5 text-primary" />
+                {habitName}
+            </Label>
+            <Input
+                id={`habit-${habitKey}`}
+                value={value}
+                onChange={handleInputChange}
+                placeholder="Например: 3 раза в неделю по 45 минут"
+            />
         </div>
     )
 });
 HabitBuilder.displayName = 'HabitBuilder';
+
 
 const LeftColumn = memo(({
     inboxTasks,
@@ -291,7 +227,7 @@ const LeftColumn = memo(({
         </div>
         <div>
             <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
                 <HabitBuilder
                     habitName="Спорт"
                     habitKey="sport"
@@ -323,35 +259,18 @@ const LeftColumn = memo(({
             <Label htmlFor="fixedEventsText">Какие еще у вас есть обязательства с фиксированным временем?</Label>
             <Textarea id="fixedEventsText" placeholder="Пример: Встреча команды каждый Пн в 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => onPrefChange('fixedEventsText', e.target.value)} />
         </div>
-        <div>
-            <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
-            <div className="grid gap-2">
-                <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
-                <Textarea 
-                    id="pastLearnings" 
-                    placeholder="Пример: Лучше не ставить больше 2 больших задач в день. Утренние тренировки дают больше энергии." 
-                    value={preferences.pastLearnings ?? ''} 
-                    onChange={e => onPrefChange('pastLearnings', e.target.value)}
-                    className="min-h-[100px]"
-                />
-            </div>
-        </div>
     </div>
 ));
 LeftColumn.displayName = 'LeftColumn';
 
 const RightColumn = memo(({
     preferences,
-    numberOfDays,
     onPrefChange,
     onEnergyPeakChange,
-    onNumberOfDaysChange
 }: {
     preferences: Record<string, any>;
-    numberOfDays: number;
     onPrefChange: (id: string, value: any) => void;
     onEnergyPeakChange: (peak: string, checked: boolean) => void;
-    onNumberOfDaysChange: (days: number) => void;
 }) => (
     <div className="space-y-6">
         <div>
@@ -391,7 +310,7 @@ const RightColumn = memo(({
         
         <div>
             <h4 className="font-semibold text-base mb-3">Продуктивность и ограничения</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 <div className="grid gap-2">
                     <Label>Когда у вас пики энергии?</Label>
                     <div className="flex items-center space-x-4">
@@ -403,10 +322,19 @@ const RightColumn = memo(({
                         ))}
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
-                    <Label htmlFor="numberOfDays" className="whitespace-nowrap">На сколько дней сгенерировать?</Label>
-                    <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => onNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
-                </div>
+            </div>
+        </div>
+         <div>
+            <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
+            <div className="grid gap-2">
+                <Label htmlFor="pastLearnings">Прошлые успехи/уроки/препятствия в планировании?</Label>
+                <Textarea 
+                    id="pastLearnings" 
+                    placeholder="Пример: Лучше не ставить больше 2 больших задач в день. Утренние тренировки дают больше энергии." 
+                    value={preferences.pastLearnings ?? ''} 
+                    onChange={e => onPrefChange('pastLearnings', e.target.value)}
+                    className="min-h-[100px]"
+                />
             </div>
         </div>
     </div>
@@ -534,7 +462,7 @@ const FormView = memo(({
 
     useEffect(() => {
         const fixedEventsObject = (preferences.fixedEvents || {}) as Record<string, string>;
-        const combinedString = Object.values(fixedEventsObject).filter(Boolean).join('. ');
+        const combinedString = Object.values(fixedEventsObject).filter(Boolean).map(v => `- ${v}`).join('. ');
         handlePrefChange('combinedFixedEvents', combinedString);
       }, [preferences.fixedEvents, handlePrefChange]);
 
@@ -561,19 +489,21 @@ const FormView = memo(({
                     />
                     <RightColumn 
                          preferences={preferences}
-                         numberOfDays={numberOfDays}
                          onPrefChange={handlePrefChange}
                          onEnergyPeakChange={handleEnergyPeakChange}
-                         onNumberOfDaysChange={handleNumberOfDaysChange}
                     />
                 </div>
             </ScrollArea>
         </div>
-        <DialogFooter>
-        <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
-            <Wand2 className="mr-2 h-4 w-4" />
-            Сгенерировать расписание
-        </Button>
+        <DialogFooter className="justify-between">
+           <div className="flex items-center gap-4">
+              <Label htmlFor="numberOfDays" className="whitespace-nowrap">На сколько дней сгенерировать?</Label>
+              <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => handleNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
+            </div>
+            <Button onClick={handleGenerate} disabled={selectedTasks.size === 0}>
+                <Wand2 className="mr-2 h-4 w-4" />
+                Сгенерировать расписание
+            </Button>
         </DialogFooter>
         </>
     );
@@ -670,7 +600,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
 
     const prefsToSave = {
       ...preferences,
-      fixedEvents: combinedFixedEvents,
+      fixedEvents: preferences.fixedEvents, // Save the object
       energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks,
     };
     
@@ -691,14 +621,20 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
       .map(task => task.title);
 
     try {
+       // For the AI, we combine the structured habits with other text-based commitments
+      const fixedEventsForAI = [
+        ...Object.entries(preferences.fixedEvents).map(([key, value]) => `${key}: ${value}`),
+        preferences.fixedEventsText,
+      ].filter(Boolean).join('; ');
+
       const result = await generateSchedule({
         tasks: allTasks,
         preferences: {
-            ...prefsToSave,
-            // Pass the combined string to the AI
-            fixedEvents: combinedFixedEvents,
-            selfCareTime: preferences.selfCareTime, // Pass this explicitly
+            ...preferences,
+            fixedEvents: fixedEventsForAI,
+            selfCareTime: preferences.selfCareTime,
             pastLearnings: preferences.pastLearnings,
+            energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks,
         }, 
         startDate: format(new Date(), 'yyyy-MM-dd'),
         numberOfDays,
@@ -782,7 +718,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: Fu
   }, [resetState, onOpenChange]);
 
   const handlePrefChange = useCallback((id: string, value: any) => {
-    setPreferences(p => ({ ...p, [id]: value }));
+    setPreferences(p => ({ ...p, [id]: typeof value === 'function' ? value(p[id]) : value }));
   }, []);
 
   const handleEnergyPeakChange = useCallback((peak: string, checked: boolean) => {
