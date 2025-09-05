@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -46,6 +47,7 @@ const ToggleGroupItem = React.forwardRef<
           variant: context.variant || variant,
           size: context.size || size,
         }),
+        "data-[state=on]:bg-primary data-[state=on]:text-primary-foreground",
         className
       )}
       {...props}
@@ -57,3 +59,5 @@ const ToggleGroupItem = React.forwardRef<
 ToggleGroupItem.displayName = ToggleGroupPrimitive.Item.displayName
 
 export { ToggleGroup, ToggleGroupItem }
+
+    

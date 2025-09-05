@@ -23,7 +23,7 @@ import { iconMap, eventColors, ScheduleItem } from '@/lib/types';
 import { format, addMinutes, parse } from 'date-fns';
 import { addScheduleItem, updateScheduleItem, deleteScheduleItem, getSuggestedTimeSlotsForTask } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2, Sparkles, Wand2, ArrowLeft, PersonStanding as Run, BookOpen, BrainCircuit, Dumbbell } from 'lucide-react';
+import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2, Sparkles, Wand2, ArrowLeft, PersonStanding, BookOpen, BrainCircuit, Dumbbell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -44,14 +44,14 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import SmartScheduler from './SmartScheduler';
 import type { SuggestedSlot } from '@/ai/flows/schema';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 
 
 // --- Task Template Components ---
 type Template = 'running' | 'reading' | 'meditation' | 'gym';
 
 const templates: { id: Template; name: string; icon: React.ElementType }[] = [
-  { id: 'running', name: 'Пробежка', icon: Run },
+  { id: 'running', name: 'Пробежка', icon: PersonStanding },
   { id: 'reading', name: 'Чтение', icon: BookOpen },
   { id: 'meditation', name: 'Медитация', icon: BrainCircuit },
   { id: 'gym', name: 'Тренировка', icon: Dumbbell },
@@ -76,10 +76,10 @@ const RunningTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string)
   const [runValue, setRunValue] = useState('');
   return (
     <div className="space-y-4">
-      <RadioGroup defaultValue="distance" value={runType} onValueChange={(v) => setRunType(v as any)}>
-        <div className="flex items-center space-x-2"><RadioGroupItem value="distance" id="r1" /><Label htmlFor="r1">Дистанция (км)</Label></div>
-        <div className="flex items-center space-x-2"><RadioGroupItem value="duration" id="r2" /><Label htmlFor="r2">Длительность (минут)</Label></div>
-      </RadioGroup>
+       <ToggleGroup type="single" defaultValue="distance" value={runType} onValueChange={(v) => { if(v) setRunType(v as any)}} className="grid grid-cols-2">
+         <ToggleGroupItem value="distance">Дистанция (км)</ToggleGroupItem>
+         <ToggleGroupItem value="duration">Длительность (мин)</ToggleGroupItem>
+       </ToggleGroup>
       <Input type="number" placeholder={runType === 'distance' ? 'например, 5' : 'например, 30'} value={runValue} onChange={(e) => setRunValue(e.target.value)} required />
       <Button onClick={() => runValue && onSubmit(`Пробежка: ${runValue} ${runType === 'distance' ? 'км' : 'минут'}`, 'PersonStanding')} className="w-full">Применить</Button>
     </div>
@@ -93,10 +93,10 @@ const ReadingTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string)
   return (
     <div className="space-y-4">
       <Input id="book-title" placeholder="Мастер и Маргарита" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} required />
-      <RadioGroup defaultValue="pages" value={readType} onValueChange={(v) => setReadType(v as any)}>
-        <div className="flex items-center space-x-2"><RadioGroupItem value="pages" id="p1" /><Label htmlFor="p1">Количество страниц</Label></div>
-        <div className="flex items-center space-x-2"><RadioGroupItem value="chapters" id="p2" /><Label htmlFor="p2">Количество глав</Label></div>
-      </RadioGroup>
+      <ToggleGroup type="single" defaultValue="pages" value={readType} onValueChange={(v) => { if(v) setReadType(v as any)}} className="grid grid-cols-2">
+         <ToggleGroupItem value="pages">Страницы</ToggleGroupItem>
+         <ToggleGroupItem value="chapters">Главы</ToggleGroupItem>
+      </ToggleGroup>
       <Input type="number" placeholder={readType === 'pages' ? 'например, 50' : 'например, 3'} value={readValue} onChange={(e) => setReadValue(e.target.value)} required />
       <Button onClick={() => bookTitle && readValue && onSubmit(`Чтение: ${bookTitle} (${readValue} ${readType === 'pages' ? 'страниц' : 'глав'})`, 'BookOpen')} className="w-full">Применить</Button>
     </div>
@@ -133,8 +133,8 @@ const TemplateConfigurator = ({ template, onBack, onApply }: { template: Templat
       <div className="flex items-center gap-2 mb-4">
         <Button variant="ghost" size="icon" onClick={onBack} className="h-7 w-7"><ArrowLeft className="size-4" /></Button>
         <div className="flex items-center gap-2">
-          <selectedTemplate.icon className="size-5 text-primary" />
-          <h4 className="font-semibold text-sm">{selectedTemplate.name}</h4>
+          {selectedTemplate && <selectedTemplate.icon className="size-5 text-primary" />}
+          <h4 className="font-semibold text-sm">{selectedTemplate?.name}</h4>
         </div>
       </div>
       <div>
@@ -409,7 +409,7 @@ export default function NewEventDialog({
                             <div className="flex items-center gap-2 flex-1 flex-wrap">
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="ghost" className="px-2 py-1 h-auto text-sm font-medium">{format(date!, 'eeee, d MMMM')}</Button>
+                                        <Button variant="ghost" className="px-2 py-1 h-auto text-sm font-medium">{date ? format(date, 'eeee, d MMMM') : 'Select Date'}</Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
                                         <Calendar mode="single" selected={date} onSelect={handleDateSelect} initialFocus />
@@ -545,3 +545,5 @@ export default function NewEventDialog({
     </Dialog>
   );
 }
+
+    
