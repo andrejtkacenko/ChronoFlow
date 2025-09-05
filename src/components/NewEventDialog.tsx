@@ -72,30 +72,45 @@ const TaskTemplateSelector = ({ onSelectTemplate }: { onSelectTemplate: (templat
 );
 
 const RunningTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
-  const [runType, setRunType] = useState<'distance' | 'duration'>('distance');
-  const [runValue, setRunValue] = useState('');
-  return (
-    <div className="space-y-4">
-       <ToggleGroup type="single" defaultValue="distance" value={runType} onValueChange={(v) => { if(v) setRunType(v as any)}} className="grid grid-cols-2">
-         <ToggleGroupItem value="distance">Дистанция (км)</ToggleGroupItem>
-         <ToggleGroupItem value="duration">Длительность (мин)</ToggleGroupItem>
-       </ToggleGroup>
-      <Input type="number" placeholder={runType === 'distance' ? 'например, 5' : 'например, 30'} value={runValue} onChange={(e) => setRunValue(e.target.value)} required />
-      <Button onClick={() => runValue && onSubmit(`Пробежка: ${runValue} ${runType === 'distance' ? 'км' : 'минут'}`, 'PersonStanding')} className="w-full">Применить</Button>
-    </div>
-  );
+    const [distance, setDistance] = useState('');
+    const [duration, setDuration] = useState('');
+  
+    const handleApply = () => {
+      let title = 'Пробежка';
+      const parts = [];
+      if (distance) parts.push(`${distance} км`);
+      if (duration) parts.push(`${duration} минут`);
+      if (parts.length > 0) {
+        title += `: ${parts.join(', ')}`;
+      }
+      onSubmit(title, 'PersonStanding');
+    };
+  
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+            <Label htmlFor="run-distance">Дистанция (км)</Label>
+            <Input id="run-distance" type="number" placeholder="например, 5" value={distance} onChange={(e) => setDistance(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="run-duration">Длительность (минут)</Label>
+            <Input id="run-duration" type="number" placeholder="например, 30" value={duration} onChange={(e) => setDuration(e.target.value)} />
+        </div>
+        <Button onClick={handleApply} className="w-full" disabled={!distance && !duration}>Применить</Button>
+      </div>
+    );
 };
 
 const ReadingTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
-  const [bookTitle, setBookTitle] = useState('');
-  const [readGoal, setReadGoal] = useState('');
-  return (
-    <div className="space-y-4">
-      <Input id="book-title" placeholder="Название книги, например: Мастер и Маргарита" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} required />
-      <Input id="read-goal" placeholder="Что прочесть, например: 50 страниц или 3 главы" value={readGoal} onChange={(e) => setReadGoal(e.target.value)} required />
-      <Button onClick={() => bookTitle && readGoal && onSubmit(`Чтение: ${bookTitle} (${readGoal})`, 'BookOpen')} className="w-full">Применить</Button>
-    </div>
-  )
+    const [bookTitle, setBookTitle] = useState('');
+    const [readGoal, setReadGoal] = useState('');
+    return (
+      <div className="space-y-4">
+        <Input id="book-title" placeholder="Название книги, например: Мастер и Маргарита" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} required />
+        <Input id="read-goal" placeholder="Что прочесть, например: 50 страниц или 3 главы" value={readGoal} onChange={(e) => setReadGoal(e.target.value)} required />
+        <Button onClick={() => bookTitle && readGoal && onSubmit(`Чтение: ${bookTitle} (${readGoal})`, 'BookOpen')} className="w-full">Применить</Button>
+      </div>
+    )
 };
 
 const MeditationTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
