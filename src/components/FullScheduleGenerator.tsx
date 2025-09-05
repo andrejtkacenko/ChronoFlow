@@ -260,13 +260,15 @@ const LeftColumn = memo(({
     selectedTasks,
     onTaskSelection,
     preferences,
-    onPrefChange
+    onPrefChange,
+    onHabitChange
 }: {
     inboxTasks: ScheduleItem[];
     selectedTasks: Set<string>;
     onTaskSelection: (taskId: string) => void;
     preferences: Record<string, any>;
     onPrefChange: (id: string, value: any) => void;
+    onHabitChange: (key: string, value: string) => void;
 }) => (
     <div className="space-y-6">
         <Step1_TaskSelection
@@ -286,6 +288,40 @@ const LeftColumn = memo(({
                     className="min-h-[100px]"
                  />
             </div>
+        </div>
+        <div>
+            <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <HabitBuilder
+                    habitName="Спорт"
+                    habitKey="sport"
+                    icon={Dumbbell}
+                    onHabitChange={onHabitChange}
+                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['sport']}
+                />
+                <HabitBuilder
+                    habitName="Медитация"
+                    habitKey="meditation"
+                    icon={Brain}
+                    onHabitChange={onHabitChange}
+                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['meditation']}
+                />
+                <HabitBuilder
+                    habitName="Чтение"
+                    habitKey="reading"
+                    icon={BookOpen}
+                    onHabitChange={onHabitChange}
+                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['reading']}
+                />
+            </div>
+            <div className="grid gap-2 pt-4">
+                <Label htmlFor="selfCareTime">Другие занятия (курсы, хобби)?</Label>
+                <Textarea id="selfCareTime" placeholder="Пример: Курс по React - 2 часа по вт и чт." value={preferences.selfCareTime ?? ''} onChange={e => onPrefChange('selfCareTime', e.target.value)} />
+            </div>
+        </div>
+         <div className="grid gap-2 mt-4">
+            <Label htmlFor="fixedEventsText">Какие еще у вас есть обязательства с фиксированным временем?</Label>
+            <Textarea id="fixedEventsText" placeholder="Пример: Встреча команды каждый Пн в 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => onPrefChange('fixedEventsText', e.target.value)} />
         </div>
         <div>
             <h4 className="font-semibold text-base mb-3">Анализ и обучение</h4>
@@ -309,15 +345,13 @@ const RightColumn = memo(({
     numberOfDays,
     onPrefChange,
     onEnergyPeakChange,
-    onNumberOfDaysChange,
-    onHabitChange
+    onNumberOfDaysChange
 }: {
     preferences: Record<string, any>;
     numberOfDays: number;
     onPrefChange: (id: string, value: any) => void;
     onEnergyPeakChange: (peak: string, checked: boolean) => void;
     onNumberOfDaysChange: (days: number) => void;
-    onHabitChange: (key: string, value: string) => void;
 }) => (
     <div className="space-y-6">
         <div>
@@ -354,40 +388,7 @@ const RightColumn = memo(({
         </div>
 
         <Separator />
-
-        <div>
-            <h4 className="font-semibold text-base mb-3">Привычки и хобби</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <HabitBuilder
-                    habitName="Спорт"
-                    habitKey="sport"
-                    icon={Dumbbell}
-                    onHabitChange={onHabitChange}
-                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['sport']}
-                />
-                <HabitBuilder
-                    habitName="Медитация"
-                    habitKey="meditation"
-                    icon={Brain}
-                    onHabitChange={onHabitChange}
-                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['meditation']}
-                />
-                <HabitBuilder
-                    habitName="Чтение"
-                    habitKey="reading"
-                    icon={BookOpen}
-                    onHabitChange={onHabitChange}
-                    initialValue={(preferences.fixedEvents as Record<string, string>)?.['reading']}
-                />
-            </div>
-            <div className="grid gap-2 pt-4">
-                <Label htmlFor="selfCareTime">Другие занятия (курсы, хобби)?</Label>
-                <Textarea id="selfCareTime" placeholder="Пример: Курс по React - 2 часа по вт и чт." value={preferences.selfCareTime ?? ''} onChange={e => onPrefChange('selfCareTime', e.target.value)} />
-            </div>
-        </div>
-
-        <Separator />
-
+        
         <div>
             <h4 className="font-semibold text-base mb-3">Продуктивность и ограничения</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
@@ -406,10 +407,6 @@ const RightColumn = memo(({
                     <Label htmlFor="numberOfDays" className="whitespace-nowrap">На сколько дней сгенерировать?</Label>
                     <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => onNumberOfDaysChange(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
                 </div>
-            </div>
-            <div className="grid gap-2 mt-4">
-                <Label htmlFor="fixedEventsText">Какие еще у вас есть обязательства с фиксированным временем?</Label>
-                <Textarea id="fixedEventsText" placeholder="Пример: Встреча команды каждый Пн в 10:00" value={preferences.fixedEventsText ?? ''} onChange={e => onPrefChange('fixedEventsText', e.target.value)} />
             </div>
         </div>
     </div>
@@ -560,6 +557,7 @@ const FormView = memo(({
                         onTaskSelection={handleTaskSelection}
                         preferences={preferences}
                         onPrefChange={handlePrefChange}
+                        onHabitChange={handleHabitChange}
                     />
                     <RightColumn 
                          preferences={preferences}
@@ -567,7 +565,6 @@ const FormView = memo(({
                          onPrefChange={handlePrefChange}
                          onEnergyPeakChange={handleEnergyPeakChange}
                          onNumberOfDaysChange={handleNumberOfDaysChange}
-                         onHabitChange={handleHabitChange}
                     />
                 </div>
             </ScrollArea>
