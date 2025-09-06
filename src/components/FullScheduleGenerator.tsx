@@ -610,7 +610,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
           <div className="flex justify-between items-start">
             <div>
               <DialogTitle className="flex items-center gap-2"><Wand2 className="h-5 w-5 text-primary" />Schedule Generator</DialogTitle>
-              <DialogDescription>The AI assistant will help you create the perfect schedule. Select tasks and adjust your preferences.</DialogDescription>
+              <DialogDescription>The planning assistant will help you create the perfect schedule. Select tasks and adjust your preferences.</DialogDescription>
             </div>
             {view === 'form' && (
                 <ToggleGroup type="single" value={layout} onValueChange={(value) => value && setLayout(value as LayoutType)} aria-label="Layout mode">
@@ -626,5 +626,3 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     </Dialog>
   );
 }
-
-    
