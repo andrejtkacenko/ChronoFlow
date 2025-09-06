@@ -21,8 +21,8 @@ const EventItem = ({ item }: { item: ScheduleItem }) => {
     
     return (
         <div className={cn("flex items-center gap-4 py-3", isCompleted && "opacity-50")}>
-             <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{backgroundColor: item.color?.replace(')', ', 0.1)').replace('hsl', 'hsla')}}>
-                <Icon className="size-5" style={{color: item.color}} />
+             <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{backgroundColor: item.color ? item.color.replace(')', ', 0.1)').replace('hsl', 'hsla') : undefined}}>
+                <Icon className="size-5" style={{color: item.color ?? undefined}} />
             </div>
             <div className="flex-1">
                 <p className={cn("font-semibold", isCompleted && "line-through")}>{item.title}</p>
