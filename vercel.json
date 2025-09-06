@@ -1,11 +1,7 @@
 {
   "functions": {
     "src/app/api/genkit/**": {
-<<<<<<< HEAD
       "maxDuration": 120
-=======
-      "maxDuration": 60
->>>>>>> 68c08379a6de392596bc0260ff651321d1da85ae
     }
   }
 }
