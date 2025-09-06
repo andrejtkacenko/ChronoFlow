@@ -399,7 +399,6 @@ export default function SchedulePage() {
                >
                   <RightSidebar
                       isOpen={isRightSidebarOpen}
-                      currentDate={currentDate}
                       numberOfDays={numberOfDays}
                       onNumberOfDaysChange={setNumberOfDays}
                       hourHeight={hourHeight}
@@ -431,5 +430,3 @@ export default function SchedulePage() {
     </>
   );
 }
-
-    
