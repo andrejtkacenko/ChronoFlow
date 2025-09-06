@@ -254,9 +254,6 @@ export default function NewEventDialog({
         } else {
           setIsAllDay(false);
         }
-        if (existingEvent.type === 'task' && !existingEvent.date) {
-            fetchSuggestions(existingEvent);
-        }
       } else if (newEventTime) { // Create event from grid
         resetForm();
         setItemType('event');
@@ -269,18 +266,20 @@ export default function NewEventDialog({
         setColor(eventColors[1]);
         setDate(undefined); // Unscheduled by default
       }
+    } else {
+        resetForm();
     }
   }, [isOpen, existingEvent, newEventTime, isNewTask, resetForm]);
 
-  const fetchSuggestions = async (task: ScheduleItem) => {
-      if (!task.title) return;
+  const fetchSuggestions = async () => {
+      if (!existingEvent || !existingEvent.title) return;
       setIsAISuggesting(true);
       setSuggestions([]);
-      const result = await getSuggestedTimeSlotsForTask(task, userId);
+      const result = await getSuggestedTimeSlotsForTask(existingEvent, userId);
       if (typeof result !== 'string') {
           setSuggestions(result);
       } else {
-          toast({ variant: 'destructive', title: 'Suggestion Error', description: result });
+          toast({ variant: 'destructive', title: 'Ошибка предложений', description: result });
       }
       setIsAISuggesting(false);
   };
@@ -302,6 +301,7 @@ export default function NewEventDialog({
       finalStartTime = null;
       finalEndTime = null;
       finalDate = null;
+      finalDuration = duration;
     } else if (isAllDay) {
         finalStartTime = '00:00';
         finalDuration = 24 * 60 -1;
@@ -446,7 +446,7 @@ export default function NewEventDialog({
                         ) : (
                             <div className="flex items-center gap-2 flex-1">
                                 <Button variant="outline" type="button" onClick={() => handleDateSelect(new Date())}>Назначить дату</Button>
-                                {(isEditing && existingEvent?.title) && <Button variant="outline" type="button" onClick={() => fetchSuggestions(existingEvent)}>Найти время</Button>}
+                                {(isEditing && existingEvent?.title) && <Button variant="outline" type="button" onClick={fetchSuggestions}>Найти время</Button>}
                             </div>
                         )}
                     </div>
@@ -467,7 +467,7 @@ export default function NewEventDialog({
                                 <Label htmlFor="duration" className='text-muted-foreground'>минут</Label>
                             </div>
                         ) : isAllDay ? (
-                            <p className="text-sm text-muted-foreground">This event is scheduled for the entire day.</p>
+                            <p className="text-sm text-muted-foreground">Это событие запланировано на весь день.</p>
                         ) : (
                              <div className="flex items-center gap-2">
                                 <Input 
@@ -593,3 +593,5 @@ export default function NewEventDialog({
     </Dialog>
   );
 }
+
+    
