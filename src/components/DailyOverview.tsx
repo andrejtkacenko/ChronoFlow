@@ -10,6 +10,8 @@ const EventCard = ({ item, hourHeight, onClick }: { item: DisplayScheduleItem, h
   if (!item.startTime || !item.duration) return null; 
   
   const minuteHeight = hourHeight / 60;
+  const startMins = parseInt(item.startTime.split(':')[0]) * 60 + parseInt(item.startTime.split(':')[1]);
+  const top = startMins * minuteHeight;
   let height = item.duration * minuteHeight;
   if(height <= 0) height = minuteHeight * 15; // Min height for 0-duration or negative
 
