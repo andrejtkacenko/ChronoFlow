@@ -1,13 +1,13 @@
 
-"use server";
+'use server';
 
 import { suggestOptimalTimeSlots } from "@/ai/flows/suggest-optimal-time-slots";
 import { generateFullSchedule } from "@/ai/flows/generate-full-schedule";
 import type { GenerateFullScheduleInput, GenerateFullScheduleOutput, SuggestedSlot } from "@/ai/flows/schema";
-import { collection, getDocs, query, where, writeBatch, startAt, endAt, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { db } from "./firebase";
 import type { ScheduleItem } from "./types";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 
 export async function getSuggestedTimeSlots(tasks: string, userId: string): Promise<SuggestedSlot[] | string> {
   if (!userId) {
@@ -60,45 +60,44 @@ export async function generateSchedule(input: Omit<GenerateFullScheduleInput, 's
     return result;
   } catch (error) {
     console.error("Error generating schedule:", error);
-    return "Sorry, I couldn't generate a schedule. There might be an issue with the scheduling service. Please try again later.";
+    return "Sorry, I couldn't generate a schedule. There might be an issue with the planning service. Please try again later.";
   }
 }
 
+
 export async function deleteScheduleItemsInRange(
   userId: string, 
-  startDate: string,
-  endDate: string
-): Promise<{success: boolean, message: string}> {
-  if (!userId) {
-    return { success: false, message: "User not authenticated. Please log in."};
-  }
+  startDate: string | null, 
+  endDate: string | null
+): Promise<{ deletedCount: number }> {
+    if (!userId) {
+        throw new Error("User not authenticated.");
+    }
 
-  try {
-    const itemsQuery = query(
-      collection(db, "scheduleItems"), 
-      where("userId", "==", userId),
-      orderBy("date"),
-      startAt(startDate),
-      endAt(endDate)
-    );
-
-    const snapshot = await getDocs(itemsQuery);
+    const itemsCollection = collection(db, "scheduleItems");
+    let q = query(itemsCollection, where("userId", "==", userId));
     
+    // This will only delete scheduled items, not inbox items (which have date === null)
+    if (startDate && endDate) {
+        q = query(q, where("date", ">=", startDate), where("date", "<=", endDate));
+    } else if (!startDate && !endDate) {
+      // This is the 'all' case, we need to ensure we only delete scheduled items
+      q = query(q, where("date", "!=", null));
+    }
+
+
+    const snapshot = await getDocs(q);
+
     if (snapshot.empty) {
-      return { success: true, message: "No items to delete in the selected range." };
+        return { deletedCount: 0 };
     }
 
     const batch = writeBatch(db);
-    snapshot.forEach(doc => {
-      batch.delete(doc.ref);
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
     });
-    await batch.commit();
-    
-    return { success: true, message: `Successfully deleted ${snapshot.size} items.`};
 
-  } catch (error) {
-    console.error("Error deleting schedule items:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return { success: false, message: `Failed to delete items: ${errorMessage}` };
-  }
+    await batch.commit();
+
+    return { deletedCount: snapshot.size };
 }

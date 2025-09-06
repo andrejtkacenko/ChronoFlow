@@ -180,3 +180,5 @@ export default function SmartScheduler({ open, onOpenChange }: SmartSchedulerPro
     </Dialog>
   );
 }
+
+    

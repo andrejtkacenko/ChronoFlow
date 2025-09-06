@@ -20,6 +20,7 @@ import {
     PersonStanding,
     Goal,
     Timer,
+    User,
   } from 'lucide-react';
   
 export const iconMap: { [key: string]: LucideIcon } = {
@@ -42,6 +43,7 @@ export const iconMap: { [key: string]: LucideIcon } = {
     PersonStanding,
     Goal,
     Timer,
+    User,
     Default: Briefcase,
 };
 

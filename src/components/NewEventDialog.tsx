@@ -44,6 +44,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import SmartScheduler from './SmartScheduler';
 import type { SuggestedSlot } from '@/ai/flows/schema';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+import { Calendar } from './ui/calendar';
 
 
 // --- Task Template Components ---
@@ -592,5 +593,3 @@ export default function NewEventDialog({
     </Dialog>
   );
 }
-
-    
