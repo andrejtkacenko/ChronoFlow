@@ -10,7 +10,6 @@ const EventCard = ({ item, hourHeight, onClick }: { item: DisplayScheduleItem, h
   if (!item.startTime || !item.duration) return null; 
   
   const minuteHeight = hourHeight / 60;
-  const top = (parseInt(item.startTime.split(":")[0]) * 60 + parseInt(item.startTime.split(":")[1])) * minuteHeight;
   let height = item.duration * minuteHeight;
   if(height <= 0) height = minuteHeight * 15; // Min height for 0-duration or negative
 
@@ -42,8 +41,8 @@ const EventCard = ({ item, hourHeight, onClick }: { item: DisplayScheduleItem, h
     >
       <div className="flex h-full flex-col overflow-hidden">
         <div className={cn("flex items-start gap-2", isTooSmallForDetails && "gap-1.5")}>
-            <Icon className={cn("flex-shrink-0", isTooSmallForDetails ? "size-3.5 mt-0.5" : "size-4 mt-0.5")} style={{color: item.color}} />
-            <h3 className="font-semibold text-sm leading-tight" style={{color: item.color}}>{item.title}</h3>
+            <Icon className={cn("flex-shrink-0", isTooSmallForDetails ? "size-3.5 mt-0.5" : "size-4 mt-0.5")} style={{color: item.color ?? undefined}} />
+            <h3 className="font-semibold text-sm leading-tight" style={{color: item.color ?? undefined}}>{item.title}</h3>
         </div>
         {!isTooSmallForDetails && (
           <>
