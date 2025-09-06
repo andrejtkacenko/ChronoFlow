@@ -275,8 +275,8 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
                         <p className="text-sm text-muted-foreground text-center pt-10">All suggested events have been added to your calendar.</p>
                         ) : (
                         <>
-                            <SuggestionList title="Tasks" items={suggestions.tasks} type="task" onAddEvent={onAddEvent} />
-                            <SuggestionList title="Routine" items={suggestions.routineEvents} type="routine" onAddEvent={onAddEvent} />
+                            <SuggestionList title="Tasks" items={suggestions.tasks} type="task" onAddEvent={handleAddEvent} />
+                            <SuggestionList title="Routine" items={suggestions.routineEvents} type="routine" onAddEvent={handleAddEvent} />
                         </>
                         )}
                     </ScrollArea>
