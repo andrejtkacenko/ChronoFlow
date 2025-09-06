@@ -199,7 +199,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
       if (!aiPrefs.meditationEnabled) { aiPrefs.meditationFrequency = 0; aiPrefs.meditationDuration = 0; }
       if (!aiPrefs.readingEnabled) { aiPrefs.readingFrequency = 0; aiPrefs.readingDuration = 0; }
       
-      const result = await generateSchedule({ tasks: allTasks, preferences: { ...aiPrefs, energyPeaks: Array.isArray(aiPrefs.energyPeaks) ? aiPrefs.energyPeaks.join(', ') : aiPrefs.energyPeaks }, startDate: format(new Date(), 'yyyy-MM-dd'), numberOfDays }, userId);
+      const result = await generateSchedule({ tasks: allTasks, preferences: { ...aiPrefs, energyPeaks: Array.isArray(aiPrefs.energyPeaks) ? aiPrefs.energyPeaks.join(', ') : aiPrefs.energyPeaks } as any, startDate: format(new Date(), 'yyyy-MM-dd'), numberOfDays }, userId);
 
       if (typeof result === 'string') {
         toast({ variant: 'destructive', title: "Generation Error", description: result });
