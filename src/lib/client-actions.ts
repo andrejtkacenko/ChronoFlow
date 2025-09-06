@@ -91,6 +91,6 @@ export async function getSuggestedTimeSlotsForTask(task: ScheduleItem, userId: s
     return result.suggestions;
   } catch (error) {
     console.error("Error getting suggestions:", error);
-    return "Sorry, I couldn't find a time slot. There might be an issue with the AI service. Please try again later.";
+    return "Sorry, I couldn't find a time slot. There might be an issue with the scheduling service. Please try again later.";
   }
 }

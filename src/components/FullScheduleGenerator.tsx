@@ -490,7 +490,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         setSuggestions(result);
         setView('results');
       } else {
-        toast({ variant: 'destructive', title: "Generation Error", description: "The AI did not return a result." });
+        toast({ variant: 'destructive', title: "Generation Error", description: "The generation service did not return a result." });
         setView('form');
       }
     } catch (error) {

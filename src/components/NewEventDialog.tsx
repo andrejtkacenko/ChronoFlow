@@ -41,7 +41,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Calendar } from './ui/calendar';
 import SmartScheduler from './SmartScheduler';
 import type { SuggestedSlot } from '@/ai/flows/schema';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
@@ -279,7 +278,7 @@ export default function NewEventDialog({
       if (typeof result !== 'string') {
           setSuggestions(result);
       } else {
-          toast({ variant: 'destructive', title: 'Ошибка предложений', description: result });
+          toast({ variant: 'destructive', title: 'Suggestion Error', description: result });
       }
       setIsAISuggesting(false);
   };
