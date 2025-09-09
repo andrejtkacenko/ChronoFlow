@@ -42,8 +42,8 @@ const prompt = ai.definePrompt({
     - Sport: {{{preferences.sportFrequency}}} times a week for {{{preferences.sportDuration}}} minutes. Schedule it during {{{preferences.sportPreferredTime}}} if specified.
     - Meditation: {{{preferences.meditationFrequency}}} times a week for {{{preferences.meditationDuration}}} minutes. Schedule it during {{{preferences.meditationPreferredTime}}} if specified.
     - Reading: {{{preferences.readingFrequency}}} times a week for {{{preferences.readingDuration}}} minutes. Schedule it during {{{preferences.readingPreferredTime}}} if specified.
-  - Use the free-form text for other fixed events: {{{preferences.fixedEventsText}}}
-  - Place all these newly created routine and work events into the 'routineEvents' array in the output.
+  - **Fixed Events from Text:** Carefully parse the 'fixedEventsText' field: '{{{preferences.fixedEventsText}}}'. Identify any recurring events with specific days and times (e.g., "Team meeting every Mon at 10:00", "English lesson on Tue and Thu at 18:00"). Create these events and add them to the schedule for all relevant days within the scheduling period.
+  - Place all these newly created routine, work and fixed events into the 'routineEvents' array in the output.
 
   **Step 2: Schedule Inbox Tasks.**
   - After you have filled the schedule with the routine and work events, take the list of tasks from the user's inbox ({{tasks}}).
@@ -68,7 +68,7 @@ const prompt = ai.definePrompt({
   **User's Preferences & Goals for a Perfect Schedule:**
   - Main Goals: {{{preferences.mainGoals}}}
   - Peak Energy: {{{preferences.energyPeaks}}}
-  - Other fixed events: {{{preferences.fixedEventsText}}}
+  - Other fixed events from text: {{{preferences.fixedEventsText}}}
   - Past Learnings: {{{preferences.pastLearnings}}}
   - Work Schedule: From {{{preferences.workStartTime}}} to {{{preferences.workEndTime}}} on days: {{{preferences.workDays}}}.
 
