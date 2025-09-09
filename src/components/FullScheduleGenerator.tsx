@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, memo } from 'react';
@@ -44,7 +45,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 const defaultPreferences = {
   mainGoals: '',
-  sleepDuration: 8,
+  sleepTimeRange: [22, 8],
   mealsPerDay: 3,
   restTime: 2,
   energyPeaks: [] as string[],
@@ -183,25 +184,47 @@ const TaskSelection = memo(({ inboxTasks, selectedTasks, onTaskSelection, prefer
 ));
 TaskSelection.displayName = 'TaskSelection';
 
-const DailyNeeds = memo(({ preferences, onPrefChange } : { preferences: any, onPrefChange: (id: string, val: any) => void }) => (
-    <div>
-        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Bed/> Daily Needs</h3>
-        <div className="space-y-6">
-            <div>
-                <div className="flex justify-between items-center mb-1"><Label>Sleep (hours)</Label><span className="text-sm font-medium text-primary">{preferences.sleepDuration}</span></div>
-                <Slider value={[preferences.sleepDuration ?? 8]} onValueChange={value => onPrefChange('sleepDuration', value[0])} min={4} max={12} step={1} />
-            </div>
-            <div>
-                <div className="flex justify-between items-center mb-1"><Label>Meals (per day)</Label><span className="text-sm font-medium text-primary">{preferences.mealsPerDay}</span></div>
-                <Slider value={[preferences.mealsPerDay ?? 3]} onValueChange={value => onPrefChange('mealsPerDay', value[0])} min={1} max={6} step={1} />
-            </div>
-            <div>
-                <div className="flex justify-between items-center mb-1"><Label>Rest (hours, besides sleep)</Label><span className="text-sm font-medium text-primary">{preferences.restTime}</span></div>
-                <Slider value={[preferences.restTime ?? 2]} onValueChange={value => onPrefChange('restTime', value[0])} min={1} max={5} step={0.5} />
+const DailyNeeds = memo(({ preferences, onPrefChange }: { preferences: any, onPrefChange: (id: string, val: any) => void }) => {
+    const formatTime = (hour: number) => {
+        const h = Math.floor(hour);
+        const m = Math.round((hour - h) * 60);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+
+    const sleepRange = preferences.sleepTimeRange || [22, 8];
+    const sleepStart = formatTime(sleepRange[0]);
+    const sleepEnd = formatTime(sleepRange[1]);
+
+    return (
+        <div>
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Bed/> Daily Needs</h3>
+            <div className="space-y-6">
+                <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label>Sleep time</Label>
+                        <span className="text-sm font-medium text-primary">{sleepStart} - {sleepEnd}</span>
+                    </div>
+                    <Slider 
+                        value={sleepRange} 
+                        onValueChange={value => onPrefChange('sleepTimeRange', value)} 
+                        min={0} 
+                        max={24} 
+                        step={0.5} 
+                        minStepsBetweenThumbs={4}
+                    />
+                </div>
+                <div>
+                    <div className="flex justify-between items-center mb-1"><Label>Meals (per day)</Label><span className="text-sm font-medium text-primary">{preferences.mealsPerDay}</span></div>
+                    <Slider value={[preferences.mealsPerDay ?? 3]} onValueChange={value => onPrefChange('mealsPerDay', value[0])} min={1} max={6} step={1} />
+                </div>
+                <div>
+                    <div className="flex justify-between items-center mb-1"><Label>Rest (hours, besides sleep)</Label><span className="text-sm font-medium text-primary">{preferences.restTime}</span></div>
+                    <Slider value={[preferences.restTime ?? 2]} onValueChange={value => onPrefChange('restTime', value[0])} min={1} max={5} step={0.5} />
+                </div>
             </div>
         </div>
-    </div>
-));
+    );
+});
 DailyNeeds.displayName = 'DailyNeeds';
 
 const HabitBuilder = memo(({ habitName, habitKey, icon: Icon, preferences, onPrefChange }: { habitName: string; habitKey: string; icon: React.ElementType; preferences: Record<string, any>; onPrefChange: (id: string, value: any) => void; }) => {
@@ -351,6 +374,12 @@ const EditSectionHeader = ({ title, onBack }: { title: string; onBack: () => voi
 const SummaryView = memo((props: any) => {
     const [editingSection, setEditingSection] = useState<EditingSection>(null);
     const { preferences, onPrefChange, onEnergyPeakChange, onWorkDayToggle } = props;
+    
+    const formatTime = (hour: number) => {
+        const h = Math.floor(hour);
+        const m = Math.round((hour - h) * 60);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
 
     const InteractiveSummary = () => {
         const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -361,9 +390,13 @@ const SummaryView = memo((props: any) => {
         ].filter(Boolean).join(", ");
         const workDaysString = preferences.workDays?.map((d: number) => weekDays[d]).join(', ') || 'no';
 
+        const sleepRange = preferences.sleepTimeRange || [22, 8];
+        const sleepStart = formatTime(sleepRange[0]);
+        const sleepEnd = formatTime(sleepRange[1]);
+
         return (
             <div className="space-y-4 text-base text-muted-foreground p-1">
-                <p>Each day includes <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.sleepDuration} hours</span> of sleep</Button>, <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.mealsPerDay} meals</span></Button>, and <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.restTime} hours</span> of rest</Button>.</p>
+                <p>Each day includes sleep from <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{sleepStart} to {sleepEnd}</span></Button>, <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.mealsPerDay} meals</span></Button>, and <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('daily')}><span className="font-semibold text-primary">{preferences.restTime} hours</span> of rest</Button>.</p>
                 <p>Work is scheduled on <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('work')}><span className="font-semibold text-primary">{workDaysString}</span> days</Button> from <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('work')}><span className="font-semibold text-primary">{preferences.workStartTime}</span> to <span className="font-semibold text-primary">{preferences.workEndTime}</span></Button>.</p>
                 <p>Your energy peaks are in the <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('productivity')}><span className="font-semibold text-primary">{preferences.energyPeaks?.join(', ') || 'not set'}</span></Button>.</p>
                 <p>Your habits are: <Button variant="link" className="p-0 h-auto text-base" onClick={() => setEditingSection('habits')}><span className="font-semibold text-primary">{activeHabits || "none"}</span></Button>.</p>
@@ -481,7 +514,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
       if (!aiPrefs.meditationEnabled) { aiPrefs.meditationFrequency = 0; aiPrefs.meditationDuration = 0; }
       if (!aiPrefs.readingEnabled) { aiPrefs.readingFrequency = 0; aiPrefs.readingDuration = 0; }
       
-      const result = await generateSchedule({ tasks: allTasks, preferences: { ...aiPrefs, energyPeaks: Array.isArray(aiPrefs.energyPeaks) ? aiPrefs.energyPeaks.join(', ') : aiPrefs.energyPeaks }, startDate: format(new Date(), 'yyyy-MM-dd'), numberOfDays }, userId);
+      const result = await generateSchedule({ tasks: allTasks, preferences: aiPrefs as any, startDate: format(new Date(), 'yyyy-MM-dd'), numberOfDays }, userId);
 
       if (typeof result === 'string') {
         toast({ variant: 'destructive', title: "Generation Error", description: result });

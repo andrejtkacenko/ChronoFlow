@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   **Step 1: Create Routine & Work Events.**
   - First, review the user's preferences for daily needs and work schedule.
   - For EACH of the {{{numberOfDays}}} days, you MUST create recurring events for:
-    - **Sleep:** Based on {{{preferences.sleepDuration}}} hours.
+    - **Sleep:** Based on the user's preferred time range from {{{preferences.sleepTimeRange.[0]}}}:00 to {{{preferences.sleepTimeRange.[1]}}}:00.
     - **Meals:** Based on {{{preferences.mealsPerDay}}} meals per day. Allocate a reasonable time for each.
     - **Rest:** Based on {{{preferences.restTime}}} hours. This should be broken into smaller breaks.
   - **Work Blocks:** If work days are specified, create a "Work Block" event from {{{preferences.workStartTime}}} to {{{preferences.workEndTime}}} on each of the specified work days ({{{preferences.workDays}}}). Treat Sunday as day 0.
