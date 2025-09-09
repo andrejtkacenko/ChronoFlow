@@ -19,6 +19,8 @@ import { addDays, format, isSameDay, parse, startOfDay, endOfDay, isWithinInterv
 import type { ScheduleItem, DisplayScheduleItem } from '@/lib/types';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { deleteScheduleItems } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
 
 const hours = Array.from({ length: 24 }, (_, i) => {
     const hour24 = i;
@@ -169,6 +171,7 @@ const processScheduleForDisplay = (items: ScheduleItem[], visibleDays: Date[]): 
 export default function SchedulePage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
@@ -318,6 +321,23 @@ export default function SchedulePage() {
     }
   }
 
+  const handleDeleteEvents = async (period: 'day' | 'week' | 'month' | 'all') => {
+    if (!user) return;
+    const result = await deleteScheduleItems(user.uid, period, format(currentDate, 'yyyy-MM-dd'));
+    if (result.success) {
+      toast({
+        title: 'Events Deleted',
+        description: result.message,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: result.message,
+      });
+    }
+  };
+
   if (authLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -394,7 +414,7 @@ export default function SchedulePage() {
               </div>
                <div
                   className={cn("transition-all duration-300 ease-in-out bg-card border-l",
-                      isRightSidebarOpen ? "w-[250px]" : "w-0"
+                      isRightSidebarOpen ? "w-[300px]" : "w-0"
                   )}
                >
                   <RightSidebar
@@ -403,6 +423,7 @@ export default function SchedulePage() {
                       onNumberOfDaysChange={setNumberOfDays}
                       hourHeight={hourHeight}
                       onHourHeightChange={setHourHeight}
+                      onDeleteEvents={handleDeleteEvents}
                   />
               </div>
           </main>

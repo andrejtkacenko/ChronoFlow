@@ -1,10 +1,22 @@
 
 import { Button } from "./ui/button";
-import { Settings } from "lucide-react";
+import { Settings, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "./ui/tooltip";
 import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
+import { Separator } from "./ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface RightSidebarProps {
   isOpen: boolean;
@@ -12,6 +24,37 @@ interface RightSidebarProps {
   onNumberOfDaysChange: (days: number) => void;
   hourHeight: number;
   onHourHeightChange: (height: number) => void;
+  onDeleteEvents: (period: 'day' | 'week' | 'month' | 'all') => void;
+}
+
+const DeleteButton = ({ period, label, onDelete }: { period: 'day' | 'week' | 'month' | 'all', label: string, onDelete: (period: 'day' | 'week' | 'month' | 'all') => void }) => {
+    const descriptions = {
+        day: "This will permanently delete all events for the selected day.",
+        week: "This will permanently delete all events for the selected week.",
+        month: "This will permanently delete all events for the selected month.",
+        all: "This will permanently delete all scheduled events from your account."
+    }
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full justify-start text-left h-auto py-2">
+                    <Trash2 className="mr-2 h-4 w-4 shrink-0" />
+                    <span>{label}</span>
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>{descriptions[period]}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDelete(period)}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )
 }
 
 export default function RightSidebar({ 
@@ -19,7 +62,8 @@ export default function RightSidebar({
     numberOfDays, 
     onNumberOfDaysChange,
     hourHeight,
-    onHourHeightChange
+    onHourHeightChange,
+    onDeleteEvents
 }: RightSidebarProps) {
 
   return (
@@ -57,6 +101,19 @@ export default function RightSidebar({
                                 className="mt-2"
                             />
                        </div>
+                    </div>
+
+                    <Separator className="my-6" />
+
+                    <div className="space-y-4">
+                        <h4 className="font-semibold text-destructive">Danger Zone</h4>
+                        <p className="text-xs text-muted-foreground">These actions are irreversible. Please be certain.</p>
+                        <div className="space-y-2">
+                           <DeleteButton period="day" label="Delete Today's Events" onDelete={onDeleteEvents} />
+                           <DeleteButton period="week" label="Delete This Week's Events" onDelete={onDeleteEvents} />
+                           <DeleteButton period="month" label="Delete This Month's Events" onDelete={onDeleteEvents} />
+                           <DeleteButton period="all" label="Delete All Events" onDelete={onDeleteEvents} />
+                        </div>
                     </div>
                 </>
             )}
