@@ -77,7 +77,7 @@ export default function TelegramIntegrationPage() {
                                     <Copy className="h-4 w-4" />
                                 </Button>
                            </div>
-                           <p className="text-sm text-muted-foreground mt-2">After running the command, Telegram should respond with <code>{"{\\"ok\\":true,\\"result\\":true,\\"description\\":\\"Webhook was set\\"}"}</code>.</p>
+                           <p className="text-sm text-muted-foreground mt-2">After running the command, Telegram should respond with <code>"ok\\":true,\\"result\\":true,\\"description\\":\\"Webhook was set\\"</code>.</p>
                         </div>
                         
                          {/* Step 4 */}
