@@ -9,11 +9,11 @@ import { ArrowLeft, Copy } from "lucide-react";
 
 export default function TelegramIntegrationPage() {
     const { toast } = useToast();
-    const botToken = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
-    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || 'YOUR_PUBLIC_APP_URL';
-    
-    const webhookUrl = `${publicUrl}/api/telegram-webhook`;
-    const curlCommand = `curl -F "url=${webhookUrl}" https://api.telegram.org/bot${botToken}/setWebhook`;
+    const [botToken, setBotToken] = useState('');
+    const [publicUrl, setPublicUrl] = useState('');
+
+    const webhookUrl = publicUrl ? `${publicUrl}/api/telegram-webhook` : 'YOUR_PUBLIC_URL/api/telegram-webhook';
+    const curlCommand = `curl -F "url=${webhookUrl}" https://api.telegram.org/bot${botToken || 'YOUR_BOT_TOKEN_HERE'}/setWebhook`;
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -50,7 +50,7 @@ export default function TelegramIntegrationPage() {
                         <div>
                            <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">2</span>Set Environment Variables</h2>
                            <p className="text-muted-foreground mb-4">
-                                In your project, open the <code>.env</code> file and add your bot token and public app URL:
+                                In your project, create or open the <code>.env</code> file and add your bot token and public app URL. Replace the placeholder values with your actual data.
                            </p>
                            <div className="bg-muted p-3 rounded-lg text-sm font-mono relative space-y-2">
                                 <div>
@@ -66,14 +66,23 @@ export default function TelegramIntegrationPage() {
                                     </Button>
                                 </div>
                            </div>
-                           <p className="text-sm text-muted-foreground mt-2">The public URL is the address where your app is deployed (e.g., your Vercel URL or ngrok tunnel).</p>
+                           <p className="text-sm text-muted-foreground mt-2">
+                              The public URL is the address where your app is deployed (e.g., your Vercel URL or ngrok tunnel for local development).
+                           </p>
+                           <p className="text-sm text-muted-foreground mt-2">
+                              You can enter your values below to generate the final `curl` command.
+                           </p>
+                           <div className="flex gap-4 mt-4">
+                                <input className="w-full bg-input rounded-md px-3 py-2 text-sm" placeholder="Paste Bot Token" value={botToken} onChange={e => setBotToken(e.target.value)} />
+                                <input className="w-full bg-input rounded-md px-3 py-2 text-sm" placeholder="Paste Public URL" value={publicUrl} onChange={e => setPublicUrl(e.target.value)} />
+                           </div>
                         </div>
 
                         {/* Step 3 */}
                         <div>
                            <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">3</span>Set up the Webhook</h2>
                             <p className="text-muted-foreground mb-4">
-                                Run the following command in your terminal. Make sure you have replaced the placeholder values with your actual bot token and public URL in your <code>.env</code> file first, or replace them directly in the command.
+                                Copy the command below and run it in your terminal. This will tell Telegram where to send messages from your bot.
                             </p>
                              <div className="bg-muted p-3 rounded-lg text-sm font-mono relative">
                                 <code>{curlCommand}</code>
