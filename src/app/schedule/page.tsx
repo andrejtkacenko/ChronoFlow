@@ -19,7 +19,7 @@ import { addDays, format, isSameDay, parse, startOfDay, endOfDay, isWithinInterv
 import type { ScheduleItem, DisplayScheduleItem } from '@/lib/types';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { deleteScheduleItems } from '@/lib/actions';
+import { deleteScheduleItemsInRange } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 const hours = Array.from({ length: 24 }, (_, i) => {
@@ -323,17 +323,25 @@ export default function SchedulePage() {
 
   const handleDeleteEvents = async (period: 'day' | 'week' | 'month' | 'all') => {
     if (!user) return;
-    const result = await deleteScheduleItems(user.uid, period, format(currentDate, 'yyyy-MM-dd'));
-    if (result.success) {
+    let startDate: string | null = null;
+    let endDate: string | null = null;
+    if (period !== 'all') {
+        const d = new Date(currentDate);
+        if (period === 'day') { startDate = format(d, 'yyyy-MM-dd'); endDate = format(d, 'yyyy-MM-dd'); }
+        if (period === 'week') { startDate = format(startOfWeek(d), 'yyyy-MM-dd'); endDate = format(endOfWeek(d), 'yyyy-MM-dd'); }
+        if (period === 'month') { startDate = format(startOfMonth(d), 'yyyy-MM-dd'); endDate = format(endOfMonth(d), 'yyyy-MM-dd'); }
+    }
+    
+    const result = await deleteScheduleItemsInRange(user.uid, startDate, endDate);
+    if (result.deletedCount > 0) {
       toast({
         title: 'Events Deleted',
-        description: result.message,
+        description: `${result.deletedCount} events have been deleted.`,
       });
     } else {
       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: result.message,
+        title: 'No Events Found',
+        description: 'There were no events to delete in the selected range.',
       });
     }
   };
@@ -423,7 +431,7 @@ export default function SchedulePage() {
                       onNumberOfDaysChange={setNumberOfDays}
                       hourHeight={hourHeight}
                       onHourHeightChange={setHourHeight}
-                      onDeleteEvents={handleDeleteEvents}
+                      currentDate={currentDate}
                   />
               </div>
           </main>

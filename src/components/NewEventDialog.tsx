@@ -23,7 +23,7 @@ import { iconMap, eventColors, ScheduleItem } from '@/lib/types';
 import { format, addMinutes, parse } from 'date-fns';
 import { addScheduleItem, updateScheduleItem, deleteScheduleItem, getSuggestedTimeSlotsForTask } from '@/lib/client-actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2, Sparkles, Wand2, ArrowLeft, PersonStanding, BookOpen, BrainCircuit, Dumbbell } from 'lucide-react';
+import { Loader2, AlignLeft, Users, MapPin, Clock, Video, Bell, Palette, Aperture, Trash2, Sparkles, Wand2, ArrowLeft, PersonStanding, BookOpen, BrainCircuit, Dumbbell, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -41,10 +41,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Calendar } from './ui/calendar';
 import SmartScheduler from './SmartScheduler';
 import type { SuggestedSlot } from '@/ai/flows/schema';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+import { Calendar } from './ui/calendar';
 
 
 // --- Task Template Components ---
@@ -71,7 +71,7 @@ const TaskTemplateSelector = ({ onSelectTemplate }: { onSelectTemplate: (templat
   </div>
 );
 
-const RunningTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
+const RunningTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string, duration: number) => void }) => {
     const [distance, setDistance] = useState('');
     const [duration, setDuration] = useState('');
   
@@ -83,7 +83,7 @@ const RunningTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string)
       if (parts.length > 0) {
         title += `: ${parts.join(', ')}`;
       }
-      onSubmit(title, 'PersonStanding');
+      onSubmit(title, 'PersonStanding', parseInt(duration) || 0);
     };
   
     return (
@@ -101,41 +101,55 @@ const RunningTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string)
     );
 };
 
-const ReadingTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
+const ReadingTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string, duration: number) => void }) => {
     const [bookTitle, setBookTitle] = useState('');
     const [readGoal, setReadGoal] = useState('');
+    const [duration, setDuration] = useState(30);
+
     return (
       <div className="space-y-4">
         <Input id="book-title" placeholder="Название книги, например: Мастер и Маргарита" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} required />
         <Input id="read-goal" placeholder="Что прочесть, например: 50 страниц или 3 главы" value={readGoal} onChange={(e) => setReadGoal(e.target.value)} required />
-        <Button onClick={() => bookTitle && readGoal && onSubmit(`Чтение: ${bookTitle} (${readGoal})`, 'BookOpen')} className="w-full">Применить</Button>
+        <div className="space-y-2">
+            <Label htmlFor="read-duration">Длительность (минут)</Label>
+            <Input id="read-duration" type="number" placeholder="например, 30" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 30)} />
+        </div>
+        <Button onClick={() => bookTitle && readGoal && onSubmit(`Чтение: ${bookTitle} (${readGoal})`, 'BookOpen', duration)} className="w-full">Применить</Button>
       </div>
     )
 };
 
-const MeditationTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
-  const [duration, setDuration] = useState('');
+const MeditationTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string, duration: number) => void }) => {
+  const [duration, setDuration] = useState('20');
   return (
     <div className="space-y-2">
       <Label htmlFor="meditation-duration">Длительность (минут)</Label>
       <Input id="meditation-duration" type="number" placeholder="например, 20" value={duration} onChange={(e) => setDuration(e.target.value)} required />
-      <Button onClick={() => duration && onSubmit(`Медитация: ${duration} минут`, 'BrainCircuit')} className="w-full">Применить</Button>
+      <Button onClick={() => duration && onSubmit(`Медитация: ${duration} минут`, 'BrainCircuit', parseInt(duration))} className="w-full">Применить</Button>
     </div>
   );
 };
 
-const GymTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string) => void }) => {
+const GymTemplate = ({ onSubmit }: { onSubmit: (title: string, icon: string, duration: number) => void }) => {
   const [type, setType] = useState('');
+  const [duration, setDuration] = useState(60);
+
   return (
-    <div className="space-y-2">
-      <Label htmlFor="gym-type">Тип тренировки</Label>
-      <Input id="gym-type" placeholder="например, Ноги" value={type} onChange={(e) => setType(e.target.value)} required />
-      <Button onClick={() => type && onSubmit(`Тренировка в зале: ${type}`, 'Dumbbell')} className="w-full">Применить</Button>
+    <div className="space-y-4">
+        <div className='space-y-2'>
+            <Label htmlFor="gym-type">Тип тренировки</Label>
+            <Input id="gym-type" placeholder="например, Ноги" value={type} onChange={(e) => setType(e.target.value)} required />
+        </div>
+        <div className='space-y-2'>
+            <Label htmlFor="gym-duration">Длительность (минут)</Label>
+            <Input id="gym-duration" type="number" placeholder="например, 60" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 60)} />
+        </div>
+      <Button onClick={() => type && onSubmit(`Тренировка в зале: ${type}`, 'Dumbbell', duration)} className="w-full">Применить</Button>
     </div>
   )
 };
 
-const TemplateConfigurator = ({ template, onBack, onApply }: { template: Template, onBack: () => void, onApply: (title: string, icon: string) => void }) => {
+const TemplateConfigurator = ({ template, onBack, onApply }: { template: Template, onBack: () => void, onApply: (title: string, icon: string, duration: number) => void }) => {
   const selectedTemplate = useMemo(() => templates.find(t => t.id === template), [template]);
 
   return (
@@ -171,8 +185,9 @@ interface NewEventDialogProps {
 }
 
 const calculateEndTime = (startTime: string, duration: number): string => {
-  if (!startTime) return '';
+  if (!startTime || !duration) return '';
   const [hours, minutes] = startTime.split(':').map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return '';
   const startDate = new Date();
   startDate.setHours(hours, minutes, 0, 0);
   const endDate = addMinutes(startDate, duration);
@@ -200,12 +215,12 @@ export default function NewEventDialog({
 
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('10:00');
   
   const [isAISuggesting, setIsAISuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
 
   const isEditing = !!existingEvent;
+  const endTime = useMemo(() => calculateEndTime(startTime, duration), [startTime, duration]);
 
   const resetForm = useCallback(() => {
       setTitle('');
@@ -239,9 +254,6 @@ export default function NewEventDialog({
         } else {
           setIsAllDay(false);
         }
-        if (existingEvent.type === 'task' && !existingEvent.date) {
-            fetchSuggestions(existingEvent);
-        }
       } else if (newEventTime) { // Create event from grid
         resetForm();
         setItemType('event');
@@ -254,33 +266,23 @@ export default function NewEventDialog({
         setColor(eventColors[1]);
         setDate(undefined); // Unscheduled by default
       }
+    } else {
+        resetForm();
     }
   }, [isOpen, existingEvent, newEventTime, isNewTask, resetForm]);
 
-  const fetchSuggestions = async (task: ScheduleItem) => {
-      if (!task.title) return;
+  const fetchSuggestions = async () => {
+      if (!existingEvent || !existingEvent.title) return;
       setIsAISuggesting(true);
       setSuggestions([]);
-      const result = await getSuggestedTimeSlotsForTask(task, userId);
+      const result = await getSuggestedTimeSlotsForTask(existingEvent, userId);
       if (typeof result !== 'string') {
           setSuggestions(result);
       } else {
-          toast({ variant: 'destructive', title: 'AI Error', description: result });
+          toast({ variant: 'destructive', title: 'Suggestion Error', description: result });
       }
       setIsAISuggesting(false);
   };
-
-  useEffect(() => {
-    if (!date) {
-        setEndTime('');
-        return;
-    }
-    if (!isAllDay) {
-        setEndTime(calculateEndTime(startTime, duration));
-    } else {
-        setEndTime('23:59');
-    }
-  }, [startTime, duration, isAllDay, date]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,8 +300,8 @@ export default function NewEventDialog({
     if (itemType === 'task' && !date) {
       finalStartTime = null;
       finalEndTime = null;
-      finalDuration = null;
       finalDate = null;
+      finalDuration = duration;
     } else if (isAllDay) {
         finalStartTime = '00:00';
         finalDuration = 24 * 60 -1;
@@ -366,9 +368,12 @@ export default function NewEventDialog({
     }
   }
 
-  const handleTemplateApply = (templateTitle: string, templateIcon: string) => {
+  const handleTemplateApply = (templateTitle: string, templateIcon: string, templateDuration: number) => {
     setTitle(templateTitle);
     setIcon(templateIcon);
+    if (templateDuration > 0) {
+      setDuration(templateDuration);
+    }
     setTemplate(null);
   }
   
@@ -441,7 +446,40 @@ export default function NewEventDialog({
                         ) : (
                             <div className="flex items-center gap-2 flex-1">
                                 <Button variant="outline" type="button" onClick={() => handleDateSelect(new Date())}>Назначить дату</Button>
-                                {(isEditing && existingEvent?.title) && <Button variant="outline" type="button" onClick={() => fetchSuggestions(existingEvent)}>Найти время</Button>}
+                                {(isEditing && existingEvent?.title) && <Button variant="outline" type="button" onClick={fetchSuggestions}>Найти время</Button>}
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* DURATION INPUT */}
+                    <div className="flex items-center gap-4">
+                        <Timer className="size-5 text-muted-foreground" />
+                        {isScheduled && !isAllDay ? (
+                            <div className="flex items-center gap-2">
+                                <Input 
+                                    id="duration" 
+                                    type="number" 
+                                    value={duration}
+                                    onChange={e => setDuration(parseInt(e.target.value, 10) || 0)}
+                                    className="w-24"
+                                    min="0"
+                                />
+                                <Label htmlFor="duration" className='text-muted-foreground'>минут</Label>
+                            </div>
+                        ) : isAllDay ? (
+                            <p className="text-sm text-muted-foreground">Это событие запланировано на весь день.</p>
+                        ) : (
+                             <div className="flex items-center gap-2">
+                                <Input 
+                                    id="duration-task" 
+                                    type="number" 
+                                    value={duration}
+                                    onChange={e => setDuration(parseInt(e.target.value, 10) || 0)}
+                                    className="w-24"
+                                    min="0"
+                                    placeholder='60'
+                                />
+                                <Label htmlFor="duration-task" className='text-muted-foreground'>минут</Label>
                             </div>
                         )}
                     </div>
@@ -454,7 +492,7 @@ export default function NewEventDialog({
                     )}
                     {suggestions.length > 0 && (
                         <div className='space-y-2'>
-                            <Label>Предложения от AI:</Label>
+                            <Label>Рекомендации:</Label>
                             <div className="flex flex-wrap gap-2">
                                 {suggestions.map((slot, i) => (
                                     <Button key={i} variant="outline" size="sm" onClick={() => handleApplySuggestion(slot)}>

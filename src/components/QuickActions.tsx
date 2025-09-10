@@ -46,7 +46,7 @@ export default function QuickActions({ onNewEvent, onSmartScheduler, onFullSched
             onClick: onSmartScheduler,
         },
         {
-            title: 'AI Schedule Generator',
+            title: 'Schedule Generator',
             description: 'Generate a full, multi-day schedule.',
             icon: Wand2,
             onClick: onFullSchedule,

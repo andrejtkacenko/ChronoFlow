@@ -1,5 +1,5 @@
 
-"use server";
+'use server';
 
 import { suggestOptimalTimeSlots } from "@/ai/flows/suggest-optimal-time-slots";
 import { generateFullSchedule } from "@/ai/flows/generate-full-schedule";
@@ -33,7 +33,7 @@ export async function getSuggestedTimeSlots(tasks: string, userId: string): Prom
     return result.suggestions;
   } catch (error) {
     console.error("Error getting suggestions:", error);
-    return "Sorry, I couldn't find a time slot. There might be an issue with the AI service. Please try again later.";
+    return "Sorry, I couldn't find a time slot. There might be an issue with the scheduling service. Please try again later.";
   }
 }
 
@@ -60,67 +60,45 @@ export async function generateSchedule(input: Omit<GenerateFullScheduleInput, 's
     return result;
   } catch (error) {
     console.error("Error generating schedule:", error);
-    return "Sorry, I couldn't generate a schedule. There might be an issue with the AI service. Please try again later.";
+    return "Sorry, I couldn't generate a schedule. There might be an issue with the planning service. Please try again later.";
   }
 }
 
 
-export async function deleteScheduleItems(
-  userId: string,
-  period: 'day' | 'week' | 'month' | 'all',
-  currentDate: string,
-): Promise<{ success: boolean, message: string }> {
-  if (!userId) {
-    return { success: false, message: 'User not authenticated.' };
-  }
-
-  const itemsRef = collection(db, 'scheduleItems');
-  let q;
-
-  if (period === 'all') {
-    q = query(itemsRef, where('userId', '==', userId));
-  } else {
-    const date = new Date(currentDate);
-    let startDate: Date;
-    let endDate: Date;
-
-    if (period === 'day') {
-      startDate = startOfDay(date);
-      endDate = endOfDay(date);
-    } else if (period === 'week') {
-      startDate = startOfWeek(date);
-      endDate = endOfWeek(date);
-    } else { // month
-      startDate = startOfMonth(date);
-      endDate = endOfMonth(date);
+export async function deleteScheduleItemsInRange(
+  userId: string, 
+  startDate: string | null, 
+  endDate: string | null
+): Promise<{ deletedCount: number }> {
+    if (!userId) {
+        throw new Error("User not authenticated.");
     }
 
-    q = query(
-      itemsRef,
-      where('userId', '==', userId),
-      where('date', '>=', format(startDate, 'yyyy-MM-dd')),
-      where('date', '<=', format(endDate, 'yyyy-MM-dd'))
-    );
-  }
-
-  try {
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-      return { success: true, message: 'No events to delete.' };
-    }
+    const itemsCollection = collection(db, "scheduleItems");
+    let q = query(itemsCollection, where("userId", "==", userId));
     
+    // This will only delete scheduled items, not inbox items (which have date === null)
+    if (startDate && endDate) {
+        q = query(q, where("date", ">=", startDate), where("date", "<=", endDate));
+    } else if (!startDate && !endDate) {
+      // This is the 'all' case, we need to ensure we only delete scheduled items
+      q = query(q, where("date", "!=", null));
+    }
+
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+        return { deletedCount: 0 };
+    }
+
     const batch = writeBatch(db);
     snapshot.docs.forEach(doc => {
-      // We only delete scheduled events, not inbox tasks
-      if (doc.data().date) {
         batch.delete(doc.ref);
-      }
     });
 
     await batch.commit();
-    return { success: true, message: `Successfully deleted ${snapshot.size} events.` };
-  } catch (error) {
-    console.error('Error deleting schedule items: ', error);
-    return { success: false, message: 'An error occurred while deleting events.' };
-  }
+
+    return { deletedCount: snapshot.size };
 }
+

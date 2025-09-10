@@ -43,7 +43,7 @@ export default function SmartScheduler({ open, onOpenChange }: SmartSchedulerPro
       if (typeof result === 'string') {
          toast({
           variant: "destructive",
-          title: "AI Suggestion Error",
+          title: "Suggestion Error",
           description: result,
         });
         setSuggestions([]);
@@ -116,7 +116,7 @@ export default function SmartScheduler({ open, onOpenChange }: SmartSchedulerPro
             Smart Scheduler
           </DialogTitle>
           <DialogDescription>
-            List new tasks and their estimated durations. I'll find the best time slots in your schedule.
+            List new tasks and their estimated durations. The assistant will find the best time slots in your schedule.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -180,3 +180,5 @@ export default function SmartScheduler({ open, onOpenChange }: SmartSchedulerPro
     </Dialog>
   );
 }
+
+    

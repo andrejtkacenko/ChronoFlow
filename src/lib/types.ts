@@ -19,6 +19,8 @@ import {
     BookOpen,
     PersonStanding,
     Goal,
+    Timer,
+    User,
   } from 'lucide-react';
   
 export const iconMap: { [key: string]: LucideIcon } = {
@@ -40,6 +42,8 @@ export const iconMap: { [key: string]: LucideIcon } = {
     BookOpen,
     PersonStanding,
     Goal,
+    Timer,
+    User,
     Default: Briefcase,
 };
 
