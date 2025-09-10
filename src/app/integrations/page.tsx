@@ -4,13 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { ArrowRight, Bot } from "lucide-react";
 import Link from "next/link";
 
-const integrations = [
-    {
-        name: "Telegram Bot",
-        description: "Connect a Telegram Bot to add tasks to your inbox directly from your chats.",
-        href: "/integrations/telegram",
-        icon: Bot,
-    }
+const integrations: any[] = [
 ]
 
 export default function IntegrationsPage() {
@@ -24,24 +18,31 @@ export default function IntegrationsPage() {
                         Connect ChronoFlow with your favorite tools to streamline your workflow.
                     </p>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {integrations.map((integration) => (
-                           <Link href={integration.href} key={integration.name}>
-                             <Card className="hover:border-primary/80 transition-colors h-full">
-                                <CardHeader className="flex flex-row items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <integration.icon className="size-8 text-primary" />
-                                        <div>
-                                            <CardTitle>{integration.name}</CardTitle>
-                                            <CardDescription className="mt-1">{integration.description}</CardDescription>
+                    {integrations.length > 0 ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {integrations.map((integration) => (
+                               <Link href={integration.href} key={integration.name}>
+                                 <Card className="hover:border-primary/80 transition-colors h-full">
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <integration.icon className="size-8 text-primary" />
+                                            <div>
+                                                <CardTitle>{integration.name}</CardTitle>
+                                                <CardDescription className="mt-1">{integration.description}</CardDescription>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <ArrowRight className="size-5 text-muted-foreground" />
-                                </CardHeader>
-                             </Card>
-                           </Link>
-                        ))}
-                    </div>
+                                        <ArrowRight className="size-5 text-muted-foreground" />
+                                    </CardHeader>
+                                 </Card>
+                               </Link>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center text-muted-foreground border-2 border-dashed rounded-lg p-12">
+                            <p className="font-semibold">No integrations available.</p>
+                            <p className="text-sm mt-1">Check back later for more ways to connect your tools.</p>
+                        </div>
+                    )}
                 </div>
             </main>
         </div>
