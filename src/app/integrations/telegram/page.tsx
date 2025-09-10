@@ -3,41 +3,18 @@
 import { useState } from 'react';
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, Copy, Loader2 } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
 
 export default function TelegramIntegrationPage() {
     const { toast } = useToast();
-    const [publicUrl, setPublicUrl] = useState('');
-    const [webhookUrl, setWebhookUrl] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSet, setIsSet] = useState(false);
-
-    const handleSetWebhook = async () => {
-        if (!publicUrl) {
-            toast({ variant: 'destructive', title: "Public URL required", description: "Please enter your app's public URL." });
-            return;
-        }
-        setIsLoading(true);
-        setIsSet(false);
-        try {
-            const res = await fetch('/api/telegram-webhook', { method: 'GET' });
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.message || 'Failed to set webhook');
-            }
-            setWebhookUrl(`${publicUrl}/api/telegram-webhook`);
-            setIsSet(true);
-            toast({ title: "Webhook Set Successfully!", description: "Your bot is now connected." });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: "Error Setting Webhook", description: error.message });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const botToken = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
+    const publicUrl = process.env.NEXT_PUBLIC_APP_URL || 'YOUR_PUBLIC_APP_URL';
     
+    const webhookUrl = `${publicUrl}/api/telegram-webhook`;
+    const curlCommand = `curl -F "url=${webhookUrl}" https://api.telegram.org/bot${botToken}/setWebhook`;
+
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast({ title: 'Copied to clipboard!' });
@@ -71,60 +48,48 @@ export default function TelegramIntegrationPage() {
                         
                         {/* Step 2 */}
                         <div>
-                           <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">2</span>Set Environment Variable</h2>
+                           <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">2</span>Set Environment Variables</h2>
                            <p className="text-muted-foreground mb-4">
-                                In your project, open the <code>.env</code> file and add your bot token:
+                                In your project, open the <code>.env</code> file and add your bot token and public app URL:
                            </p>
-                           <div className="bg-muted p-3 rounded-lg text-sm font-mono relative">
-                                TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN_HERE"
-                                <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-8 w-8" onClick={() => copyToClipboard('TELEGRAM_BOT_TOKEN=')}>
-                                    <Copy className="h-4 w-4" />
-                                </Button>
+                           <div className="bg-muted p-3 rounded-lg text-sm font-mono relative space-y-2">
+                                <div>
+                                    TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN_HERE"
+                                    <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-8 w-8" onClick={() => copyToClipboard('TELEGRAM_BOT_TOKEN=')}>
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <div>
+                                    NEXT_PUBLIC_APP_URL="YOUR_PUBLIC_APP_URL"
+                                    <Button size="icon" variant="ghost" className="absolute bottom-1 right-1 h-8 w-8" onClick={() => copyToClipboard('NEXT_PUBLIC_APP_URL=')}>
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                </div>
                            </div>
+                           <p className="text-sm text-muted-foreground mt-2">The public URL is the address where your app is deployed (e.g., your Vercel URL or ngrok tunnel).</p>
                         </div>
 
                         {/* Step 3 */}
                         <div>
-                           <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text/primary-foreground text-sm font-bold">3</span>Set up the Webhook</h2>
+                           <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">3</span>Set up the Webhook</h2>
                             <p className="text-muted-foreground mb-4">
-                                To receive messages, your bot needs a public URL (webhook). If you are developing locally, you can use a service like <a href="https://ngrok.com/" target="_blank" rel="noopener noreferrer" className="underline font-medium">ngrok</a> to expose your local server to the internet. Your project must be running.
+                                Run the following command in your terminal. Make sure you have replaced the placeholder values with your actual bot token and public URL in your <code>.env</code> file first, or replace them directly in the command.
                             </p>
-                             <div className="flex items-center gap-2 mb-4">
-                                <Input 
-                                    placeholder="Enter your public URL (e.g., https://yourapp.com or https://...ngrok.io)" 
-                                    value={publicUrl}
-                                    onChange={(e) => setPublicUrl(e.target.value)}
-                                />
-                                <Button onClick={handleSetWebhook} disabled={isLoading}>
-                                    {isLoading ? <Loader2 className="animate-spin" /> : "Set Webhook"}
-                                </Button>
-                            </div>
-                            <p className="text-muted-foreground mb-4">
-                               Also, add this URL to your <code>.env</code> file:
-                           </p>
-                            <div className="bg-muted p-3 rounded-lg text-sm font-mono relative">
-                                NEXT_PUBLIC_APP_URL="{publicUrl}"
-                                <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-8 w-8" onClick={() => copyToClipboard(`NEXT_PUBLIC_APP_URL=${publicUrl}`)}>
+                             <div className="bg-muted p-3 rounded-lg text-sm font-mono relative">
+                                <code>{curlCommand}</code>
+                                <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-8 w-8" onClick={() => copyToClipboard(curlCommand)}>
                                     <Copy className="h-4 w-4" />
                                 </Button>
                            </div>
-
+                           <p className="text-sm text-muted-foreground mt-2">After running the command, Telegram should respond with <code>{"{\\"ok\\":true,\\"result\\":true,\\"description\\":\\"Webhook was set\\"}"}</code>.</p>
                         </div>
                         
                          {/* Step 4 */}
                         <div>
                            <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">4</span>Start adding tasks!</h2>
                            <p className="text-muted-foreground mb-4">
-                                Once the webhook is set, open a chat with your bot in Telegram and send it any message. It will automatically appear as a new task in your ChronoFlow inbox.
+                                Once the webhook is set successfully, open a chat with your bot in Telegram and send it any message. It will automatically appear as a new task in your ChronoFlow inbox.
                            </p>
-                           {isSet && (
-                               <div className="p-4 border-l-4 border-green-500 bg-green-500/10 rounded-r-lg">
-                                   <div className="flex items-center gap-3">
-                                       <CheckCircle className="h-5 w-5 text-green-500" />
-                                       <p className="font-semibold text-green-500">Webhook is active at: <code>{webhookUrl}</code></p>
-                                   </div>
-                               </div>
-                           )}
                         </div>
 
                     </div>
