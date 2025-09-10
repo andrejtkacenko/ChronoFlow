@@ -54,11 +54,40 @@ export const telegramWebhookFlow = ai.defineFlow(
     const { text, from } = message;
     const telegramUserId = from.id;
 
-    // For this basic integration, we'll find the first user.
-    // A real implementation would require a mapping between telegram user id and app user id.
-    const usersSnapshot = await getDocs(query(collection(db, "users")));
+    // In a real app, you'd map telegramUserId to your app's user ID.
+    // For this prototype, we'll find the user by a hardcoded email.
+    const userQuery = query(collection(db, "users"), where("email", "==", "user@example.com"));
+    const usersSnapshot = await getDocs(userQuery);
+
     if (usersSnapshot.empty) {
-        console.error("No users found in the database.");
+        console.error("User with email user@example.com not found in the database.");
+        // As a fallback, let's try to get the first user to not break the flow entirely
+         const anyUserSnapshot = await getDocs(query(collection(db, "users")));
+         if (anyUserSnapshot.empty) {
+            console.error("No users found in the database.");
+            return;
+         }
+         const appUserId = anyUserSnapshot.docs[0].id;
+
+          if (text) {
+              try {
+                  await addDoc(collection(db, "scheduleItems"), {
+                      userId: appUserId,
+                      title: text,
+                      type: 'task',
+                      completed: false,
+                      date: null,
+                      startTime: null,
+                      endTime: null,
+                      duration: 60, // Default duration
+                      description: `Added from Telegram by ${from.first_name}`,
+                      createdAt: serverTimestamp(),
+                  });
+                  console.log(`Task "${text}" added for fallback user ${appUserId}`);
+              } catch (error) {
+                  console.error("Error adding document for fallback user: ", error);
+              }
+          }
         return;
     }
     const appUserId = usersSnapshot.docs[0].id;
@@ -74,7 +103,7 @@ export const telegramWebhookFlow = ai.defineFlow(
                 date: null,
                 startTime: null,
                 endTime: null,
-                duration: null,
+                duration: 60, // Default duration
                 description: `Added from Telegram by ${from.first_name}`,
                 createdAt: serverTimestamp(),
             });
