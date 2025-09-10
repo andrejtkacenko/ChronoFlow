@@ -2,123 +2,91 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Header from "@/components/Header";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Copy, Check } from "lucide-react";
-import { Label } from '@/components/ui/label';
+import Header from '@/components/Header';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Telegram } from '@/components/icons/Telegram';
+import { Button } from '@/components/ui/button';
+import { Copy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+const CodeBlock = ({ text }: { text: string }) => {
+  const { toast } = useToast();
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: 'Copied to clipboard!',
+      description: 'You can now paste the command into your terminal.',
+    });
+  };
+
+  return (
+    <div className="relative mt-2">
+      <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
+        <code className="text-foreground">{text}</code>
+      </pre>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 h-7 w-7"
+        onClick={handleCopy}
+      >
+        <Copy className="h-4 w-4" />
+        <span className="sr-only">Copy</span>
+      </Button>
+    </div>
+  );
+};
+
 
 export default function TelegramIntegrationPage() {
-    const [botToken, setBotToken] = useState('');
-    const [publicUrl, setPublicUrl] = useState('');
-    const [webhookUrl, setWebhookUrl] = useState('');
-    const [curlCommand, setCurlCommand] = useState('');
-    const [copied, setCopied] = useState(false);
+  const [publicUrl, setPublicUrl] = useState('');
 
-    useEffect(() => {
-        // This runs on the client, so window is available.
-        setPublicUrl(window.location.origin);
-    }, []);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setPublicUrl(window.location.origin);
+    }
+  }, []);
 
-    useEffect(() => {
-        const url = publicUrl ? `${publicUrl}/api/telegram-webhook` : '';
-        setWebhookUrl(url);
-    }, [publicUrl]);
+  const curlCommand = publicUrl
+    ? `curl -F "url=${publicUrl}/api/telegram-webhook" https://api.telegram.org/bot[YOUR_BOT_TOKEN]/setWebhook`
+    : 'Loading command...';
 
-    useEffect(() => {
-        const command = botToken && webhookUrl
-            ? `curl -F "url=${webhookUrl}" https://api.telegram.org/bot${botToken}/setWebhook`
-            : '';
-        setCurlCommand(command);
-    }, [botToken, webhookUrl]);
-
-    const handleCopy = () => {
-        if (curlCommand) {
-            navigator.clipboard.writeText(curlCommand);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
-
-    return (
-        <div className="flex h-svh flex-col">
-            <Header />
-            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                <div className="max-w-3xl mx-auto">
-                    <h1 className="text-3xl font-bold mb-2">Telegram Bot Integration</h1>
-                    <p className="text-muted-foreground mb-8">
-                        Follow these steps to connect your Telegram account and start adding tasks from anywhere.
-                    </p>
-
-                    <div className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Шаг 1: Создайте бота в Telegram</CardTitle>
-                                <CardDescription>
-                                    Откройте Telegram, найдите бота с именем <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary underline">@BotFather</a> и отправьте ему команду <code>/newbot</code>. Следуйте инструкциям, чтобы создать нового бота. В конце вы получите уникальный токен доступа.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Label htmlFor="bot-token">Вставьте сюда ваш токен</Label>
-                                <Input
-                                    id="bot-token"
-                                    type="text"
-                                    placeholder="123456:ABC-DEF1234..."
-                                    value={botToken}
-                                    onChange={(e) => setBotToken(e.target.value)}
-                                    className="mt-2"
-                                />
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Шаг 2: Настройте Webhook</CardTitle>
-                                <CardDescription>
-                                    Это позволит вашему боту отправлять сообщения в ChronoFlow. Мы сгенерировали для вас команду. Скопируйте ее и выполните в вашем терминале.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {publicUrl && (
-                                    <div className="space-y-2">
-                                        <Label>Ваш URL для Webhook</Label>
-                                        <Input type="text" readOnly value={webhookUrl} className="bg-muted" />
-                                        <p className="text-xs text-muted-foreground">Этот URL был определен автоматически.</p>
-                                    </div>
-                                )}
-                                <div className="mt-4 space-y-2">
-                                     <Label>Выполните эту команду</Label>
-                                    <div className="relative">
-                                        <code className="block w-full text-sm p-3 pr-12 bg-muted rounded-md overflow-x-auto whitespace-pre-wrap">
-                                            {curlCommand || 'Введите токен, чтобы сгенерировать команду.'}
-                                        </code>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8"
-                                            onClick={handleCopy}
-                                            disabled={!curlCommand}
-                                        >
-                                            {copied ? <Check className="text-green-500" /> : <Copy />}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>Шаг 3: Начните использовать!</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                               <p className="text-sm text-muted-foreground">
-                                    Отлично! Теперь вы можете отправлять любые текстовые сообщения вашему боту в Telegram, и они автоматически появятся в вашем Inbox в ChronoFlow как новые задачи.
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </div>
+  return (
+    <div className="flex h-svh flex-col">
+      <Header />
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <div className="max-w-3xl mx-auto">
+           <Card>
+              <CardHeader className="flex flex-row items-center gap-4">
+                <Telegram className="w-10 h-10" />
+                <div>
+                  <CardTitle>Telegram Bot Setup</CardTitle>
+                  <CardDescription>
+                    Follow these steps to add tasks to your inbox via Telegram.
+                  </CardDescription>
                 </div>
-            </main>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                    <h4 className="font-semibold">Setup Instructions</h4>
+                    <ol className="list-decimal list-inside space-y-2 mt-2 text-sm text-muted-foreground">
+                        <li>Open Telegram and search for the <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="underline text-primary">@BotFather</a>.</li>
+                        <li>Start a chat and send <code>/newbot</code> to create a new bot.</li>
+                        <li>Follow the prompts to choose a name and username.</li>
+                        <li>Once created, BotFather will give you a unique token. Copy this token.</li>
+                        <li>Copy the command below and **replace `[YOUR_BOT_TOKEN]`** with the token you just received.</li>
+                        <li>Paste and run the command in your computer's terminal. This tells Telegram where to send messages.</li>
+                    </ol>
+                </div>
+                 <div>
+                    <h4 className="font-semibold">Set Webhook Command</h4>
+                    {publicUrl ? <CodeBlock text={curlCommand} /> : <p className="text-sm text-muted-foreground mt-2">Determining your public URL...</p>}
+                 </div>
+              </CardContent>
+            </Card>
         </div>
-    );
+      </main>
+    </div>
+  );
 }
