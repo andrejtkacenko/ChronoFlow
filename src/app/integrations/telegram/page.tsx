@@ -105,5 +105,5 @@ export default function TelegramIntegrationPage() {
                 </div>
             </main>
         </div>
-    )
+    );
 }
