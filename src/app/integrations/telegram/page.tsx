@@ -13,11 +13,16 @@ export default function TelegramIntegrationPage() {
     const [botToken, setBotToken] = useState('');
     const [publicUrl, setPublicUrl] = useState('');
 
-    const webhookUrl = publicUrl ? `${publicUrl}/api/telegram-webhook` : 'YOUR_PUBLIC_URL/api/telegram-webhook';
-    const curlCommand = `curl -F "url=${webhookUrl}" https://api.telegram.org/bot${botToken || 'YOUR_BOT_TOKEN_HERE'}/setWebhook`;
+    const getCurlCommand = () => {
+        const url = publicUrl || 'YOUR_PUBLIC_URL';
+        const token = botToken || 'YOUR_BOT_TOKEN_HERE';
+        const webhookUrl = `${url}/api/telegram-webhook`;
+        return `curl -F "url=${webhookUrl}" https://api.telegram.org/bot${token}/setWebhook`;
+    };
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
+    const copyToClipboard = () => {
+        const command = getCurlCommand();
+        navigator.clipboard.writeText(command);
         toast({ title: 'Copied to clipboard!' });
     };
 
@@ -67,8 +72,8 @@ export default function TelegramIntegrationPage() {
                                 Copy the command generated below and run it in your terminal. This tells Telegram where to send messages from your bot.
                             </p>
                              <div className="bg-muted p-3 rounded-lg text-sm font-mono relative break-words">
-                                <code>{curlCommand}</code>
-                                <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-8 w-8" onClick={() => copyToClipboard(curlCommand)}>
+                                <code>{getCurlCommand()}</code>
+                                <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-8 w-8" onClick={copyToClipboard}>
                                     <Copy className="h-4 w-4" />
                                 </Button>
                            </div>
