@@ -1,6 +1,5 @@
-
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +11,11 @@ export default function TelegramIntegrationPage() {
     const { toast } = useToast();
     const [botToken, setBotToken] = useState('');
     const [publicUrl, setPublicUrl] = useState('');
+
+    useEffect(() => {
+        // This will run on the client side and get the correct window origin
+        setPublicUrl(window.location.origin);
+    }, []);
 
     const getCurlCommand = () => {
         const url = publicUrl || 'YOUR_PUBLIC_URL';
@@ -54,14 +58,17 @@ export default function TelegramIntegrationPage() {
                         
                         {/* Step 2 */}
                         <div>
-                           <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">2</span>Set Environment Variables & Generate Command</h2>
+                           <h2 className="text-xl font-semibold mb-2 flex items-center gap-2"><span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">2</span>Enter Your Bot Token</h2>
                            <p className="text-muted-foreground mb-4">
-                                In your project, create or open the <code>.env</code> file and add your bot token and public app URL. Then, enter the same values below to generate the final setup command.
+                                In your project, create or open the <code>.env</code> file and add your bot token. Then, enter the same value below to generate the final setup command. Your public URL is detected automatically.
                            </p>
                            
-                           <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                           <div className="space-y-4 mt-4">
                                 <Input className="w-full" placeholder="Paste Bot Token" value={botToken} onChange={e => setBotToken(e.target.value)} />
-                                <Input className="w-full" placeholder="Paste Public URL (e.g. https://...vercel.app)" value={publicUrl} onChange={e => setPublicUrl(e.target.value)} />
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Your App Public URL:</p>
+                                    <p className="text-sm font-mono p-2 bg-muted rounded-md mt-1">{publicUrl ? publicUrl : 'Loading...'}</p>
+                                </div>
                            </div>
                         </div>
 
@@ -77,7 +84,7 @@ export default function TelegramIntegrationPage() {
                                     <Copy className="h-4 w-4" />
                                 </Button>
                            </div>
-                           <p className="text-sm text-muted-foreground mt-2">After running the command, Telegram should respond with <code>"ok\\":true,\\"result\\":true,\\"description\\":\\"Webhook was set\\"</code>.</p>
+                           <p className="text-sm text-muted-foreground mt-2">After running the command, Telegram should respond with <code>{"\\"ok\\":true,\\"result\\":true,\\"description\\":\\"Webhook was set\\""}</code>.</p>
                         </div>
                         
                          {/* Step 4 */}
