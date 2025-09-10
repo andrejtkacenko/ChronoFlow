@@ -49,6 +49,7 @@
     "genkit": "^1.14.1",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
+    "node-telegram-bot-api": "^0.66.0",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
@@ -62,6 +63,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/node-telegram-bot-api": "^0.64.7",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "genkit-cli": "^1.14.1",
@@ -70,4 +72,3 @@
     "typescript": "^5"
   }
 }
-

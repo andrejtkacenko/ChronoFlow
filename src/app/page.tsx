@@ -11,14 +11,19 @@ import Dashboard from '@/components/Dashboard';
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClient && !loading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isClient]);
 
-  if (loading || !user) {
+  if (!isClient || loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <div className="flex flex-col items-center gap-4">

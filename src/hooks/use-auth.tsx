@@ -3,8 +3,9 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -20,8 +21,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUser(user);
+        // Save user to Firestore 'users' collection
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+        }, { merge: true });
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
