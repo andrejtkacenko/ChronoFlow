@@ -12,6 +12,7 @@ export default function TelegramIntegrationPage() {
     const [botToken, setBotToken] = useState('');
     const [publicUrl, setPublicUrl] = useState('');
 
+    // Dynamically create the webhook and curl command based on user input
     const webhookUrl = publicUrl ? `${publicUrl}/api/telegram-webhook` : 'YOUR_PUBLIC_URL/api/telegram-webhook';
     const curlCommand = `curl -F "url=${webhookUrl}" https://api.telegram.org/bot${botToken || 'YOUR_BOT_TOKEN_HERE'}/setWebhook`;
 
