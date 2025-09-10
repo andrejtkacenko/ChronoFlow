@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronLeft, X } from 'lucide-react';
 import NewEventDialog from '@/components/NewEventDialog';
-import { addDays, format, isSameDay, parse, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { addDays, format, isSameDay, parse, startOfDay, endOfDay, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import type { ScheduleItem, DisplayScheduleItem } from '@/lib/types';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -431,7 +431,7 @@ export default function SchedulePage() {
                       onNumberOfDaysChange={setNumberOfDays}
                       hourHeight={hourHeight}
                       onHourHeightChange={setHourHeight}
-                      currentDate={currentDate}
+                      onDeleteEvents={handleDeleteEvents}
                   />
               </div>
           </main>

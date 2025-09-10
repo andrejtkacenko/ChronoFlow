@@ -28,7 +28,7 @@ interface RightSidebarProps {
   onNumberOfDaysChange: (days: number) => void;
   hourHeight: number;
   onHourHeightChange: (height: number) => void;
-  currentDate: Date;
+  onDeleteEvents: (range: 'day' | 'week' | 'month' | 'all') => void;
 }
 
 export default function RightSidebar({ 
@@ -37,47 +37,10 @@ export default function RightSidebar({
     onNumberOfDaysChange,
     hourHeight,
     onHourHeightChange,
-    currentDate,
+    onDeleteEvents,
 }: RightSidebarProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-
-  const handleDelete = async (range: 'day' | 'week' | 'month' | 'all') => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
-      return;
-    }
-
-    let startDate: string | null = null;
-    let endDate: string | null = null;
-
-    switch (range) {
-      case 'day':
-        startDate = format(currentDate, 'yyyy-MM-dd');
-        endDate = format(currentDate, 'yyyy-MM-dd');
-        break;
-      case 'week':
-        startDate = format(startOfWeek(currentDate), 'yyyy-MM-dd');
-        endDate = format(endOfWeek(currentDate), 'yyyy-MM-dd');
-        break;
-      case 'month':
-        startDate = format(startOfMonth(currentDate), 'yyyy-MM-dd');
-        endDate = format(endOfMonth(currentDate), 'yyyy-MM-dd');
-        break;
-      case 'all':
-        // null dates means all
-        break;
-    }
-    
-    try {
-        const result = await deleteScheduleItemsInRange(user.uid, startDate, endDate);
-        toast({ title: 'Success', description: `${result.deletedCount} items have been deleted.` });
-    } catch(e) {
-        const error = e as Error;
-        toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
-    }
-  };
-
 
   const DeleteButton = ({ range, label, description }: { range: 'day' | 'week' | 'month' | 'all', label: string, description: string }) => (
      <AlertDialog>
@@ -91,7 +54,7 @@ export default function RightSidebar({
         </AlertDialogHeader>
         <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDelete(range)}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={() => onDeleteEvents(range)}>Delete</AlertDialogAction>
         </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
