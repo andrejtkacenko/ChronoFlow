@@ -3,8 +3,15 @@ import Header from "@/components/Header";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { ArrowRight, Bot } from "lucide-react";
 import Link from "next/link";
+import { Telegram } from "@/components/icons/Telegram";
 
 const integrations: any[] = [
+    {
+        name: "Telegram Bot",
+        description: "Add tasks to your inbox directly from Telegram.",
+        icon: Telegram,
+        href: "/integrations/telegram"
+    }
 ]
 
 export default function IntegrationsPage() {
