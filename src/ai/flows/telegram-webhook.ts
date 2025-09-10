@@ -6,7 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, writeBatch } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const TelegramMessageSchema = z.object({
@@ -52,46 +52,20 @@ export const telegramWebhookFlow = ai.defineFlow(
     
     const { message } = parsed.data;
     const { text, from } = message;
-    const telegramUserId = from.id;
 
-    // In a real app, you'd map telegramUserId to your app's user ID.
-    // For this prototype, we'll find the user by a hardcoded email.
-    const userQuery = query(collection(db, "users"), where("email", "==", "user@example.com"));
-    const usersSnapshot = await getDocs(userQuery);
+    // For this prototype, we'll find the first user in the database.
+    // This avoids needing to create a Firestore index for a query.
+    const usersCollection = collection(db, "users");
+    const usersSnapshot = await getDocs(query(usersCollection));
 
     if (usersSnapshot.empty) {
-        console.error("User with email user@example.com not found in the database.");
-        // As a fallback, let's try to get the first user to not break the flow entirely
-         const anyUserSnapshot = await getDocs(query(collection(db, "users")));
-         if (anyUserSnapshot.empty) {
-            console.error("No users found in the database.");
-            return;
-         }
-         const appUserId = anyUserSnapshot.docs[0].id;
-
-          if (text) {
-              try {
-                  await addDoc(collection(db, "scheduleItems"), {
-                      userId: appUserId,
-                      title: text,
-                      type: 'task',
-                      completed: false,
-                      date: null,
-                      startTime: null,
-                      endTime: null,
-                      duration: 60, // Default duration
-                      description: `Added from Telegram by ${from.first_name}`,
-                      createdAt: serverTimestamp(),
-                  });
-                  console.log(`Task "${text}" added for fallback user ${appUserId}`);
-              } catch (error) {
-                  console.error("Error adding document for fallback user: ", error);
-              }
-          }
+        console.error("No users found in the database. Cannot add task.");
         return;
     }
+    
+    // Get the first user found.
     const appUserId = usersSnapshot.docs[0].id;
-
+    const userEmail = usersSnapshot.docs[0].data().email;
 
     if (text) {
         try {
@@ -107,7 +81,7 @@ export const telegramWebhookFlow = ai.defineFlow(
                 description: `Added from Telegram by ${from.first_name}`,
                 createdAt: serverTimestamp(),
             });
-            console.log(`Task "${text}" added for user ${appUserId}`);
+            console.log(`Task "${text}" added for user ${userEmail} (ID: ${appUserId})`);
         } catch (error) {
             console.error("Error adding document: ", error);
         }
