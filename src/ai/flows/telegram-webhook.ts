@@ -8,6 +8,8 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import TelegramBot from 'node-telegram-bot-api';
+
 
 const TelegramMessageSchema = z.object({
   message: z.object({
@@ -43,6 +45,13 @@ export const telegramWebhookFlow = ai.defineFlow(
   async (payload) => {
     console.log("Received payload:", JSON.stringify(payload, null, 2));
 
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token) {
+        console.error("TELEGRAM_BOT_TOKEN is not set in environment variables.");
+        return;
+    }
+    const bot = new TelegramBot(token);
+
     const parsed = TelegramMessageSchema.safeParse(payload);
 
     if (!parsed.success) {
@@ -51,7 +60,7 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
     
     const { message } = parsed.data;
-    const { text, from } = message;
+    const { text, from, chat } = message;
 
     // For this prototype, we'll find the first user in the database.
     // This avoids needing to create a Firestore index for a query.
@@ -60,6 +69,7 @@ export const telegramWebhookFlow = ai.defineFlow(
 
     if (usersSnapshot.empty) {
         console.error("No users found in the database. Cannot add task.");
+        await bot.sendMessage(chat.id, 'Не удалось добавить задачу: не найдено пользователей в системе.');
         return;
     }
     
@@ -82,8 +92,13 @@ export const telegramWebhookFlow = ai.defineFlow(
                 createdAt: serverTimestamp(),
             });
             console.log(`Task "${text}" added for user ${userEmail} (ID: ${appUserId})`);
+            
+            // Send a confirmation message back to the user
+            await bot.sendMessage(chat.id, 'Задача добавлена в ваш инбокс.');
+
         } catch (error) {
             console.error("Error adding document: ", error);
+            await bot.sendMessage(chat.id, 'Произошла ошибка при добавлении задачи.');
         }
     }
   }
