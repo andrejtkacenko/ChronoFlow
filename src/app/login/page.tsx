@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -18,7 +17,8 @@ import { Separator } from '@/components/ui/separator';
 
 declare global {
     interface Window {
-        Telegram: any;
+        Telegram?: any;
+        onTelegramAuth?: (user: any) => void;
     }
 }
 
@@ -31,15 +31,15 @@ export default function LoginPage() {
   const { toast } = useToast();
   const { signInWithToken } = useAuth();
 
-  const handleTelegramAuth = useCallback(async (telegramUser: any) => {
-    if (!telegramUser) return;
+  const handleTelegramAuth = useCallback(async (initData: any) => {
+    if (!initData) return;
     setLoading(true);
 
     try {
       const response = await fetch('/api/auth/telegram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramUser }),
+        body: JSON.stringify({ initData }),
       });
 
       if (!response.ok) {
@@ -61,32 +61,32 @@ export default function LoginPage() {
   }, [router, signInWithToken, toast]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.Telegram || !window.Telegram.WebApp) {
+    // This is for client-side execution only
+    if (typeof window === 'undefined') {
       return;
     }
 
-    const tg = window.Telegram.WebApp;
+    // Set up the onTelegramAuth callback for the widget
+    window.onTelegramAuth = (user) => {
+      if (user) {
+        handleTelegramAuth(user);
+      }
+    };
+    
+    const tg = window.Telegram;
 
     // This handles the case where the app is opened as a Mini App
-    if (tg.initData) {
-      const mainButton = tg.MainButton;
+    if (tg && tg.WebApp && tg.WebApp.initData) {
+      const mainButton = tg.WebApp.MainButton;
       
       const onMainButtonClick = () => {
-        const params = new URLSearchParams(tg.initData);
-        const userParam = params.get('user');
-        const hash = params.get('hash');
-        
-        if (userParam && hash) {
-          try {
-            const telegramUser = JSON.parse(decodeURIComponent(userParam));
-            // The hash comes from the top-level initData, so we add it manually
-            const dataWithHash = { ...telegramUser, hash };
+        try {
+            const initData = Object.fromEntries(new URLSearchParams(tg.WebApp.initData));
+            const user = JSON.parse(initData.user);
+            const dataWithHash = { ...user, hash: initData.hash };
             handleTelegramAuth(dataWithHash);
-          } catch(e) {
-             toast({ variant: 'destructive', title: 'Auth Error', description: 'Could not parse Telegram user data.' });
-          }
-        } else {
-          toast({ variant: 'destructive', title: 'Auth Error', description: 'Could not find Telegram user data.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Auth Error', description: `Could not parse Telegram data: ${e.message}` });
         }
       };
       
@@ -97,6 +97,16 @@ export default function LoginPage() {
       return () => {
         mainButton.offClick(onMainButtonClick);
         mainButton.hide();
+        if (window.onTelegramAuth) {
+           delete window.onTelegramAuth;
+        }
+      }
+    }
+
+    // Cleanup to avoid memory leaks
+    return () => {
+      if (window.onTelegramAuth) {
+        delete window.onTelegramAuth;
       }
     }
   }, [handleTelegramAuth, toast]);
