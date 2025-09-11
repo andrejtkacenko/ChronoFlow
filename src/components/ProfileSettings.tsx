@@ -1,8 +1,9 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, memo } from 'react';
-import { doc, getDoc, setDoc, updateProfile } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { doc, setDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -110,6 +111,3 @@ export default function ProfileSettings({ userId }: { userId: string }) {
     </div>
   );
 }
-
-
-    
