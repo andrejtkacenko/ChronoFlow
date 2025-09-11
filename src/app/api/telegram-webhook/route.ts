@@ -1,7 +1,6 @@
 
 import {NextResponse} from 'next/server';
 import {telegramWebhookFlow} from '@/ai/flows/telegram-webhook';
-import TelegramBot from 'node-telegram-bot-api';
 
 export async function POST(req: Request) {
   try {
