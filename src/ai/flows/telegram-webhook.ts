@@ -120,6 +120,18 @@ export const telegramWebhookFlow = ai.defineFlow(
         return;
     }
 
+    if (text.trim() === '/start login') {
+       const webAppUrl = process.env.NEXT_PUBLIC_URL || 'https://chronoflow-429321.web.app'; // Fallback to a default URL
+       await bot.sendMessage(chat.id, 'Click the button below to log in to your ChronoFlow account.', {
+         reply_markup: {
+           inline_keyboard: [
+             [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
+           ]
+         }
+       });
+       return;
+    }
+
     const appUser = await findUserByTelegramId(from.id);
     
     if (!appUser) {
