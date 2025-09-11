@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -31,6 +31,35 @@ export default function LoginPage() {
   const { toast } = useToast();
   const { signInWithToken } = useAuth();
   const isHandlingAuth = useRef(false);
+
+  const handleTelegramAuth = useCallback(async (telegramUser: any, isAutoLogin = false) => {
+    if(!isAutoLogin) setLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramUser }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Telegram login failed.');
+      }
+      
+      const { token } = await response.json();
+      await signInWithToken(token);
+      
+      toast({ title: 'Login Successful', description: 'Welcome!' });
+      router.push('/');
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Login Failed', description: error.message });
+        isHandlingAuth.current = false;
+    } finally {
+        if(!isAutoLogin) setLoading(false);
+    }
+  }, [router, signInWithToken, toast]);
 
   useEffect(() => {
     // This effect handles the automatic login from Telegram Mini App
@@ -75,34 +104,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleTelegramAuth = async (telegramUser: any, isAutoLogin = false) => {
-    if(!isAutoLogin) setLoading(true);
-
-    try {
-      const response = await fetch('/api/auth/telegram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramUser }),
-      });
-
-      if (!response.ok) {
-        const { error } = await response.json();
-        throw new Error(error || 'Telegram login failed.');
-      }
-      
-      const { token } = await response.json();
-      await signInWithToken(token);
-      
-      toast({ title: 'Login Successful', description: 'Welcome!' });
-      router.push('/');
-
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Login Failed', description: error.message });
-        isHandlingAuth.current = false;
-    } finally {
-        if(!isAutoLogin) setLoading(false);
-    }
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
