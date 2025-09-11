@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { onAuthStateChanged, signOut, User, signInWithCustomToken } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -22,6 +22,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   linkTelegramAccount: (telegramResponse: any) => Promise<void>;
+  signInWithToken: (token: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -95,9 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // The onSnapshot listener will automatically update the UI
   }
+  
+  const signInWithToken = async (token: string) => {
+    if (!token) {
+      throw new Error("signInWithToken requires a token.");
+    }
+    await signInWithCustomToken(auth, token);
+  };
+
 
   return (
-    <AuthContext.Provider value={{ user, userData, loading, logout, linkTelegramAccount }}>
+    <AuthContext.Provider value={{ user, userData, loading, logout, linkTelegramAccount, signInWithToken }}>
       {children}
     </AuthContext.Provider>
   );

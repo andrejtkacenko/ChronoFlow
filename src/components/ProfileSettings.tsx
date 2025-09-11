@@ -139,7 +139,7 @@ export default function ProfileSettings({ userId }: { userId: string }) {
                     </div>
                     <div>
                         {!userData?.telegramId ? (
-                            <TelegramLoginButton onAuth={handleTelegramLink} />
+                            <TelegramLoginButton onAuth={handleTelegramLink} mode="button" />
                         ) : (
                            <Button variant="outline" disabled>Linked</Button>
                         )}

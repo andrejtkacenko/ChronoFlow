@@ -12,6 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link';
 import ChronoFlowLogo from '@/components/ChronoFlowLogo';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
+import TelegramLoginButton from '@/components/TelegramLoginButton';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -20,6 +23,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { signInWithToken } = useAuth();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +44,33 @@ export default function SignupPage() {
       setLoading(false);
     }
   };
+
+  const handleTelegramAuth = async (telegramUser: any) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramUser }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Telegram login failed.');
+      }
+      
+      const { token } = await response.json();
+      await signInWithToken(token);
+      
+      toast({ title: 'Signup Successful', description: 'Welcome!' });
+      router.push('/');
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Signup Failed', description: error.message });
+    } finally {
+        setLoading(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -81,6 +112,14 @@ export default function SignupPage() {
               {loading ? 'Creating account...' : 'Sign Up'}
             </Button>
           </form>
+
+          <div className="relative my-4">
+            <Separator />
+            <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-background px-2 text-xs text-muted-foreground">OR CONTINUE WITH</span>
+          </div>
+          
+          <TelegramLoginButton onAuth={handleTelegramAuth} mode="button" />
+
            <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
             <Link href="/login" className="underline">
