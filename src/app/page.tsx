@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -60,6 +61,7 @@ export default function Home() {
     const tg = window.Telegram?.WebApp;
     if (tg && tg.initData) {
         setIsTelegramMiniApp(true);
+        tg.expand();
 
         // Если пользователь еще не вошел в систему, настраиваем кнопку входа
         if (!user && !authLoading) {

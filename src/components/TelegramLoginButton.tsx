@@ -1,15 +1,10 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
 import { Button } from './ui/button';
 import { Telegram } from './icons/Telegram';
-
-declare global {
-    interface Window {
-        Telegram?: any;
-    }
-}
 
 // Этот компонент теперь отвечает только за виджет на сайте.
 // Вся логика Mini App переехала на /src/app/page.tsx

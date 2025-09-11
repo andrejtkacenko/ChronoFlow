@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -17,22 +18,27 @@ export async function POST(req: Request) {
   
   const params = new URLSearchParams(initDataString);
   const hash = params.get('hash');
-  params.delete('hash'); // Удаляем hash из параметров для проверки
+  const userParam = params.get('user');
 
+  if (!hash || !userParam) {
+    return NextResponse.json({ error: 'Invalid initData structure' }, { status: 400 });
+  }
+
+  const dataCheckArr: string[] = [];
+  params.forEach((value, key) => {
+    if (key !== 'hash') {
+      dataCheckArr.push(`${key}=${value}`);
+    }
+  });
+  
+  const dataCheckString = dataCheckArr.sort().join('\n');
+    
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     console.error("TELEGRAM_BOT_TOKEN is not set on the server.");
     return NextResponse.json({ error: 'Server configuration error for Telegram' }, { status: 500 });
   }
 
-  // Собираем строку для проверки из оставшихся параметров
-  const dataCheckArr: string[] = [];
-  for (const [key, value] of params.entries()) {
-      dataCheckArr.push(`${key}=${value}`);
-  }
-  
-  const dataCheckString = dataCheckArr.sort().join('\n');
-    
   try {
     const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
     const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
@@ -46,12 +52,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Hash verification failed.' }, { status: 500 });
   }
   
-  // Данные валидны, извлекаем информацию о пользователе
-  const userString = params.get('user');
-  if (!userString) {
-      return NextResponse.json({ error: 'User data not found in initData' }, { status: 400 });
-  }
-  const user = JSON.parse(userString);
+  const user = JSON.parse(userParam);
   const telegramId = String(user.id);
   const uid = `tg-${telegramId}`;
 
@@ -65,7 +66,8 @@ export async function POST(req: Request) {
           uid: uid,
           displayName: `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}`,
           photoURL: user.photo_url,
-          email: `${user.username || telegramId}@telegram.user`, // Создаем фейковый email
+          // Создаем фейковый email, т.к. Telegram его не предоставляет
+          email: `${user.username || telegramId}@telegram.user`, 
         };
         userRecord = await adminAuth.createUser(newUser);
 

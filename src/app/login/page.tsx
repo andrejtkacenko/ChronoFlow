@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -15,6 +16,7 @@ import TelegramLoginButton from '@/components/TelegramLoginButton';
 import { useAuth } from '@/hooks/use-auth';
 import { Separator } from '@/components/ui/separator';
 
+// Этот тип нужен только для виджета на сайте
 declare global {
     interface Window {
         onTelegramAuth?: (user: any) => void;
@@ -36,8 +38,16 @@ export default function LoginPage() {
       }
   }, [user, authLoading, router]);
 
-  const handleTelegramAuth = useCallback(async (initData: string) => {
+  // Этот коллбэк используется ТОЛЬКО для виджета на сайте
+  const handleTelegramWidgetAuth = useCallback(async (telegramUser: any) => {
     setLoading(true);
+
+    // Преобразуем объект user в строку initData для унификации
+    const params = new URLSearchParams();
+    for (const key in telegramUser) {
+        params.append(key, telegramUser[key]);
+    }
+    const initData = params.toString();
 
     try {
       const response = await fetch('/api/auth/telegram', {
@@ -64,29 +74,18 @@ export default function LoginPage() {
     }
   }, [router, signInWithToken, toast]);
 
+  // Привязываем коллбэк к window
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    // Этот коллбэк используется ТОЛЬКО для виджета на сайте
-    window.onTelegramAuth = (user) => {
-      if (user) {
-        // Преобразуем объект user в строку initData для унификации
-        const params = new URLSearchParams();
-        for (const key in user) {
-            params.append(key, user[key]);
-        }
-        handleTelegramAuth(params.toString());
-      }
-    };
+    if (typeof window === 'undefined') return;
     
-    // Cleanup
+    window.onTelegramAuth = handleTelegramWidgetAuth;
+    
     return () => {
       if (window.onTelegramAuth) {
         delete window.onTelegramAuth;
       }
     }
-  }, [handleTelegramAuth]);
+  }, [handleTelegramWidgetAuth]);
 
 
   const handleLogin = async (e: React.FormEvent) => {
