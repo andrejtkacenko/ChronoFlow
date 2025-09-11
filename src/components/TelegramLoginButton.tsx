@@ -8,7 +8,7 @@ import { Telegram } from './icons/Telegram';
 
 declare global {
     interface Window {
-        onTelegramAuth: (user: any) => void;
+        onTelegramAuth?: (user: any) => void;
         Telegram: any;
     }
 }

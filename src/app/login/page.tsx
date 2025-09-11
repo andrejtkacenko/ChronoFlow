@@ -77,10 +77,14 @@ export default function LoginPage() {
         const hash = params.get('hash');
         
         if (userParam && hash) {
-          const telegramUser = JSON.parse(decodeURIComponent(userParam));
-          // The hash comes from the top-level initData, so we add it manually
-          const dataWithHash = { ...telegramUser, hash };
-          handleTelegramAuth(dataWithHash);
+          try {
+            const telegramUser = JSON.parse(decodeURIComponent(userParam));
+            // The hash comes from the top-level initData, so we add it manually
+            const dataWithHash = { ...telegramUser, hash };
+            handleTelegramAuth(dataWithHash);
+          } catch(e) {
+             toast({ variant: 'destructive', title: 'Auth Error', description: 'Could not parse Telegram user data.' });
+          }
         } else {
           toast({ variant: 'destructive', title: 'Auth Error', description: 'Could not find Telegram user data.' });
         }
