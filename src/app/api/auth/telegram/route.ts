@@ -5,7 +5,6 @@ import { initializeAdminApp } from '@/lib/firebase-admin';
 import crypto from 'crypto';
 
 export async function POST(req: Request) {
-  // Initialize Firebase Admin SDK inside the handler
   const adminApp = initializeAdminApp();
   const adminAuth = getAuth(adminApp);
   const adminDb = getFirestore(adminApp);
@@ -18,31 +17,28 @@ export async function POST(req: Request) {
   
   const params = new URLSearchParams(initDataString);
   const hash = params.get('hash');
-  const initData: Record<string, string> = {};
-  params.forEach((value, key) => {
-    if (key !== 'hash') {
-      initData[key] = value;
-    }
-  });
+  params.delete('hash'); // Удаляем hash из параметров для проверки
 
-  // --- Telegram Hash Verification using Node.js Crypto ---
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     console.error("TELEGRAM_BOT_TOKEN is not set on the server.");
     return NextResponse.json({ error: 'Server configuration error for Telegram' }, { status: 500 });
   }
+
+  // Собираем строку для проверки из оставшихся параметров
+  const dataCheckArr: string[] = [];
+  for (const [key, value] of params.entries()) {
+      dataCheckArr.push(`${key}=${value}`);
+  }
   
-  const dataCheckString = Object.keys(initData)
-    .map((key) => `${key}=${initData[key]}`)
-    .sort()
-    .join('\n');
+  const dataCheckString = dataCheckArr.sort().join('\n');
     
   try {
-    const secretKey = crypto.createHash('sha256').update(botToken).digest();
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
     const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
     if (hmac !== hash) {
-      console.error('Hash verification failed', {hmac, hash});
+      console.error('Hash verification failed', { hmac, hash });
       return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified.' }, { status: 403 });
     }
   } catch (error) {
@@ -50,45 +46,45 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Hash verification failed.' }, { status: 500 });
   }
   
-  const user = JSON.parse(initData.user);
-
-  // --- Data is verified, proceed with Firebase Auth ---
+  // Данные валидны, извлекаем информацию о пользователе
+  const userString = params.get('user');
+  if (!userString) {
+      return NextResponse.json({ error: 'User data not found in initData' }, { status: 400 });
+  }
+  const user = JSON.parse(userString);
   const telegramId = String(user.id);
-  const uid = `tg-${telegramId}`; // Create a unique UID based on Telegram ID
+  const uid = `tg-${telegramId}`;
 
   try {
     let userRecord;
     try {
-      // 1. Check if user already exists
       userRecord = await adminAuth.getUser(uid);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
-        // 2. If not, create a new user
         const newUser: any = {
           uid: uid,
           displayName: `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}`,
           photoURL: user.photo_url,
+          email: `${user.username || telegramId}@telegram.user`, // Создаем фейковый email
         };
         userRecord = await adminAuth.createUser(newUser);
 
-        // Also create a corresponding document in Firestore
         const userDocRef = adminDb.collection('users').doc(uid);
         await userDocRef.set({
             uid: uid,
             displayName: newUser.displayName,
             photoURL: newUser.photoURL,
+            email: newUser.email,
             telegramId: telegramId,
             telegramUsername: user.username,
             createdAt: FieldValue.serverTimestamp(),
         });
 
       } else {
-        // Some other error occurred
         throw error;
       }
     }
 
-    // 3. Create a custom token for the user to sign in on the client
     const customToken = await adminAuth.createCustomToken(uid);
 
     return NextResponse.json({ token: customToken });

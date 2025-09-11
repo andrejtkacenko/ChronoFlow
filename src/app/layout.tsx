@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "ChronoFlow",
@@ -23,6 +24,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter&display=swap"
           rel="stylesheet"
         />
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>
       <body className="font-body antialiased">
         <TooltipProvider>
