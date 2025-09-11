@@ -69,10 +69,12 @@ To get the project running locally, follow these steps:
         - `TELEGRAM_BOT_TOKEN`: Секретный токен вашего бота (получается у @BotFather).
         - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`: Имя пользователя вашего бота (например, `MyChronoFlowBot`).
         - `NEXT_PUBLIC_TELEGRAM_BOT_ID`: ID вашего бота (можно узнать у `@userinfobot`, переслав ему сообщение от вашего бота).
+        - `NEXT_PUBLIC_URL`: Полный URL вашего развернутого приложения (например, `https://your-app.vercel.app`). Это необходимо для кнопки входа в боте.
         ```.env
         TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
         NEXT_PUBLIC_TELEGRAM_BOT_USERNAME="YOUR_BOT_USERNAME"
         NEXT_PUBLIC_TELEGRAM_BOT_ID="YOUR_BOT_ID"
+        NEXT_PUBLIC_URL="https://your-app.vercel.app"
         ```
 
 4.  **Run the development server:**
