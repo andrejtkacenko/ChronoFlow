@@ -30,10 +30,10 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { signInWithToken } = useAuth();
-  const isHandlingAuth = useRef(false);
 
-  const handleTelegramAuth = useCallback(async (telegramUser: any, isAutoLogin = false) => {
-    if(!isAutoLogin) setLoading(true);
+  const handleTelegramAuth = useCallback(async (telegramUser: any) => {
+    if (!telegramUser) return;
+    setLoading(true);
 
     try {
       const response = await fetch('/api/auth/telegram', {
@@ -55,33 +55,44 @@ export default function LoginPage() {
 
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Login Failed', description: error.message });
-        isHandlingAuth.current = false;
     } finally {
-        if(!isAutoLogin) setLoading(false);
+        setLoading(false);
     }
   }, [router, signInWithToken, toast]);
 
   useEffect(() => {
-    // This effect handles the automatic login from Telegram Mini App
-    if (window.Telegram && window.Telegram.WebApp && !isHandlingAuth.current) {
-        const tg = window.Telegram.WebApp;
-        if (tg.initData) {
-            console.log("Telegram WebApp data found, attempting auto-login.");
-            isHandlingAuth.current = true;
-            // The initData is a query string, we can parse it to get user data
-            const params = new URLSearchParams(tg.initData);
-            const userParam = params.get('user');
-            if (userParam) {
-                const telegramUser = JSON.parse(userParam);
-                // The hash is part of the original initData string
-                telegramUser.hash = params.get('hash');
-                handleTelegramAuth(telegramUser, true); // true for auto-login
-            } else {
-                 isHandlingAuth.current = false;
-            }
-        }
+    if (typeof window === 'undefined' || !window.Telegram || !window.Telegram.WebApp) {
+      return;
     }
-  }, [handleTelegramAuth]);
+
+    const tg = window.Telegram.WebApp;
+
+    // This handles the case where the app is opened as a Mini App
+    if (tg.initData) {
+      const mainButton = tg.MainButton;
+      
+      const onMainButtonClick = () => {
+        const params = new URLSearchParams(tg.initData);
+        const userParam = params.get('user');
+        if (userParam) {
+          const telegramUser = JSON.parse(userParam);
+          telegramUser.hash = params.get('hash');
+          handleTelegramAuth(telegramUser);
+        } else {
+          toast({ variant: 'destructive', title: 'Auth Error', description: 'Could not find Telegram user data.' });
+        }
+      };
+      
+      mainButton.setText('Log In with Telegram');
+      mainButton.onClick(onMainButtonClick);
+      mainButton.show();
+      
+      return () => {
+        mainButton.offClick(onMainButtonClick);
+        mainButton.hide();
+      }
+    }
+  }, [handleTelegramAuth, toast]);
 
 
   const handleLogin = async (e: React.FormEvent) => {

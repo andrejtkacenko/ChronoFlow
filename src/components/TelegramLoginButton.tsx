@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Script from 'next/script';
 import { Button } from './ui/button';
 import { Telegram } from './icons/Telegram';
@@ -20,13 +20,29 @@ interface TelegramLoginButtonProps {
 
 const TelegramLoginButton = ({ onAuth, mode = 'widget' }: TelegramLoginButtonProps) => {
   const [isClient, setIsClient] = useState(false);
+  const widgetContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-        window.onTelegramAuth = onAuth;
+        window.onTelegramAuth = (user) => {
+          if (user) {
+            onAuth(user);
+          }
+        };
+    }
+    
+    // Cleanup to avoid memory leaks
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.onTelegramAuth;
+      }
     }
   }, [onAuth]);
+
 
   if (!isClient) {
     return <Button variant="outline" className="w-full" disabled><Telegram className="mr-2 size-5" />Loading Telegram...</Button>;
@@ -40,36 +56,31 @@ const TelegramLoginButton = ({ onAuth, mode = 'widget' }: TelegramLoginButtonPro
 
   if (mode === 'widget') {
       return (
-        <div id={`telegram-login-${Math.random()}`} className="flex justify-center">
+        <div ref={widgetContainerRef} className="flex justify-center w-full">
             <Script
-            src="https://telegram.org/js/telegram-widget.js?22"
-            strategy="lazyOnload"
-            onLoad={() => {
-                if (window.Telegram) {
-                    window.Telegram.Login.auth(
-                        { bot_username: botUsername, request_access: 'write' },
-                        (data: any) => {
-                            if (!data) return;
-                            onAuth(data);
-                        }
-                    );
-                }
-            }}
+                id="telegram-widget-script"
+                src="https://telegram.org/js/telegram-widget.js?22"
+                strategy="lazyOnload"
+                onLoad={() => {
+                  if (window.Telegram && widgetContainerRef.current) {
+                    // Make sure the container is empty before appending
+                    widgetContainerRef.current.innerHTML = '';
+                    const script = document.createElement('script');
+                    script.async = true;
+                    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+                    script.setAttribute('data-telegram-login', botUsername);
+                    script.setAttribute('data-size', 'large');
+                    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+                    script.setAttribute('data-request-access', 'write');
+                    widgetContainerRef.current.appendChild(script);
+                  }
+                }}
             />
-             <div id="telegram-login-widget-container" className="flex justify-center">
-                <script
-                    async
-                    src="https://telegram.org/js/telegram-widget.js?22"
-                    data-telegram-login={botUsername}
-                    data-size="large"
-                    data-onauth="onTelegramAuth(user)"
-                    data-request-access="write"
-                ></script>
-            </div>
         </div>
       );
   }
 
+  // This mode is for linking from the profile page, less common now
   return (
       <Button variant="outline" className="w-full" asChild>
           <a href={`https://t.me/${botUsername}?start=login`}>
