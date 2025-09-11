@@ -86,6 +86,13 @@ export const telegramWebhookFlow = ai.defineFlow(
     
     const bot = botToken ? new TelegramBot(botToken) : null;
 
+    if (text && text === '/start') {
+        if (bot) {
+             await bot.sendMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox.');
+        }
+        return;
+    }
+
     const appUser = await findAppUser();
     
     if (!appUser) {
@@ -98,13 +105,6 @@ export const telegramWebhookFlow = ai.defineFlow(
 
 
     if (text) {
-        if (text === '/start') {
-            if (bot) {
-                 await bot.sendMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox.');
-            }
-            return;
-        }
-
         try {
             await addDoc(collection(db, "scheduleItems"), {
                 userId: appUser.id,
