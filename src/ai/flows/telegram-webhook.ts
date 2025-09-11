@@ -173,16 +173,18 @@ export const telegramWebhookFlow = ai.defineFlow(
     const appUser = await findUserByTelegramId(from.id);
     
     if (!appUser) {
-        const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
-        const loginUrl = `https://t.me/${botUsername}?start=login`;
-        
+        const baseUrl = process.env.NEXT_PUBLIC_URL;
+        if (!baseUrl) {
+            await sendTelegramMessage(chat.id, 'The application URL is not configured. Please contact support.');
+            return;
+        }
+        const webAppUrl = `${baseUrl}/login`;
         await sendTelegramMessage(
             chat.id, 
             `Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app, or log in by clicking the button below.`,
             {
                  inline_keyboard: [
-                    // Correctly use web_app to open the Mini App for login
-                    [{ text: 'Login to ChronoFlow', web_app: { url: `${process.env.NEXT_PUBLIC_URL}/login` } }]
+                    [{ text: 'Login to ChronoFlow', web_app: { url: webAppUrl } }]
                 ]
             }
         );
