@@ -8,6 +8,8 @@ export function initializeAdminApp() {
     const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
     if (!serviceAccountKey) {
+        // This check is important for debugging but will cause build to fail if env var is missing.
+        // The API route handlers will now control the call flow.
         throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.');
     }
 

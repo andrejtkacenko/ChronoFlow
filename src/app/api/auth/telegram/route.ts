@@ -4,12 +4,12 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { initializeAdminApp } from '@/lib/firebase-admin';
 import crypto from 'crypto';
 
-// Initialize Firebase Admin SDK
-const adminApp = initializeAdminApp();
-const adminAuth = getAuth(adminApp);
-const adminDb = getFirestore(adminApp);
-
 export async function POST(req: Request) {
+  // Initialize Firebase Admin SDK inside the handler
+  const adminApp = initializeAdminApp();
+  const adminAuth = getAuth(adminApp);
+  const adminDb = getFirestore(adminApp);
+
   const { telegramUser } = await req.json();
 
   if (!telegramUser) {
