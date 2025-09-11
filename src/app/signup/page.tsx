@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -15,6 +15,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import TelegramLoginButton from '@/components/TelegramLoginButton';
 import { useAuth } from '@/hooks/use-auth';
+
+// Этот тип нужен только для виджета на сайте
+declare global {
+    interface Window {
+        onTelegramAuth?: (user: any) => void;
+    }
+}
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -45,13 +52,21 @@ export default function SignupPage() {
     }
   };
 
-  const handleTelegramAuth = async (telegramUser: any) => {
+  const handleTelegramAuth = useCallback(async (telegramUser: any) => {
     setLoading(true);
+
+    // Преобразуем объект user в строку initData для унификации
+    const params = new URLSearchParams();
+    for (const key in telegramUser) {
+        params.append(key, telegramUser[key]);
+    }
+    const initData = params.toString();
+
     try {
       const response = await fetch('/api/auth/telegram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramUser }),
+        body: JSON.stringify({ initData }),
       });
 
       if (!response.ok) {
@@ -70,7 +85,20 @@ export default function SignupPage() {
     } finally {
         setLoading(false);
     }
-  }
+  }, [router, signInWithToken, toast]);
+
+  // Привязываем коллбэк к window
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    window.onTelegramAuth = handleTelegramAuth;
+    
+    return () => {
+      if (window.onTelegramAuth) {
+        delete window.onTelegramAuth;
+      }
+    }
+  }, [handleTelegramAuth]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -118,7 +146,7 @@ export default function SignupPage() {
             <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-background px-2 text-xs text-muted-foreground">OR CONTINUE WITH</span>
           </div>
           
-          <TelegramLoginButton onAuth={handleTelegramAuth} mode="button" />
+          <TelegramLoginButton />
 
            <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
