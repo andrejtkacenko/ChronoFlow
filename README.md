@@ -65,9 +65,14 @@ To get the project running locally, follow these steps:
             ```.env
             FIREBASE_SERVICE_ACCOUNT_KEY='{"type": "service_account", "project_id": ...}'
             ```
-    *   Для интеграции с Telegram-ботом, добавьте его токен:
+    *   **Для интеграции с Telegram-ботом, добавьте его данные:**
+        - `TELEGRAM_BOT_TOKEN`: Секретный токен вашего бота (получается у @BotFather).
+        - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`: Имя пользователя вашего бота (например, `MyChronoFlowBot`).
+        - `NEXT_PUBLIC_TELEGRAM_BOT_ID`: ID вашего бота (можно узнать у `@userinfobot`, переслав ему сообщение от вашего бота).
         ```.env
         TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+        NEXT_PUBLIC_TELEGRAM_BOT_USERNAME="YOUR_BOT_USERNAME"
+        NEXT_PUBLIC_TELEGRAM_BOT_ID="YOUR_BOT_ID"
         ```
 
 4.  **Run the development server:**
