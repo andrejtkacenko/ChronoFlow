@@ -8,7 +8,6 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import TelegramBot from 'node-telegram-bot-api';
 import { addMinutes, format } from 'date-fns';
 
 // --- Schemas ---
@@ -41,7 +40,7 @@ const ParsedTaskSchema = z.object({
     title: z.string().describe("The concise title of the event or task."),
     date: z.string().optional().describe("The date of the event in 'YYYY-MM-DD' format, if specified."),
     startTime: z.string().optional().describe("The start time of the event in 'HH:mm' format, if specified."),
-    duration: z.number().optional().describe("The duration of the event in minutes, if specified. Default to 60 if not mentioned."),
+    duration: z.number().optional().describe("The duration of the event in minutes, Default to 60 if not mentioned."),
 });
 
 // --- Helper Functions ---
@@ -61,6 +60,40 @@ async function findUserByTelegramId(telegramId: number): Promise<{ id: string; e
     
     return null;
 }
+
+
+async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: any) {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+        console.error("TELEGRAM_BOT_TOKEN environment variable is not set.");
+        return;
+    }
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const body: any = {
+        chat_id: chatId,
+        text: text,
+    };
+    if (replyMarkup) {
+        body.reply_markup = replyMarkup;
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Error sending message to Telegram:", errorData);
+        }
+    } catch (error) {
+        console.error("Failed to fetch Telegram API:", error);
+    }
+}
+
 
 // --- AI Prompt for Parsing ---
 
@@ -101,33 +134,23 @@ export const telegramWebhookFlow = ai.defineFlow(
     
     const { message } = parsedPayload.data;
     const { text, from, chat } = message;
-    
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) {
-        console.error("TELEGRAM_BOT_TOKEN environment variable is not set.");
-        return;
-    }
-    
-    const bot = new TelegramBot(botToken);
 
     if (!text) {
-        await bot.sendMessage(chat.id, 'Please send a text message to add a task.');
+        await sendTelegramMessage(chat.id, 'Please send a text message to add a task.');
         return;
     }
 
     if (text.trim() === '/start') {
-        await bot.sendMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox, or schedule it if you provide a date and time.');
+        await sendTelegramMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox, or schedule it if you provide a date and time.');
         return;
     }
 
     if (text.trim() === '/start login') {
        const webAppUrl = process.env.NEXT_PUBLIC_URL || 'https://chronoflow-429321.web.app'; // Fallback to a default URL
-       await bot.sendMessage(chat.id, 'Click the button below to log in to your ChronoFlow account.', {
-         reply_markup: {
-           inline_keyboard: [
-             [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
-           ]
-         }
+       await sendTelegramMessage(chat.id, 'Click the button below to log in to your ChronoFlow account.', {
+         inline_keyboard: [
+           [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
+         ]
        });
        return;
     }
@@ -135,7 +158,7 @@ export const telegramWebhookFlow = ai.defineFlow(
     const appUser = await findUserByTelegramId(from.id);
     
     if (!appUser) {
-        await bot.sendMessage(chat.id, 'Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app.');
+        await sendTelegramMessage(chat.id, 'Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app.');
         return;
     }
 
@@ -165,7 +188,7 @@ export const telegramWebhookFlow = ai.defineFlow(
                 color: 'hsl(12, 76%, 61%)',
                 createdAt: serverTimestamp(),
             });
-            await bot.sendMessage(chat.id, `✅ Event scheduled: "${output.title}" on ${output.date} at ${output.startTime}.`);
+            await sendTelegramMessage(chat.id, `✅ Event scheduled: "${output.title}" on ${output.date} at ${output.startTime}.`);
 
         } else {
             // It's a simple task, add to inbox
@@ -181,12 +204,12 @@ export const telegramWebhookFlow = ai.defineFlow(
                 description: `Added from Telegram by ${from.first_name}`,
                 createdAt: serverTimestamp(),
             });
-            await bot.sendMessage(chat.id, `📥 Task added to your inbox: "${output.title}"`);
+            await sendTelegramMessage(chat.id, `📥 Task added to your inbox: "${output.title}"`);
         }
         
     } catch (error) {
         console.error("Error processing message: ", error);
-        await bot.sendMessage(chat.id, 'Sorry, an error occurred while processing your request.');
+        await sendTelegramMessage(chat.id, 'Sorry, an error occurred while processing your request.');
     }
   }
 );
