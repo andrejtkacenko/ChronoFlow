@@ -67,7 +67,7 @@ async function findUserByTelegramId(telegramId: number): Promise<{ id: string; e
 async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: any) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
-        console.error("TELEGRAM_BOT_TOKEN environment variable is not set.");
+        console.error("TELEGRAM_BOT_TOKEN environment variable is not set. Cannot send message.");
         return;
     }
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
@@ -149,22 +149,6 @@ export const telegramWebhookFlow = ai.defineFlow(
         console.log("Received a message with no text, skipping.");
         return;
     }
-
-    // Handle /start command variations
-    if (text.startsWith('/start')) {
-        const baseUrl = process.env.NEXT_PUBLIC_URL;
-        if (!baseUrl) {
-            await sendTelegramMessage(chat.id, 'The application URL is not configured. Please contact support.');
-            return;
-        }
-        const webAppUrl = `${baseUrl}/login`;
-        await sendTelegramMessage(chat.id, 'Click the button below to log in to your ChronoFlow account.', {
-            inline_keyboard: [
-                [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
-            ]
-        });
-        return;
-    }
     
     const appUser = await findUserByTelegramId(from.id);
     
@@ -180,10 +164,16 @@ export const telegramWebhookFlow = ai.defineFlow(
             `Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app, or log in by clicking the button below.`,
             {
                  inline_keyboard: [
-                    [{ text: 'Login to ChronoFlow', web_app: { url: webAppUrl } }]
+                    [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
                 ]
             }
         );
+        return;
+    }
+
+    // Handle /start command, but only if there's no associated user. If there is a user, we can assume they know what they are doing.
+    if (text.startsWith('/start')) {
+        console.log("User is already linked. Ignoring /start command.");
         return;
     }
 
