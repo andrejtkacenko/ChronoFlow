@@ -181,7 +181,8 @@ export const telegramWebhookFlow = ai.defineFlow(
             `Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app, or log in by clicking the button below.`,
             {
                  inline_keyboard: [
-                    [{ text: 'Login to ChronoFlow', url: loginUrl }]
+                    // Correctly use web_app to open the Mini App for login
+                    [{ text: 'Login to ChronoFlow', web_app: { url: `${process.env.NEXT_PUBLIC_URL}/login` } }]
                 ]
             }
         );
@@ -239,3 +240,5 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
   }
 );
+
+    
