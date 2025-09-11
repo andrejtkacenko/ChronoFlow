@@ -136,15 +136,14 @@ export const telegramWebhookFlow = ai.defineFlow(
     const { text, from, chat } = message;
 
     if (!text) {
-        await sendTelegramMessage(chat.id, 'Please send a text message to add a task.');
+        // If there's no text, do nothing.
         return;
     }
 
-    // Handle /start command variations
-    if (text.startsWith('/start')) {
+    // Handle /start login command
+    if (text.startsWith('/start ')) {
         const parts = text.split(' ');
         if (parts.length > 1 && parts[1] === 'login') {
-            // Handle /start login
             const baseUrl = process.env.NEXT_PUBLIC_URL;
             if (!baseUrl) {
                 await sendTelegramMessage(chat.id, 'The application URL is not configured. Please contact support.');
@@ -156,11 +155,12 @@ export const telegramWebhookFlow = ai.defineFlow(
                     [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
                 ]
             });
-        } else {
-            // Handle simple /start
-            await sendTelegramMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox, or schedule it if you provide a date and time.');
         }
-        return; // Important: stop further processing
+        return; // Stop further processing for any /start command.
+    }
+    
+    if (text === '/start') {
+        return; // Explicitly do nothing for a simple /start
     }
 
     const appUser = await findUserByTelegramId(from.id);
