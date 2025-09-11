@@ -6,7 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import TelegramBot from 'node-telegram-bot-api';
 
@@ -36,29 +36,23 @@ const TelegramMessageSchema = z.object({
 
 type TelegramMessage = z.infer<typeof TelegramMessageSchema>;
 
-// Helper function to find a user by their Telegram ID or get the first user as a fallback.
-async function findAppUser(telegramUserId: number): Promise<{ id: string; email: string; token: string | null } | null> {
+// Helper function to get the first user in the db as a fallback.
+async function findAppUser(): Promise<{ id: string; email: string; } | null> {
     
-    // In a real app, you would query for a user linked to the telegramUserId
-    // For this prototype, we'll find the user who has a telegramBotToken set.
-    const q = query(collection(db, "userPreferences"), where("telegramBotToken", "!=", null));
-    const querySnapshot = await getDocs(q);
+    // For this prototype, we'll just get the first user we can find.
+    const usersQuery = query(collection(db, "users"), limit(1));
+    const querySnapshot = await getDocs(usersQuery);
 
     if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0]; // Get the first user with a token
+        const userDoc = querySnapshot.docs[0];
         const userData = userDoc.data();
-        
-        const userQuery = await getDoc(doc(db, "users", userDoc.id));
-        if (userQuery.exists()) {
-             return {
-                id: userDoc.id,
-                email: userQuery.data()?.email || 'N/A',
-                token: userData.telegramBotToken || null
-            };
-        }
+        return {
+            id: userDoc.id,
+            email: userData.email || 'N/A',
+        };
     }
     
-    return null; // No user found with a token
+    return null; // No user found
 }
 
 
@@ -80,20 +74,34 @@ export const telegramWebhookFlow = ai.defineFlow(
     
     const { message } = parsed.data;
     const { text, from, chat } = message;
-
-    const appUser = await findAppUser(from.id);
     
-    if (!appUser || !appUser.token) {
-        console.error("Could not find a configured user for this bot. Please set the Telegram token in the integrations page.");
-        // We cannot send a reply without a token.
+    // IMPORTANT: In a real app, you'd need to securely manage your bot token.
+    // For this prototype, we are expecting it to be in an environment variable.
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+    if (!botToken) {
+        console.error("TELEGRAM_BOT_TOKEN environment variable is not set.");
+        // We cannot send a reply without a token, but we can still process the task.
+    }
+    
+    const bot = botToken ? new TelegramBot(botToken) : null;
+
+    const appUser = await findAppUser();
+    
+    if (!appUser) {
+        console.error("Could not find any user in the database.");
+        if (bot) {
+            await bot.sendMessage(chat.id, 'Sorry, I could not find a user to assign the task to.');
+        }
         return;
     }
 
-    const bot = new TelegramBot(appUser.token);
 
     if (text) {
         if (text === '/start') {
-            await bot.sendMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox.');
+            if (bot) {
+                 await bot.sendMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox.');
+            }
             return;
         }
 
@@ -112,14 +120,18 @@ export const telegramWebhookFlow = ai.defineFlow(
             });
             console.log(`Task "${text}" added for user ${appUser.email} (ID: ${appUser.id})`);
             
-            // Send a confirmation message back to the user
-            await bot.sendMessage(chat.id, 'Задача добавлена в ваш инбокс.');
+            // Send a confirmation message back to the user if the bot is configured
+            if (bot) {
+                await bot.sendMessage(chat.id, 'Задача добавлена в ваш инбокс.');
+            }
 
         } catch (error) {
             console.error("Error adding document: ", error);
-            await bot.sendMessage(chat.id, 'Произошла ошибка при добавлении задачи.');
+             if (bot) {
+                await bot.sendMessage(chat.id, 'Произошла ошибка при добавлении задачи.');
+            }
         }
-    } else {
+    } else if (bot) {
         await bot.sendMessage(chat.id, 'Please send a text message to add a task.');
     }
   }

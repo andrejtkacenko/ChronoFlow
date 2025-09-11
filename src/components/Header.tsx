@@ -26,7 +26,6 @@ const navLinks = [
     { href: '/', label: 'Dashboard' },
     { href: '/schedule', label: 'Schedule' },
     { href: '/calendar', label: 'Calendar' },
-    { href: '/integrations', label: 'Integrations' },
 ]
 
 interface HeaderProps {
