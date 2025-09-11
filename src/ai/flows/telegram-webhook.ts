@@ -136,13 +136,19 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
     
     // Gracefully handle updates that are not messages we want to process
-    if (!parsedPayload.data.message || !parsedPayload.data.message.text) {
+    if (!parsedPayload.data.message) {
         console.log("Received a non-message or no-text update, skipping.");
         return;
     }
 
     const { message } = parsedPayload.data;
     const { text, from, chat } = message;
+
+    // Exit if there is no text in the message
+    if (!text) {
+        console.log("Received a message with no text, skipping.");
+        return;
+    }
 
     // Handle /start command variations
     if (text.startsWith('/start')) {
@@ -160,7 +166,8 @@ export const telegramWebhookFlow = ai.defineFlow(
                 ]
             });
         }
-        return; // Stop further processing for any /start command.
+        // No response for a simple /start command
+        return;
     }
     
     const appUser = await findUserByTelegramId(from.id);
