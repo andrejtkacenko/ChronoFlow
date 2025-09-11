@@ -57,6 +57,18 @@ To get the project running locally, follow these steps:
         ```.env
         GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
         ```
+    *   **Для серверной аутентификации (например, для входа через Telegram) вам понадобится ключ сервисного аккаунта Firebase:**
+        1.  В [консоли Firebase](https://console.firebase.google.com/) откройте ваш проект.
+        2.  Перейдите в **Настройки проекта** (иконка ⚙️) -> **Сервисные аккаунты**.
+        3.  Нажмите **"Создать новый закрытый ключ"**.
+        4.  Скачается JSON-файл. Скопируйте **ВСЁ его содержимое** и вставьте в `.env.local` как одну строку:
+            ```.env
+            FIREBASE_SERVICE_ACCOUNT_KEY='{"type": "service_account", "project_id": ...}'
+            ```
+    *   Для интеграции с Telegram-ботом, добавьте его токен:
+        ```.env
+        TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+        ```
 
 4.  **Run the development server:**
     ```bash
