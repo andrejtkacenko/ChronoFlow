@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -16,6 +16,12 @@ import TelegramLoginButton from '@/components/TelegramLoginButton';
 import { useAuth } from '@/hooks/use-auth';
 import { Separator } from '@/components/ui/separator';
 
+declare global {
+    interface Window {
+        Telegram: any;
+    }
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,6 +30,29 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { signInWithToken } = useAuth();
+  const isHandlingAuth = useRef(false);
+
+  useEffect(() => {
+    // This effect handles the automatic login from Telegram Mini App
+    if (window.Telegram && window.Telegram.WebApp && !isHandlingAuth.current) {
+        const tg = window.Telegram.WebApp;
+        if (tg.initData) {
+            console.log("Telegram WebApp data found, attempting auto-login.");
+            isHandlingAuth.current = true;
+            // The initData is a query string, we can parse it to get user data
+            const params = new URLSearchParams(tg.initData);
+            const userParam = params.get('user');
+            if (userParam) {
+                const telegramUser = JSON.parse(userParam);
+                // The hash is part of the original initData string
+                telegramUser.hash = params.get('hash');
+                handleTelegramAuth(telegramUser, true); // true for auto-login
+            } else {
+                 isHandlingAuth.current = false;
+            }
+        }
+    }
+  }, [handleTelegramAuth]);
 
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -46,8 +75,9 @@ export default function LoginPage() {
     }
   };
 
-  const handleTelegramAuth = async (telegramUser: any) => {
-    setLoading(true);
+  const handleTelegramAuth = async (telegramUser: any, isAutoLogin = false) => {
+    if(!isAutoLogin) setLoading(true);
+
     try {
       const response = await fetch('/api/auth/telegram', {
         method: 'POST',
@@ -68,8 +98,9 @@ export default function LoginPage() {
 
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Login Failed', description: error.message });
+        isHandlingAuth.current = false;
     } finally {
-        setLoading(false);
+        if(!isAutoLogin) setLoading(false);
     }
   }
 
@@ -119,7 +150,7 @@ export default function LoginPage() {
             <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-background px-2 text-xs text-muted-foreground">OR CONTINUE WITH</span>
           </div>
           
-          <TelegramLoginButton onAuth={handleTelegramAuth} mode="button" />
+          <TelegramLoginButton onAuth={handleTelegramAuth} mode="widget" />
 
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
