@@ -100,7 +100,7 @@ export default function Header({
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                         <Avatar className="h-10 w-10">
                             <AvatarImage src={user.photoURL ?? "https://picsum.photos/100/100"} alt="User Avatar" />
-                            <AvatarFallback>{user.email?.[0].toUpperCase() ?? 'U'}</AvatarFallback>
+                            <AvatarFallback>{user.displayName?.[0]?.toUpperCase() ?? user.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
                         </Avatar>
                     </Button>
                 </DropdownMenuTrigger>

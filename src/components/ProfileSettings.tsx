@@ -93,7 +93,7 @@ export default function ProfileSettings({ userId }: { userId: string }) {
                 <div className='flex items-center gap-6'>
                      <Avatar className="h-20 w-20">
                         <AvatarImage src={photoURL || undefined} alt="User Avatar" />
-                        <AvatarFallback>{displayName?.[0].toUpperCase() ?? 'U'}</AvatarFallback>
+                        <AvatarFallback>{displayName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
                     </Avatar>
                     <div className='flex-1 space-y-4'>
                         <div className="space-y-2">
