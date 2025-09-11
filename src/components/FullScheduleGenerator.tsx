@@ -452,7 +452,3 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     </Dialog>
   );
 }
-
-    
-
-    
