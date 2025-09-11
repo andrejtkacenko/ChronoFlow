@@ -152,21 +152,17 @@ export const telegramWebhookFlow = ai.defineFlow(
 
     // Handle /start command variations
     if (text.startsWith('/start')) {
-        const parts = text.split(' ');
-        if (parts.length > 1 && parts[1] === 'login') {
-            const baseUrl = process.env.NEXT_PUBLIC_URL;
-            if (!baseUrl) {
-                await sendTelegramMessage(chat.id, 'The application URL is not configured. Please contact support.');
-                return;
-            }
-            const webAppUrl = `${baseUrl}/login`;
-            await sendTelegramMessage(chat.id, 'Click the button below to log in to your ChronoFlow account.', {
-                inline_keyboard: [
-                    [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
-                ]
-            });
+        const baseUrl = process.env.NEXT_PUBLIC_URL;
+        if (!baseUrl) {
+            await sendTelegramMessage(chat.id, 'The application URL is not configured. Please contact support.');
+            return;
         }
-        // No response for a simple /start command
+        const webAppUrl = `${baseUrl}/login`;
+        await sendTelegramMessage(chat.id, 'Click the button below to log in to your ChronoFlow account.', {
+            inline_keyboard: [
+                [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
+            ]
+        });
         return;
     }
     
@@ -242,5 +238,3 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
   }
 );
-
-    
