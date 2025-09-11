@@ -29,46 +29,47 @@ const TelegramLoginButton = ({ onAuth, mode = 'widget' }: TelegramLoginButtonPro
   }, [onAuth]);
 
   if (!isClient) {
-    // Render a placeholder or nothing on the server to avoid build errors
     return <Button variant="outline" className="w-full" disabled><Telegram className="mr-2 size-5" />Loading Telegram...</Button>;
   }
   
-  // For the widget, we need to load Telegram's script
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+  if (!botUsername) {
+    console.error("Telegram Bot Username is not set in environment variables.");
+    return <p className="text-destructive text-sm text-center">Telegram login is not configured.</p>;
+  }
+
   if (mode === 'widget') {
-      const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
-      if (!botUsername) {
-        console.error("Telegram Bot Username is not set in environment variables.");
-        return <p className="text-destructive text-sm text-center">Telegram login is not configured.</p>;
-      }
       return (
-        <div id="telegram-login-widget-container" className="flex justify-center">
+        <div id={`telegram-login-${Math.random()}`} className="flex justify-center">
             <Script
             src="https://telegram.org/js/telegram-widget.js?22"
-            strategy="afterInteractive"
+            strategy="lazyOnload"
             onLoad={() => {
-                const container = document.getElementById('telegram-login-widget-container');
-                if (container && container.querySelector('script') === null) {
-                    const script = document.createElement('script');
-                    script.src = "https://telegram.org/js/telegram-widget.js?22";
-                    script.setAttribute('data-telegram-login', botUsername);
-                    script.setAttribute('data-size', 'large');
-                    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-                    script.setAttribute('data-request-access', 'write');
-                    script.async = true;
-                    container.appendChild(script);
+                if (window.Telegram) {
+                    window.Telegram.Login.auth(
+                        { bot_username: botUsername, request_access: 'write' },
+                        (data: any) => {
+                            if (!data) return;
+                            onAuth(data);
+                        }
+                    );
                 }
             }}
             />
+             <div id="telegram-login-widget-container" className="flex justify-center">
+                <script
+                    async
+                    src="https://telegram.org/js/telegram-widget.js?22"
+                    data-telegram-login={botUsername}
+                    data-size="large"
+                    data-onauth="onTelegramAuth(user)"
+                    data-request-access="write"
+                ></script>
+            </div>
         </div>
       );
   }
 
-  // For the button link (used on profile page for linking)
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
-  if (!botUsername) {
-    console.error("Telegram Bot Username is not set in environment variables.");
-    return <Button variant="outline" disabled className="w-full"><Telegram className="mr-2 size-5" />Telegram Bot not configured</Button>
-  }
   return (
       <Button variant="outline" className="w-full" asChild>
           <a href={`https://t.me/${botUsername}?start=login`}>

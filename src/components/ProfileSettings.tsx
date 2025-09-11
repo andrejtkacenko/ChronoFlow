@@ -137,9 +137,9 @@ export default function ProfileSettings({ userId }: { userId: string }) {
                             </p>
                         </div>
                     </div>
-                    <div>
+                    <div className="flex justify-center">
                         {!userData?.telegramId ? (
-                            <TelegramLoginButton onAuth={handleTelegramLink} mode="button" />
+                            <TelegramLoginButton onAuth={handleTelegramLink} mode="widget" />
                         ) : (
                            <Button variant="outline" disabled>Linked</Button>
                         )}
