@@ -2,14 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { initializeAdminApp } from '@/lib/firebase-admin';
-import { subtle } from 'crypto';
-
-// Helper function to convert the secret key for SubtleCrypto
-async function getSecretKey(botToken: string): Promise<CryptoKey> {
-    const encoder = new TextEncoder();
-    const keyData = await subtle.digest('SHA-256', encoder.encode(botToken));
-    return subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-}
+import crypto from 'crypto';
 
 export async function POST(req: Request) {
   // Initialize Firebase Admin SDK inside the handler
@@ -32,7 +25,7 @@ export async function POST(req: Request) {
     }
   });
 
-  // --- Telegram Hash Verification using Web Crypto API ---
+  // --- Telegram Hash Verification using Node.js Crypto ---
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     console.error("TELEGRAM_BOT_TOKEN is not set on the server.");
@@ -43,18 +36,15 @@ export async function POST(req: Request) {
     .map((key) => `${key}=${initData[key]}`)
     .sort()
     .join('\n');
-
+    
   try {
-      const secretKeyFromToken = await subtle.importKey('raw', new TextEncoder().encode('WebAppData'), { name: 'HMAC', hash: { name: 'SHA-256' }}, false, ['sign']);
-      const secretKey = await subtle.sign('HMAC', secretKeyFromToken, new TextEncoder().encode(botToken));
-      
-      const signature = await subtle.sign('HMAC', { name: 'HMAC', hash: 'SHA-256', length: 256, public: secretKey }, new TextEncoder().encode(dataCheckString));
-      
-      const signatureHex = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const secretKey = crypto.createHash('sha256').update(botToken).digest();
+    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
-      if (signatureHex !== hash) {
-        return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified.' }, { status: 403 });
-      }
+    if (hmac !== hash) {
+      console.error('Hash verification failed', {hmac, hash});
+      return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified.' }, { status: 403 });
+    }
   } catch (error) {
       console.error('Error during hash verification:', error);
       return NextResponse.json({ error: 'Hash verification failed.' }, { status: 500 });
