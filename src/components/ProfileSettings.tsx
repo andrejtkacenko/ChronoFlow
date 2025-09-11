@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,6 +16,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import TelegramLoginButton from './TelegramLoginButton';
 import { Telegram } from './icons/Telegram';
 
+// Этот тип нужен только для виджета на сайте
+declare global {
+    interface Window {
+        onTelegramAuth?: (user: any) => void;
+    }
+}
 
 export default function ProfileSettings({ userId }: { userId: string }) {
   const { toast } = useToast();
@@ -31,6 +38,29 @@ export default function ProfileSettings({ userId }: { userId: string }) {
       }
       setIsLoading(false);
   }, [user]);
+
+  const handleTelegramLink = async (telegramResponse: any) => {
+    try {
+      await linkTelegramAccount(telegramResponse);
+      toast({ title: 'Telegram Linked', description: 'Your Telegram account has been successfully linked.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Linking Failed', description: error.message });
+    }
+  };
+
+  // Привязываем коллбэк к window для виджета Telegram
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    window.onTelegramAuth = handleTelegramLink;
+    
+    // Очистка при размонтировании
+    return () => {
+      if (window.onTelegramAuth === handleTelegramLink) {
+        delete window.onTelegramAuth;
+      }
+    }
+  }, [handleTelegramLink]);
 
 
   const handleSave = async () => {
@@ -63,16 +93,6 @@ export default function ProfileSettings({ userId }: { userId: string }) {
         setIsSaving(false);
     }
   };
-
-  const handleTelegramLink = async (telegramResponse: any) => {
-    try {
-      await linkTelegramAccount(telegramResponse);
-      toast({ title: 'Telegram Linked', description: 'Your Telegram account has been successfully linked.' });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Linking Failed', description: error.message });
-    }
-  };
-
 
   if (isLoading) {
     return (
@@ -139,7 +159,7 @@ export default function ProfileSettings({ userId }: { userId: string }) {
                     </div>
                     <div className="flex justify-center">
                         {!userData?.telegramId ? (
-                            <TelegramLoginButton onAuth={handleTelegramLink} mode="widget" />
+                            <TelegramLoginButton />
                         ) : (
                            <Button variant="outline" disabled>Linked</Button>
                         )}
