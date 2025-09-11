@@ -7,26 +7,8 @@ import { subtle } from 'crypto';
 // Helper function to convert the secret key for SubtleCrypto
 async function getSecretKey(botToken: string): Promise<CryptoKey> {
     const encoder = new TextEncoder();
-    const keyData = encoder.encode('WebAppData');
-    const importedKey = await subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-    );
-    const botTokenData = encoder.encode(botToken);
-    const signedKey = await subtle.sign('HMAC', importedKey, botTokenData);
-    return subtle.importKey('raw', signedKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-}
-
-// Helper to convert hex string to ArrayBuffer
-function hexToBuffer(hex: string): ArrayBuffer {
-    const match = hex.match(/[\da-f]{2}/gi);
-    if (!match) {
-        return new ArrayBuffer(0);
-    }
-    return new Uint8Array(match.map(h => parseInt(h, 16))).buffer;
+    const keyData = await subtle.digest('SHA-256', encoder.encode(botToken));
+    return subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
 }
 
 export async function POST(req: Request) {
@@ -35,11 +17,20 @@ export async function POST(req: Request) {
   const adminAuth = getAuth(adminApp);
   const adminDb = getFirestore(adminApp);
 
-  const { initData } = await req.json();
+  const { initData: initDataString } = await req.json();
 
-  if (!initData) {
+  if (!initDataString) {
     return NextResponse.json({ error: 'Missing initData' }, { status: 400 });
   }
+  
+  const params = new URLSearchParams(initDataString);
+  const hash = params.get('hash');
+  const initData: Record<string, string> = {};
+  params.forEach((value, key) => {
+    if (key !== 'hash') {
+      initData[key] = value;
+    }
+  });
 
   // --- Telegram Hash Verification using Web Crypto API ---
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -48,32 +39,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Server configuration error for Telegram' }, { status: 500 });
   }
   
-  const hash = initData.hash;
   const dataCheckString = Object.keys(initData)
-    .filter((key) => key !== 'hash' && initData[key] !== undefined)
     .map((key) => `${key}=${initData[key]}`)
     .sort()
     .join('\n');
 
   try {
-      const secretKey = await getSecretKey(botToken);
-      const encoder = new TextEncoder();
-      const dataToSign = encoder.encode(dataCheckString);
-      const signature = await subtle.sign('HMAC', secretKey, dataToSign);
+      const secretKeyFromToken = await subtle.importKey('raw', new TextEncoder().encode('WebAppData'), { name: 'HMAC', hash: { name: 'SHA-256' }}, false, ['sign']);
+      const secretKey = await subtle.sign('HMAC', secretKeyFromToken, new TextEncoder().encode(botToken));
+      
+      const signature = await subtle.sign('HMAC', { name: 'HMAC', hash: 'SHA-256', length: 256, public: secretKey }, new TextEncoder().encode(dataCheckString));
       
       const signatureHex = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
 
       if (signatureHex !== hash) {
-        return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified.', calculatedHash: signatureHex, receivedHash: hash }, { status: 403 });
+        return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified.' }, { status: 403 });
       }
   } catch (error) {
       console.error('Error during hash verification:', error);
       return NextResponse.json({ error: 'Hash verification failed.' }, { status: 500 });
   }
-
+  
+  const user = JSON.parse(initData.user);
 
   // --- Data is verified, proceed with Firebase Auth ---
-  const telegramId = String(initData.id);
+  const telegramId = String(user.id);
   const uid = `tg-${telegramId}`; // Create a unique UID based on Telegram ID
 
   try {
@@ -86,8 +76,8 @@ export async function POST(req: Request) {
         // 2. If not, create a new user
         const newUser: any = {
           uid: uid,
-          displayName: `${initData.first_name}${initData.last_name ? ' ' + initData.last_name : ''}`,
-          photoURL: initData.photo_url,
+          displayName: `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}`,
+          photoURL: user.photo_url,
         };
         userRecord = await adminAuth.createUser(newUser);
 
@@ -98,7 +88,7 @@ export async function POST(req: Request) {
             displayName: newUser.displayName,
             photoURL: newUser.photoURL,
             telegramId: telegramId,
-            telegramUsername: initData.username,
+            telegramUsername: user.username,
             createdAt: FieldValue.serverTimestamp(),
         });
 
