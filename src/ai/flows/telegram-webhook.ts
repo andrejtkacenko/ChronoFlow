@@ -13,6 +13,7 @@ import { addMinutes, format } from 'date-fns';
 // --- Schemas ---
 
 const TelegramMessageSchema = z.object({
+  update_id: z.number(),
   message: z.object({
     message_id: z.number(),
     from: z.object({
@@ -32,7 +33,8 @@ const TelegramMessageSchema = z.object({
     }),
     date: z.number(),
     text: z.string().optional(),
-  }),
+  }).optional(),
+  my_chat_member: z.any().optional(), // To handle bot status changes gracefully
 });
 
 const ParsedTaskSchema = z.object({
@@ -72,6 +74,7 @@ async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: a
     const body: any = {
         chat_id: chatId,
         text: text,
+        parse_mode: 'Markdown',
     };
     if (replyMarkup) {
         body.reply_markup = replyMarkup;
@@ -132,16 +135,17 @@ export const telegramWebhookFlow = ai.defineFlow(
       return;
     }
     
-    const { message } = parsedPayload.data;
-    const { text, from, chat } = message;
-
-    if (!text) {
-        // If there's no text, do nothing.
+    // Gracefully handle updates that are not messages we want to process
+    if (!parsedPayload.data.message || !parsedPayload.data.message.text) {
+        console.log("Received a non-message or no-text update, skipping.");
         return;
     }
 
-    // Handle /start login command
-    if (text.startsWith('/start ')) {
+    const { message } = parsedPayload.data;
+    const { text, from, chat } = message;
+
+    // Handle /start command variations
+    if (text.startsWith('/start')) {
         const parts = text.split(' ');
         if (parts.length > 1 && parts[1] === 'login') {
             const baseUrl = process.env.NEXT_PUBLIC_URL;
@@ -159,14 +163,21 @@ export const telegramWebhookFlow = ai.defineFlow(
         return; // Stop further processing for any /start command.
     }
     
-    if (text === '/start') {
-        return; // Explicitly do nothing for a simple /start
-    }
-
     const appUser = await findUserByTelegramId(from.id);
     
     if (!appUser) {
-        await sendTelegramMessage(chat.id, 'Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app.');
+        const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+        const loginUrl = `https://t.me/${botUsername}?start=login`;
+        
+        await sendTelegramMessage(
+            chat.id, 
+            `Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app, or log in by clicking the button below.`,
+            {
+                 inline_keyboard: [
+                    [{ text: 'Login to ChronoFlow', url: loginUrl }]
+                ]
+            }
+        );
         return;
     }
 
