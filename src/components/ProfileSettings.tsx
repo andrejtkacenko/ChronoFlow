@@ -8,15 +8,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, User as UserIcon } from 'lucide-react';
+import { Loader2, Save, User as UserIcon, Link2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import TelegramLoginButton from './TelegramLoginButton';
+import { Telegram } from './icons/Telegram';
 
 
 export default function ProfileSettings({ userId }: { userId: string }) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userData, linkTelegramAccount } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [photoURL, setPhotoURL] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -28,7 +30,7 @@ export default function ProfileSettings({ userId }: { userId: string }) {
           setPhotoURL(user.photoURL || '');
       }
       setIsLoading(false);
-  }, [user, userId, toast]);
+  }, [user]);
 
 
   const handleSave = async () => {
@@ -61,6 +63,16 @@ export default function ProfileSettings({ userId }: { userId: string }) {
         setIsSaving(false);
     }
   };
+
+  const handleTelegramLink = async (telegramResponse: any) => {
+    try {
+      await linkTelegramAccount(telegramResponse);
+      toast({ title: 'Telegram Linked', description: 'Your Telegram account has been successfully linked.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Linking Failed', description: error.message });
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -105,6 +117,33 @@ export default function ProfileSettings({ userId }: { userId: string }) {
                 <div className="space-y-2">
                     <Label htmlFor="photoURL">Photo URL</Label>
                     <Input id="photoURL" value={photoURL} onChange={(e) => setPhotoURL(e.target.value)} placeholder="https://example.com/avatar.png" />
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle className='flex items-center gap-2'><Link2 /> Integrations</CardTitle>
+                <CardDescription>Connect your other accounts to streamline your workflow.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className='flex items-center justify-between p-4 rounded-lg border'>
+                    <div className='flex items-center gap-3'>
+                        <Telegram className='size-6 text-[#2AABEE]'/>
+                        <div>
+                            <p className='font-semibold'>Telegram</p>
+                            <p className='text-sm text-muted-foreground'>
+                                {userData?.telegramId ? `Linked as @${userData.telegramUsername}` : 'Not Linked'}
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        {!userData?.telegramId ? (
+                            <TelegramLoginButton onAuth={handleTelegramLink} />
+                        ) : (
+                           <Button variant="outline" disabled>Linked</Button>
+                        )}
+                    </div>
                 </div>
             </CardContent>
         </Card>

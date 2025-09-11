@@ -36,11 +36,8 @@ const TelegramMessageSchema = z.object({
 
 type TelegramMessage = z.infer<typeof TelegramMessageSchema>;
 
-// Helper function to get the first user in the db as a fallback.
-async function findAppUser(): Promise<{ id: string; email: string; } | null> {
-    
-    // For this prototype, we'll just get the first user we can find.
-    const usersQuery = query(collection(db, "users"), limit(1));
+async function findUserByTelegramId(telegramId: number): Promise<{ id: string; email: string | null; } | null> {
+    const usersQuery = query(collection(db, "users"), where("telegramId", "==", String(telegramId)), limit(1));
     const querySnapshot = await getDocs(usersQuery);
 
     if (!querySnapshot.empty) {
@@ -76,33 +73,26 @@ export const telegramWebhookFlow = ai.defineFlow(
     const { text, from, chat } = message;
     
     // IMPORTANT: In a real app, you'd need to securely manage your bot token.
-    // For this prototype, we are expecting it to be in an environment variable.
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-
     if (!botToken) {
         console.error("TELEGRAM_BOT_TOKEN environment variable is not set.");
-        // We cannot send a reply without a token, but we can still process the task.
+        return; // Can't proceed without a token
     }
     
-    const bot = botToken ? new TelegramBot(botToken) : null;
+    const bot = new TelegramBot(botToken);
 
-    if (text && text === '/start') {
-        if (bot) {
-             await bot.sendMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox.');
-        }
+    if (text && text.trim() === '/start') {
+        await bot.sendMessage(chat.id, 'Welcome to ChronoFlow! Send me any text and I will add it as a task to your inbox.');
         return;
     }
 
-    const appUser = await findAppUser();
+    const appUser = await findUserByTelegramId(from.id);
     
     if (!appUser) {
-        console.error("Could not find any user in the database.");
-        if (bot) {
-            await bot.sendMessage(chat.id, 'Sorry, I could not find a user to assign the task to.');
-        }
+        console.error(`Could not find a ChronoFlow user for Telegram ID: ${from.id}`);
+        await bot.sendMessage(chat.id, 'Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app.');
         return;
     }
-
 
     if (text) {
         try {
@@ -120,18 +110,13 @@ export const telegramWebhookFlow = ai.defineFlow(
             });
             console.log(`Task "${text}" added for user ${appUser.email} (ID: ${appUser.id})`);
             
-            // Send a confirmation message back to the user if the bot is configured
-            if (bot) {
-                await bot.sendMessage(chat.id, 'Задача добавлена в ваш инбокс.');
-            }
+            await bot.sendMessage(chat.id, 'Задача добавлена в ваш инбокс.');
 
         } catch (error) {
             console.error("Error adding document: ", error);
-             if (bot) {
-                await bot.sendMessage(chat.id, 'Произошла ошибка при добавлении задачи.');
-            }
+            await bot.sendMessage(chat.id, 'Произошла ошибка при добавлении задачи.');
         }
-    } else if (bot) {
+    } else {
         await bot.sendMessage(chat.id, 'Please send a text message to add a task.');
     }
   }
