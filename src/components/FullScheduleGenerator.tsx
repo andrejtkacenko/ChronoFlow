@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, CheckCircle2, Bed, Utensils } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, CheckCircle2, Bed, Utensils, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -27,8 +27,46 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Slider } from './ui/slider';
+import { Switch } from './ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Dumbbell, Brain, BookOpen } from 'lucide-react';
 
 // --- Components ---
+
+const HabitBuilder = memo(({ habitName, habitKey, icon: Icon, preferences, onPrefChange }: { habitName: string; habitKey: string; icon: React.ElementType; preferences: Record<string, any>; onPrefChange: (id: string, value: any) => void; }) => {
+    const isEnabled = preferences[`${habitKey}Enabled`];
+    return (
+        <div className="p-4 rounded-lg border bg-card/50">
+            <div className="flex items-center justify-between">
+                <Label htmlFor={`habit-switch-${habitKey}`} className="flex items-center gap-3 font-semibold"><Icon className="size-5 text-primary" />{habitName}</Label>
+                <Switch id={`habit-switch-${habitKey}`} checked={isEnabled} onCheckedChange={(checked) => onPrefChange(`${habitKey}Enabled`, checked)} />
+            </div>
+            {isEnabled && (
+                <div className="mt-4 space-y-4 pt-4 border-t">
+                    <div>
+                        <div className="flex justify-between items-center mb-1"><Label>Frequency (per week)</Label><span className="text-sm font-medium text-primary">{preferences[`${habitKey}Frequency`]}</span></div>
+                        <Slider value={[preferences[`${habitKey}Frequency`]]} onValueChange={(value) => onPrefChange(`${habitKey}Frequency`, value[0])} min={1} max={7} step={1} />
+                    </div>
+                    <div>
+                        <div className="flex justify-between items-center mb-1"><Label>Duration (minutes)</Label><span className="text-sm font-medium text-primary">{preferences[`${habitKey}Duration`]}</span></div>
+                        <Slider value={[preferences[`${habitKey}Duration`]]} onValueChange={(value) => onPrefChange(`${habitKey}Duration`, value[0])} min={15} max={120} step={15} />
+                    </div>
+                    <div>
+                        <Label>Preferred Time</Label>
+                        <Select value={preferences[`${habitKey}PreferredTime`]} onValueChange={(value) => onPrefChange(`${habitKey}PreferredTime`, value)}>
+                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select time" /></SelectTrigger>
+                            <SelectContent><SelectItem value="Любое">Any</SelectItem><SelectItem value="Утро">Morning</SelectItem><SelectItem value="День">Afternoon</SelectItem><SelectItem value="Вечер">Evening</SelectItem></SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+});
+HabitBuilder.displayName = 'HabitBuilder';
+
 
 const GenerationProgress = memo(() => {
     const [step, setStep] = useState<'routine' | 'tasks'>('routine');
@@ -121,8 +159,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
   const [view, setView] = useState<'form' | 'loading' | 'results'>('form');
   const [inboxTasks, setInboxTasks] = useState<ScheduleItem[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const [preferences, setPreferences] = useState<Record<string, any> | null>(null);
+  const [preferences, setPreferences] = useState<Record<string, any>>(defaultPreferences);
   const [isPrefLoading, setIsPrefLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<GenerateFullScheduleOutput | null>(null);
   const [numberOfDays, setNumberOfDays] = useState(7);
 
@@ -145,11 +184,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
             setPreferences({...defaultPreferences, ...loadedPrefs});
         } else {
             setPreferences(defaultPreferences);
-            toast({
-                title: "Set Your Preferences",
-                description: "It looks like you haven't set your preferences yet. Please go to your profile to configure them for better schedule generation.",
-                duration: 5000,
-            })
         }
     } catch (error) {
         console.error("Error fetching preferences:", error);
@@ -158,6 +192,44 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         setIsPrefLoading(false);
     }
   }, [userId, toast]);
+  
+  const handlePrefChange = useCallback((id: string, value: any) => {
+    setPreferences(p => ({ ...p, [id]: typeof value === 'function' ? value(p[id]) : value }));
+  }, []);
+
+  const handleEnergyPeakChange = useCallback((peak: string, checked: boolean) => {
+    setPreferences(p => {
+        const currentPeaks = p.energyPeaks || [];
+        const newPeaks = checked ? [...currentPeaks, peak] : currentPeaks.filter((pk: string) => pk !== peak);
+        return { ...p, energyPeaks: newPeaks };
+    });
+  }, []);
+
+  const handleWorkDayToggle = useCallback((day: number) => {
+    setPreferences(p => {
+        const currentWorkDays = new Set(p.workDays || []);
+        currentWorkDays.has(day) ? currentWorkDays.delete(day) : currentWorkDays.add(day);
+        return { ...p, workDays: Array.from(currentWorkDays).sort() };
+    });
+  }, []);
+
+  const handleSavePrefs = async () => {
+    setIsSaving(true);
+    const prefsToSave = { 
+        ...preferences, 
+        energyPeaks: Array.isArray(preferences.energyPeaks) ? preferences.energyPeaks.join(', ') : preferences.energyPeaks 
+    };
+
+    try {
+        await setDoc(doc(db, 'userPreferences', userId), prefsToSave, { merge: true });
+        toast({ title: 'Preferences Saved', description: 'Your settings have been updated for future use.' });
+    } catch (error) {
+        console.error("Error saving preferences:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save your preferences.' });
+    } finally {
+        setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!open || !userId) return;
@@ -264,12 +336,14 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     onOpenChange(isOpen);
   }, [resetState, onOpenChange]);
 
+  const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
   const renderContent = () => {
     switch (view) {
-        case 'loading': return <div className="h-[50vh]"><GenerationProgress /></div>;
+        case 'loading': return <div className="h-[70vh]"><GenerationProgress /></div>;
         case 'results': return (
             <>
-                <div className="my-4 flex-1 flex flex-col min-h-0 h-[50vh]">
+                <div className="my-4 flex-1 flex flex-col min-h-0 h-[70vh]">
                     <h3 className="font-semibold mb-4 text-lg">Your new schedule</h3>
                     <ScrollArea className="flex-1 pr-4">
                         {!suggestions || (suggestions.tasks.length === 0 && suggestions.routineEvents.length === 0) ? (
@@ -295,15 +369,61 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         default: 
             return (
                 <>
+                <ScrollArea className="h-[70vh] pr-6 -mr-6">
                     <div className="space-y-4 my-4">
                         <div>
-                            <Label className="font-semibold">Select tasks from inbox</Label>
+                            <Label className="font-semibold">1. Select tasks from inbox</Label>
                             <Card className="mt-2 max-h-[200px] flex flex-col"><CardContent className="p-2 flex-1 overflow-hidden"><ScrollArea className="h-full pr-4"><div className="space-y-2">
                                 {inboxTasks.length > 0 ? (inboxTasks.map(task => (<div key={task.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted"><Checkbox id={`task-${task.id}`} onCheckedChange={() => handleTaskSelection(task.id)} checked={selectedTasks.has(task.id)} /><Label htmlFor={`task-${task.id}`} className="flex-1 truncate cursor-pointer">{task.title}</Label></div>))) 
                                 : (<p className="text-sm text-muted-foreground text-center py-4">Your inbox is empty.</p>)}
                             </div></ScrollArea></CardContent></Card>
                         </div>
+                        
+                        <div>
+                            <div className='flex items-center justify-between'>
+                                <Label className="font-semibold">2. Adjust preferences for this generation</Label>
+                                <Button variant="ghost" size="sm" onClick={handleSavePrefs} disabled={isSaving}>
+                                    {isSaving ? <Loader2 className="mr-2 size-4 animate-spin"/> : <Save className="mr-2 size-4" />}
+                                    Save for later
+                                </Button>
+                            </div>
+                            <div className='space-y-4 mt-2'>
+                                <div className="p-4 rounded-lg border bg-card/50 space-y-4">
+                                     <div>
+                                        <Label htmlFor="mainGoals" className="font-semibold">Main goals for this period?</Label>
+                                        <Textarea id="mainGoals" placeholder="e.g., Launch new project, prepare for marathon, read 3 books." value={preferences.mainGoals ?? ''} onChange={e => handlePrefChange('mainGoals', e.target.value)} className="mt-2" />
+                                    </div>
+                                    <div>
+                                        <Label>Work days</Label>
+                                        <div className="flex items-center gap-1.5 mt-2">
+                                            {weekDays.map((day, index) => (
+                                                <Button key={day} variant={preferences.workDays?.includes(index) ? 'default' : 'outline'} size="icon" className="h-8 w-8 rounded-full text-xs" onClick={() => handleWorkDayToggle(index)}>{day}</Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className='flex-1'><Label htmlFor="workStartTime">Work Start</Label><Input id="workStartTime" type="time" value={preferences.workStartTime} onChange={e => handlePrefChange('workStartTime', e.target.value)} className="mt-1"/></div>
+                                        <div className='flex-1'><Label htmlFor="workEndTime">Work End</Label><Input id="workEndTime" type="time" value={preferences.workEndTime} onChange={e => handlePrefChange('workEndTime', e.target.value)} className="mt-1"/></div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>When are your energy peaks?</Label>
+                                        <div className="flex items-center space-x-4">
+                                            {['Morning', 'Afternoon', 'Evening'].map(peak => (
+                                                <div key={peak} className="flex items-center space-x-2">
+                                                    <Checkbox id={`gen-peak-${peak}`} checked={(preferences.energyPeaks || []).includes(peak)} onCheckedChange={(checked) => handleEnergyPeakChange(peak, !!checked)} />
+                                                    <Label htmlFor={`gen-peak-${peak}`}>{peak}</Label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <HabitBuilder habitName="Sport" habitKey="sport" icon={Dumbbell} preferences={preferences} onPrefChange={handlePrefChange} />
+                                <HabitBuilder habitName="Meditation" habitKey="meditation" icon={Brain} preferences={preferences} onPrefChange={handlePrefChange} />
+                                <HabitBuilder habitName="Reading" habitKey="reading" icon={BookOpen} preferences={preferences} onPrefChange={handlePrefChange} />
+                            </div>
+                        </div>
                     </div>
+                </ScrollArea>
                   <DialogFooter className="justify-between pt-4 border-t">
                       <div className="flex items-center gap-4">
                           <Label htmlFor="numberOfDays" className="whitespace-nowrap">Generate for</Label>
@@ -322,7 +442,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg w-full flex flex-col p-0">
+      <DialogContent className="max-w-2xl w-full flex flex-col p-0 h-[90vh]">
         <DialogHeader className="p-6 pb-4">
             <DialogTitle className="flex items-center gap-2"><Wand2 className="h-5 w-5 text-primary" />Schedule Generator</DialogTitle>
             <DialogDescription>The planning assistant will help you create the perfect schedule based on your tasks and saved preferences.</DialogDescription>
@@ -332,5 +452,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     </Dialog>
   );
 }
+
+    
 
     

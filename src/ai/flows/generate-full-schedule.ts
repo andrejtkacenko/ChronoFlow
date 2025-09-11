@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   **Step 1: Create Routine & Foundational Events.**
   - First, you will build the foundation of the schedule. Review the user's preferences for daily needs, work, and habits.
   - For EACH of the {{{numberOfDays}}} days, you MUST create recurring events for:
-    - **Sleep:** Based on the user's preferred time range from {{{preferences.sleepTimeRange.[0]}}}:00 to {{{preferences.sleepTimeRange.[1]}}}:00.
+    - **Sleep:** Based on the user's preferred time range from {{{preferences.sleepTimeRange.[0]}}}:00 to {{{preferences.sleepTimeRange.[1]}}}:00. The event should cross midnight.
     - **Meals:** Based on {{{preferences.mealsPerDay}}} meals per day. Allocate a reasonable time for each.
     - **Rest:** Based on {{{preferences.restTime}}} hours. This should be broken into smaller breaks throughout the day.
   - **Work Blocks:** Create a "Work Block" event from {{{preferences.workStartTime}}} to {{{preferences.workEndTime}}} on each of the specified work days ({{{preferences.workDays}}}). Treat Sunday as day 0. This block is a container for tasks, not a task itself.
@@ -86,3 +86,5 @@ const generateFullScheduleFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    
