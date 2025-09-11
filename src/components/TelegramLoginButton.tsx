@@ -9,7 +9,7 @@ import { Telegram } from './icons/Telegram';
 declare global {
     interface Window {
         onTelegramAuth?: (user: any) => void;
-        Telegram: any;
+        Telegram?: any;
     }
 }
 
@@ -37,7 +37,7 @@ const TelegramLoginButton = ({ onAuth, mode = 'widget' }: TelegramLoginButtonPro
     
     // Cleanup to avoid memory leaks
     return () => {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && window.onTelegramAuth) {
         delete window.onTelegramAuth;
       }
     }
