@@ -74,10 +74,13 @@ export default function LoginPage() {
       const onMainButtonClick = () => {
         const params = new URLSearchParams(tg.initData);
         const userParam = params.get('user');
-        if (userParam) {
-          const telegramUser = JSON.parse(userParam);
-          telegramUser.hash = params.get('hash');
-          handleTelegramAuth(telegramUser);
+        const hash = params.get('hash');
+        
+        if (userParam && hash) {
+          const telegramUser = JSON.parse(decodeURIComponent(userParam));
+          // The hash comes from the top-level initData, so we add it manually
+          const dataWithHash = { ...telegramUser, hash };
+          handleTelegramAuth(dataWithHash);
         } else {
           toast({ variant: 'destructive', title: 'Auth Error', description: 'Could not find Telegram user data.' });
         }
