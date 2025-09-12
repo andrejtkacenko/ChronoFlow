@@ -8,7 +8,9 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { addMinutes, format } from 'date-fns';
+import { addMinutes, format, parse } from 'date-fns';
+import { suggestOptimalTimeSlots } from './suggest-optimal-time-slots';
+import type { SuggestedSlot } from './schema';
 
 // --- Schemas ---
 
@@ -34,11 +36,31 @@ const TelegramMessageSchema = z.object({
     date: z.number(),
     text: z.string().optional(),
   }).optional(),
+  callback_query: z.object({
+    id: z.string(),
+    from: z.object({
+      id: z.number(),
+      is_bot: z.boolean(),
+      first_name: z.string(),
+      last_name: z.string().optional(),
+      username: z.string().optional(),
+      language_code: z.string().optional(),
+    }),
+    message: z.object({
+      message_id: z.number(),
+      chat: z.object({
+        id: z.number(),
+      }),
+      text: z.string(),
+    }),
+    data: z.string(),
+  }).optional(),
   my_chat_member: z.any().optional(), // To handle bot status changes gracefully
 });
 
 const ParsedTaskSchema = z.object({
-    isSchedulable: z.boolean().describe('Set to true if the text contains a specific date and time for an event. Otherwise, set to false if it is just a task for the inbox.'),
+    isSchedulable: z.boolean().describe('Set to true if the text contains a specific date and time for an event, or implies a desire to schedule (e.g., "next week", "tomorrow"). Otherwise, set to false if it is just a task for the inbox.'),
+    hasSpecificTime: z.boolean().describe('Set to true only if a specific date and time (e.g., "tomorrow at 5pm", "on Aug 23 at 10:00") are mentioned. Set to false for vague requests like "next week".'),
     title: z.string().describe("The concise title of the event or task."),
     date: z.string().optional().describe("The date of the event in 'YYYY-MM-DD' format, if specified."),
     startTime: z.string().optional().describe("The start time of the event in 'HH:mm' format, if specified."),
@@ -97,6 +119,28 @@ async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: a
     }
 }
 
+async function answerCallbackQuery(callbackQueryId: string, text?: string) {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return;
+    const url = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+    });
+}
+
+async function editMessageText(chatId: number, messageId: number, text: string) {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return;
+    const url = `https://api.telegram.org/bot${botToken}/editMessageText`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'Markdown' }),
+    });
+}
+
 
 // --- AI Prompt for Parsing ---
 
@@ -110,8 +154,9 @@ const parseTaskPrompt = ai.definePrompt({
     
     Analyze the following text: "{{{text}}}"
 
-    - If the text contains a clear date and time (e.g., "tomorrow at 5pm", "on friday at 10:00", "сегодня в 19:30"), extract the date, time, and duration. The duration defaults to 60 minutes if not specified. Set 'isSchedulable' to true.
-    - If the text is just a to-do item (e.g., "buy milk", "call mom"), extract the title and set 'isSchedulable' to false.
+    - If the text is just a to-do item (e.g., "buy milk", "call mom"), extract the title and set 'isSchedulable' to false and 'hasSpecificTime' to false.
+    - If the text contains a clear, specific date and time (e.g., "tomorrow at 5pm", "on friday at 10:00", "сегодня в 19:30"), extract the date, time, and duration. The duration defaults to 60 minutes if not specified. Set 'isSchedulable' to true and 'hasSpecificTime' to true.
+    - If the text implies a desire to schedule but lacks a specific time (e.g., "schedule a haircut for next week", "find time for a workout tomorrow"), extract the title and an approximate duration. Set 'isSchedulable' to true but 'hasSpecificTime' to false.
     - The title should be the core action of the task/event.
     
     Respond with the extracted information in the specified JSON format.`,
@@ -134,21 +179,52 @@ export const telegramWebhookFlow = ai.defineFlow(
       console.error("Failed to parse Telegram message:", parsedPayload.error);
       return;
     }
+
+    // --- Handle Callback Queries (Button Clicks) ---
+    if (parsedPayload.data.callback_query) {
+        const { id: callbackQueryId, from, message, data } = parsedPayload.data.callback_query;
+        const [action, ...args] = data.split('|');
+
+        if (action === 'schedule') {
+            const [title, date, startTime, duration] = args;
+            const appUser = await findUserByTelegramId(from.id);
+            if (!appUser) {
+                await answerCallbackQuery(callbackQueryId, "User not found.");
+                return;
+            }
+            
+            const startDate = new Date(`${date}T${startTime}`);
+            const endDate = addMinutes(startDate, Number(duration));
+
+            await addDoc(collection(db, "scheduleItems"), {
+                userId: appUser.id,
+                title,
+                type: 'event',
+                date: date,
+                startTime: startTime,
+                endTime: format(endDate, 'HH:mm'),
+                duration: Number(duration),
+                completed: false,
+                description: `Added from Telegram by ${from.first_name}`,
+                icon: 'PenSquare',
+                color: 'hsl(12, 76%, 61%)',
+                createdAt: serverTimestamp(),
+            });
+
+            await answerCallbackQuery(callbackQueryId);
+            await editMessageText(message.chat.id, message.message_id, `✅ Event scheduled: "${title}" on ${date} at ${startTime}.`);
+        }
+        return;
+    }
     
-    // Gracefully handle updates that are not messages we want to process
-    if (!parsedPayload.data.message) {
+    // --- Handle Regular Messages ---
+    if (!parsedPayload.data.message || !parsedPayload.data.message.text) {
         console.log("Received a non-message or no-text update, skipping.");
         return;
     }
 
     const { message } = parsedPayload.data;
     const { text, from, chat } = message;
-
-    // Exit if there is no text in the message
-    if (!text) {
-        console.log("Received a message with no text, skipping.");
-        return;
-    }
     
     const appUser = await findUserByTelegramId(from.id);
     
@@ -171,9 +247,8 @@ export const telegramWebhookFlow = ai.defineFlow(
         return;
     }
 
-    // Handle /start command, but only if there's no associated user. If there is a user, we can assume they know what they are doing.
     if (text.startsWith('/start')) {
-        console.log("User is already linked. Ignoring /start command.");
+        await sendTelegramMessage(chat.id, `Hi ${from.first_name}! Your account is linked. Just send me tasks like "buy milk" or "schedule a meeting for tomorrow at 2pm".`);
         return;
     }
 
@@ -183,28 +258,67 @@ export const telegramWebhookFlow = ai.defineFlow(
             throw new Error("Failed to parse task from AI.");
         }
 
-        if (output.isSchedulable && output.date && output.startTime) {
-            // It's an event, schedule it
-            const duration = output.duration ?? 60;
-            const startDate = new Date(`${output.date}T${output.startTime}`);
-            const endDate = addMinutes(startDate, duration);
+        if (output.isSchedulable) {
+            if (output.hasSpecificTime && output.date && output.startTime) {
+                // It's an event with a specific time, schedule it directly
+                const duration = output.duration ?? 60;
+                const startDate = new Date(`${output.date}T${output.startTime}`);
+                const endDate = addMinutes(startDate, duration);
 
-            await addDoc(collection(db, "scheduleItems"), {
-                userId: appUser.id,
-                title: output.title,
-                type: 'event',
-                date: output.date,
-                startTime: output.startTime,
-                endTime: format(endDate, 'HH:mm'),
-                duration: duration,
-                completed: false,
-                description: `Added from Telegram by ${from.first_name}`,
-                icon: 'PenSquare',
-                color: 'hsl(12, 76%, 61%)',
-                createdAt: serverTimestamp(),
-            });
-            await sendTelegramMessage(chat.id, `✅ Event scheduled: "${output.title}" on ${output.date} at ${output.startTime}.`);
+                await addDoc(collection(db, "scheduleItems"), {
+                    userId: appUser.id,
+                    title: output.title,
+                    type: 'event',
+                    date: output.date,
+                    startTime: output.startTime,
+                    endTime: format(endDate, 'HH:mm'),
+                    duration: duration,
+                    completed: false,
+                    description: `Added from Telegram by ${from.first_name}`,
+                    icon: 'PenSquare',
+                    color: 'hsl(12, 76%, 61%)',
+                    createdAt: serverTimestamp(),
+                });
+                await sendTelegramMessage(chat.id, `✅ Event scheduled: "${output.title}" on ${output.date} at ${output.startTime}.`);
+            } else {
+                // It's a schedulable task without a specific time, so we suggest slots
+                const scheduleQuery = query(collection(db, "scheduleItems"), where("userId", "==", appUser.id), where("date", "!=", null));
+                const scheduleSnapshot = await getDocs(scheduleQuery);
+                const scheduleItems = scheduleSnapshot.docs.map(doc => doc.data());
+                const scheduleString = scheduleItems.map(item => `${item.title} on ${item.date} from ${item.startTime} to ${item.endTime}`).join("\n");
 
+                const suggestionsResult = await suggestOptimalTimeSlots({
+                    schedule: scheduleString,
+                    tasks: output.title,
+                    duration: output.duration ?? 60,
+                    currentDate: format(new Date(), 'yyyy-MM-dd'),
+                });
+
+                if (suggestionsResult.suggestions.length > 0) {
+                     const inline_keyboard = suggestionsResult.suggestions.map((slot: SuggestedSlot) => ([{
+                        text: `${format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'EEE, d MMM')} at ${slot.startTime}`,
+                        callback_data: `schedule|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
+                     }]));
+                     
+                     await sendTelegramMessage(chat.id, `I found a few open slots for "${output.title}". Which one works for you?`, { inline_keyboard });
+                } else {
+                    await sendTelegramMessage(chat.id, `I couldn't find any open slots for "${output.title}". You can add it to your inbox instead.`);
+                    // Fallback to adding to inbox
+                     await addDoc(collection(db, "scheduleItems"), {
+                        userId: appUser.id,
+                        title: output.title,
+                        type: 'task',
+                        completed: false,
+                        date: null,
+                        startTime: null,
+                        endTime: null,
+                        duration: output.duration ?? 60,
+                        description: `Added from Telegram by ${from.first_name}`,
+                        createdAt: serverTimestamp(),
+                    });
+                    await sendTelegramMessage(chat.id, `📥 Task added to your inbox: "${output.title}"`);
+                }
+            }
         } else {
             // It's a simple task, add to inbox
             await addDoc(collection(db, "scheduleItems"), {
@@ -228,3 +342,5 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
   }
 );
+
+    
