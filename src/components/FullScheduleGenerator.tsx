@@ -252,10 +252,6 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
   }, []);
 
   const handleGenerate = async () => {
-    if (selectedTasks.size === 0) {
-      toast({ variant: 'destructive', title: 'Please select at least one task' });
-      return;
-    }
      if (!preferences) {
       toast({ variant: 'destructive', title: 'Preferences not loaded', description: "Could not generate a schedule without user preferences." });
       return;
@@ -443,7 +439,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
                           <Input id="numberOfDays" type="number" value={numberOfDays} onChange={e => setNumberOfDays(parseInt(e.target.value, 10) || 1)} min="1" max="14" className="w-20" />
                           <Label htmlFor="numberOfDays" className="whitespace-nowrap">days</Label>
                       </div>
-                      <Button onClick={handleGenerate} disabled={selectedTasks.size === 0 || isPrefLoading}>
+                      <Button onClick={handleGenerate} disabled={isPrefLoading}>
                         {isPrefLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                         Generate Schedule
                       </Button>
