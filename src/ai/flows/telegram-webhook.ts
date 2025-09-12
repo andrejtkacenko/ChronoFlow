@@ -258,6 +258,41 @@ export const telegramWebhookFlow = ai.defineFlow(
         return;
     }
 
+    if (text && text.startsWith('/help')) {
+        const helpMessage = `
+*Here's what I can do:*
+
+*Direct commands:*
+• \`/start\` - Greet the bot and check your connection.
+• \`/help\` - Show this help message.
+
+*Natural Language:*
+Just send me a message and I'll try to understand it!
+
+*1. Add a task to your Inbox:*
+_Examples:_
+• \`Buy milk\`
+• \`Call the doctor\`
+• \`Finish the report by Friday\`
+
+*2. Schedule a specific event:*
+_Examples:_
+• \`Team meeting tomorrow at 10:00\`
+• \`Lunch with Alex on Friday at 1pm for 1 hour\`
+• \`dentist appointment 25 dec 15:30\`
+
+*3. Ask me to find a time:*
+_Examples:_
+• \`Find time for a run this week\`
+• \`Schedule a 1-hour meeting with the team tomorrow\`
+• \`I need to get a haircut next week\`
+
+I'll parse your message and either add it directly to your calendar or suggest available time slots for you to choose from.
+        `;
+        await sendTelegramMessage(chat.id, helpMessage);
+        return;
+    }
+
     try {
         const { output } = await parseTaskPrompt({ text, currentDate: format(new Date(), 'yyyy-MM-dd') });
         if (!output) {

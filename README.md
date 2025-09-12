@@ -12,6 +12,7 @@ ChronoFlow is a modern, intelligent scheduling application designed to help you 
 - **Customizable Preferences**: Tailor the scheduling engine to your lifestyle by setting your work hours, sleep duration, daily habits, and productivity peaks.
 - **Secure Authentication**: User accounts are managed through Firebase Authentication, ensuring your data is safe and private.
 - **Component-Based UI**: Built with the best practices of modern web development, featuring a responsive and accessible user interface.
+- **Telegram Bot Integration**: Manage your schedule on the go. Add tasks and events using natural language.
 
 ## Tech Stack
 
@@ -83,6 +84,14 @@ To get the project running locally, follow these steps:
     ```
 
 5.  Откройте [http://localhost:3000](http://localhost:3000) в вашем браузere.
+
+## Telegram Bot Commands
+
+The bot is designed to understand natural language, but it also has a few direct commands:
+- `/start`: Greet the bot and check if your account is linked.
+- `/help`: Shows a help message with examples of how to interact with the bot.
+
+You can add tasks to your inbox (`buy milk`), schedule specific events (`meeting tomorrow at 10am`), or ask the bot to find time for you (`schedule a haircut next week`).
 
 ## 📄 Лицензия
 
