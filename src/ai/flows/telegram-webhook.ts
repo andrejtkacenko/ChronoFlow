@@ -234,10 +234,10 @@ export const telegramWebhookFlow = ai.defineFlow(
             await sendTelegramMessage(chat.id, 'The application URL is not configured. Please contact support.');
             return;
         }
-        const webAppUrl = `${baseUrl}/login`;
+        const webAppUrl = `${baseUrl}/`; // Point to the root to get the native Mini App login experience
         await sendTelegramMessage(
             chat.id, 
-            `Sorry, your Telegram account is not linked to a ChronoFlow profile. Please link it from your profile page in the app, or log in by clicking the button below.`,
+            `Sorry, your Telegram account is not linked to a ChronoFlow profile. Please open the app to link your account.`,
             {
                  inline_keyboard: [
                     [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
@@ -342,5 +342,7 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
   }
 );
+
+    
 
     
