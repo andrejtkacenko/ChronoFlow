@@ -78,7 +78,7 @@ async function findUserByTelegramId(telegramId: number): Promise<{ id: string; e
         const userData = userDoc.data();
         return {
             id: userDoc.id,
-            email: userData.email || 'N/A',
+            email: userData.email || null,
         };
     }
     
@@ -183,17 +183,16 @@ export const telegramWebhookFlow = ai.defineFlow(
     // --- Handle Callback Queries (Button Clicks) ---
     if (parsedPayload.data.callback_query) {
         const { id: callbackQueryId, from, message, data } = parsedPayload.data.callback_query;
-        const [action, ...args] = data.split('|');
+        const [action, userId, title, date, startTime, duration] = data.split('|');
 
-        if (action === 'schedule') {
-            const [title, date, startTime, duration] = args;
-            const appUser = await findUserByTelegramId(from.id);
-            if (!appUser) {
-                await answerCallbackQuery(callbackQueryId, "User not found.");
+        if (action === 'schedule' && userId && title && date && startTime && duration) {
+             const appUser = await findUserByTelegramId(from.id);
+            if (!appUser || appUser.id !== userId) {
+                await answerCallbackQuery(callbackQueryId, "User authentication error.");
                 return;
             }
             
-            const startDate = new Date(`${date}T${startTime}`);
+            const startDate = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
             const endDate = addMinutes(startDate, Number(duration));
 
             await addDoc(collection(db, "scheduleItems"), {
@@ -213,6 +212,9 @@ export const telegramWebhookFlow = ai.defineFlow(
 
             await answerCallbackQuery(callbackQueryId);
             await editMessageText(message.chat.id, message.message_id, `✅ Event scheduled: "${title}" on ${date} at ${startTime}.`);
+        } else {
+             await answerCallbackQuery(callbackQueryId, "Error processing request.");
+             console.error("Invalid callback data:", data);
         }
         return;
     }
@@ -239,7 +241,7 @@ export const telegramWebhookFlow = ai.defineFlow(
             await sendTelegramMessage(chat.id, 'The application URL is not configured. Please contact support.');
             return;
         }
-        const webAppUrl = `${baseUrl}/`; // Point to the root to get the native Mini App login experience
+        const webAppUrl = `${baseUrl}/`; 
         await sendTelegramMessage(
             chat.id, 
             `Sorry, your Telegram account is not linked to a ChronoFlow profile. Please open the app to link your account.`,
@@ -252,12 +254,12 @@ export const telegramWebhookFlow = ai.defineFlow(
         return;
     }
 
-    if (text && text.startsWith('/start')) {
+    if (text.startsWith('/start')) {
         await sendTelegramMessage(chat.id, `Hi ${from.first_name}! Your account is linked. Just send me tasks like "buy milk" or "schedule a meeting for tomorrow at 2pm".`);
         return;
     }
 
-    if (text && text.startsWith('/help')) {
+    if (text.startsWith('/help')) {
         const helpMessage = `
 *Here's what I can do:*
 
@@ -302,7 +304,7 @@ I'll parse your message and either add it directly to your calendar or suggest a
             if (output.hasSpecificTime && output.date && output.startTime) {
                 // It's an event with a specific time, schedule it directly
                 const duration = output.duration ?? 60;
-                const startDate = new Date(`${output.date}T${output.startTime}`);
+                const startDate = parse(`${output.date}T${output.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
                 const endDate = addMinutes(startDate, duration);
 
                 await addDoc(collection(db, "scheduleItems"), {
@@ -337,7 +339,7 @@ I'll parse your message and either add it directly to your calendar or suggest a
                 if (suggestionsResult.suggestions.length > 0) {
                      const inline_keyboard = suggestionsResult.suggestions.map((slot: SuggestedSlot) => ([{
                         text: `${format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'EEE, d MMM')} at ${slot.startTime}`,
-                        callback_data: `schedule|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
+                        callback_data: `schedule|${appUser.id}|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
                      }]));
                      
                      await sendTelegramMessage(chat.id, `I found a few open slots for "${output.title}". Which one works for you?`, { inline_keyboard });
@@ -376,7 +378,7 @@ I'll parse your message and either add it directly to your calendar or suggest a
             await sendTelegramMessage(chat.id, `📥 Task added to your inbox: "${output.title}"`);
         }
         
-    } catch (error) {
+    } catch (error) => {
         console.error("Error processing message: ", error);
         await sendTelegramMessage(chat.id, 'Sorry, an error occurred while processing your request.');
     }
