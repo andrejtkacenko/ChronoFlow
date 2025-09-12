@@ -226,7 +226,6 @@ export const telegramWebhookFlow = ai.defineFlow(
     const { message } = parsedPayload.data;
     const { text, from, chat } = message;
 
-    // We must have text to continue
     if (!text) {
         console.log("Received a message with no text, skipping.");
         return;
