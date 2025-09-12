@@ -247,7 +247,7 @@ export const telegramWebhookFlow = ai.defineFlow(
         return;
     }
 
-    if (text.startsWith('/start')) {
+    if (text && text.startsWith('/start')) {
         await sendTelegramMessage(chat.id, `Hi ${from.first_name}! Your account is linked. Just send me tasks like "buy milk" or "schedule a meeting for tomorrow at 2pm".`);
         return;
     }
@@ -342,7 +342,5 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
   }
 );
-
-    
 
     
