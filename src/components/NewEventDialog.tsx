@@ -212,6 +212,7 @@ export default function NewEventDialog({
   const [isAllDay, setIsAllDay] = useState(false);
   const [itemType, setItemType] = useState<'event' | 'task'>('event');
   const [template, setTemplate] = useState<Template | null>(null);
+  const [notificationTime, setNotificationTime] = useState<number | null>(null);
 
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [startTime, setStartTime] = useState('09:00');
@@ -232,6 +233,7 @@ export default function NewEventDialog({
       setItemType('event');
       setDate(new Date());
       setStartTime('09:00');
+      setNotificationTime(null);
       setIsLoading(false);
       setSuggestions([]);
       setIsAISuggesting(false);
@@ -249,6 +251,7 @@ export default function NewEventDialog({
         setColor(existingEvent.color ?? eventColors[0]);
         setDate(existingEvent.date ? parse(existingEvent.date, 'yyyy-MM-dd', new Date()) : undefined);
         setStartTime(existingEvent.startTime ?? '09:00');
+        setNotificationTime(existingEvent.notificationTime ?? null);
         if (existingEvent.startTime === '00:00' && existingEvent.endTime === '23:59') {
           setIsAllDay(true);
         } else {
@@ -296,19 +299,21 @@ export default function NewEventDialog({
     let finalDuration: number | null = duration;
     let finalEndTime: string | null = endTime;
     let finalDate: string | null = date ? format(date, 'yyyy-MM-dd') : null;
+    let finalNotificationTime = notificationTime;
 
     if (itemType === 'task' && !date) {
       finalStartTime = null;
       finalEndTime = null;
       finalDate = null;
       finalDuration = duration;
+      finalNotificationTime = null; // Can't have notification for unscheduled task
     } else if (isAllDay) {
         finalStartTime = '00:00';
         finalDuration = 24 * 60 -1;
         finalEndTime = '23:59';
     }
 
-    const eventData = {
+    const eventData: Partial<ScheduleItem> = {
       title,
       description,
       date: finalDate,
@@ -319,6 +324,8 @@ export default function NewEventDialog({
       color,
       type: itemType,
       completed: existingEvent?.completed ?? false,
+      notificationTime: finalNotificationTime,
+      notificationSent: false, // Always reset on update
     };
 
     try {
@@ -512,6 +519,25 @@ export default function NewEventDialog({
 
                     {itemType === 'event' && isScheduled && (
                       <>
+                        <div className="flex items-center gap-4">
+                            <Bell className="size-5 text-muted-foreground" />
+                            {notificationTime !== null ? (
+                                <Select value={String(notificationTime)} onValueChange={(val) => setNotificationTime(val === 'none' ? null : Number(val))}>
+                                    <SelectTrigger className="w-auto border-none shadow-none focus:ring-0 px-0">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="5">За 5 минут</SelectItem>
+                                        <SelectItem value="10">За 10 минут</SelectItem>
+                                        <SelectItem value="30">За 30 минут</SelectItem>
+                                        <SelectItem value="60">За 1 час</SelectItem>
+                                        <SelectItem value="none">Нет</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <Button variant="link" type="button" className="p-0 h-auto text-muted-foreground" onClick={() => setNotificationTime(10)}>Добавить уведомление</Button>
+                            )}
+                        </div>
                         <Separator />
                         <div className="flex items-center gap-4"><Users className="size-5 text-muted-foreground" /><Input placeholder="Добавьте гостей" className={inputStyles} /></div>
                         <div className="flex items-center gap-4"><MapPin className="size-5 text-muted-foreground" /><Input placeholder="Добавить местоположение" className={inputStyles} /></div>
@@ -519,17 +545,6 @@ export default function NewEventDialog({
                       </>
                     )}
                     
-                    <Separator />
-
-                    <div className="flex items-center gap-4">
-                        <Bell className="size-5 text-muted-foreground" />
-                        <Select defaultValue="30" disabled={!isScheduled}>
-                            <SelectTrigger className="w-auto border-none shadow-none focus:ring-0 px-0 disabled:opacity-100 disabled:cursor-not-allowed"><SelectValue /></SelectTrigger>
-                            <SelectContent><SelectItem value="10">За 10 минут</SelectItem><SelectItem value="30">За 30 минут</SelectItem><SelectItem value="60">За 1 час</SelectItem></SelectContent>
-                        </Select>
-                        <Button variant="link" type="button" className="p-0 h-auto text-muted-foreground" disabled={!isScheduled}>Добавить уведомление</Button>
-                    </div>
-
                     <Separator />
 
                     <div className="space-y-4 pt-2">

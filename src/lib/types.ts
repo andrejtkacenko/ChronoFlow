@@ -71,6 +71,8 @@ export type ScheduleItem = {
   color?: string | null;
   date?: string | null; // YYYY-MM-DD
   completed?: boolean;
+  notificationTime?: number | null; // minutes before event
+  notificationSent?: boolean;
 };
 
 // This type is for display purposes only, to handle multi-day events

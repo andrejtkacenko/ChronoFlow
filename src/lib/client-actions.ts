@@ -11,12 +11,12 @@ import { format } from "date-fns";
 
 type ScheduleItemInput = Omit<ScheduleItem, 'id'>
 
-export async function addScheduleItem(item: Omit<ScheduleItem, 'id' | 'userId'> & { userId: string }) {
+export async function addScheduleItem(item: Omit<ScheduleItem, 'id' | 'createdAt' | 'completed'> & { userId: string, completed?: boolean }) {
     if (!item.userId) {
         throw new Error("User not authenticated.");
     }
 
-    const itemWithNulls = {
+    const itemWithDefaults = {
         ...item,
         description: item.description ?? null,
         date: item.date ?? null,
@@ -26,11 +26,13 @@ export async function addScheduleItem(item: Omit<ScheduleItem, 'id' | 'userId'> 
         icon: item.icon ?? null,
         color: item.color ?? null,
         completed: item.completed ?? false,
+        notificationTime: item.notificationTime ?? null,
+        notificationSent: item.notificationSent ?? false,
     }
 
     try {
         const docRef = await addDoc(collection(db, "scheduleItems"), {
-            ...itemWithNulls,
+            ...itemWithDefaults,
             createdAt: serverTimestamp(),
         });
         return docRef.id;
@@ -94,5 +96,3 @@ export async function getSuggestedTimeSlotsForTask(task: ScheduleItem, userId: s
     return "Sorry, I couldn't find a time slot. There might be an issue with the scheduling service. Please try again later.";
   }
 }
-
-    
