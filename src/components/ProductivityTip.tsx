@@ -32,12 +32,15 @@ export default function ProductivityTip() {
     const [tip, setTip] = useState({ title: '', description: '' });
 
     useEffect(() => {
-        // Simple logic to show a new tip each day
+        // This logic must run on the client to avoid hydration mismatch.
         const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).valueOf()) / 86400000);
         setTip(tips[dayOfYear % tips.length]);
     }, []);
 
-    if (!tip.title) return null;
+    if (!tip.title) {
+        // Render nothing on the server and initial client load to prevent mismatch
+        return null;
+    }
 
     return (
         <Card className="bg-gradient-to-br from-primary/10 to-transparent">
