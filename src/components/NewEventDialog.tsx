@@ -184,7 +184,7 @@ interface NewEventDialogProps {
   userId: string;
 }
 
-type EventDataForSubmit = Omit<ScheduleItem, 'id' | 'createdAt'> & { userId?: string };
+type EventDataForSubmit = Omit<ScheduleItem, 'id' | 'createdAt'>;
 
 const calculateEndTime = (startTime: string, duration: number): string => {
   if (!startTime || !duration) return '';
@@ -316,12 +316,13 @@ export default function NewEventDialog({
     }
 
     const eventData: EventDataForSubmit = {
+      userId,
       title,
       description,
       date: finalDate,
       startTime: finalStartTime,
       endTime: finalEndTime,
-      duration: finalDuration,
+      duration: finalDuration ?? 60,
       icon,
       color,
       type: itemType,
@@ -335,7 +336,7 @@ export default function NewEventDialog({
         await updateScheduleItem(existingEvent.id, eventData);
         toast({ title: 'Item Updated', description: `"${title}" has been updated.` });
       } else {
-        await addScheduleItem({ ...eventData, userId });
+        await addScheduleItem(eventData);
         toast({ title: 'Item Created', description: `"${title}" has been added.` });
       }
       onOpenChange(false);
@@ -610,3 +611,5 @@ export default function NewEventDialog({
     </Dialog>
   );
 }
+
+    
