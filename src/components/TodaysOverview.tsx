@@ -40,6 +40,12 @@ export default function TodaysOverview() {
     const { user } = useAuth();
     const [todaysItems, setTodaysItems] = useState<ScheduleItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [today, setToday] = useState(new Date());
+
+    useEffect(() => {
+        // Ensure this only runs on the client to avoid hydration mismatch
+        setToday(new Date());
+    }, []);
 
     useEffect(() => {
         if (!user) {
@@ -47,7 +53,7 @@ export default function TodaysOverview() {
             return;
         };
 
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const todayStr = format(today, 'yyyy-MM-dd');
         const q = query(
             collection(db, "scheduleItems"), 
             where("userId", "==", user.uid),
@@ -66,7 +72,7 @@ export default function TodaysOverview() {
         });
 
         return () => unsubscribe();
-    }, [user]);
+    }, [user, today]);
 
     return (
         <Card>
