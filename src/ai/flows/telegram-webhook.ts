@@ -218,13 +218,19 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
     
     // --- Handle Regular Messages ---
-    if (!parsedPayload.data.message || !parsedPayload.data.message.text) {
-        console.log("Received a non-message or no-text update, skipping.");
+    if (!parsedPayload.data.message) {
+        console.log("Received a non-message update, skipping.");
         return;
     }
 
     const { message } = parsedPayload.data;
     const { text, from, chat } = message;
+
+    // We must have text to continue
+    if (!text) {
+        console.log("Received a message with no text, skipping.");
+        return;
+    }
     
     const appUser = await findUserByTelegramId(from.id);
     
