@@ -87,7 +87,7 @@ export default function SignupPage() {
     window.onTelegramAuth = handleTelegramAuth;
     
     return () => {
-      if (window.onTelegramAuth) {
+      if (window.onTelegramAuth === handleTelegramAuth) {
         delete window.onTelegramAuth;
       }
     }

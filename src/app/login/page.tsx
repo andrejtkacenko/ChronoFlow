@@ -69,12 +69,15 @@ export default function LoginPage() {
 
   // Привязываем коллбэк к window
   useEffect(() => {
+    // Убеждаемся, что код выполняется только на клиенте
     if (typeof window === 'undefined') return;
     
+    // Присваиваем нашу функцию глобальному объекту window
     window.onTelegramAuth = handleTelegramWidgetAuth;
     
+    // Функция очистки, которая удаляет коллбэк при размонтировании компонента
     return () => {
-      if (window.onTelegramAuth) {
+      if (window.onTelegramAuth === handleTelegramWidgetAuth) {
         delete window.onTelegramAuth;
       }
     }
