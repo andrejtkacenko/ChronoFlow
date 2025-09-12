@@ -5,33 +5,19 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { initializeAdminApp } from '@/lib/firebase-admin';
 import crypto from 'crypto';
 
-async function validateHash(data: URLSearchParams | Record<string, any>): Promise<boolean> {
+async function validateHash(data: Record<string, any>): Promise<boolean> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     console.error("TELEGRAM_BOT_TOKEN is not set on the server.");
     throw new Error('Server configuration error for Telegram');
   }
 
-  let hash: string | null;
-  let dataCheckArr: string[] = [];
-
-  if (data instanceof URLSearchParams) {
-    hash = data.get('hash');
-    data.forEach((value, key) => {
-      if (key !== 'hash') {
-        dataCheckArr.push(`${key}=${value}`);
-      }
-    });
-  } else {
-    hash = data.hash;
-    for (const key in data) {
-      if (key !== 'hash') {
-        dataCheckArr.push(`${key}=${data[key]}`);
-      }
-    }
-  }
-
+  const hash = data.hash;
   if (!hash) return false;
+
+  const dataCheckArr = Object.keys(data)
+    .filter((key) => key !== 'hash')
+    .map((key) => `${key}=${data[key]}`);
 
   const dataCheckString = dataCheckArr.sort().join('\n');
 
@@ -52,24 +38,29 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   
-  let authData: Record<string, any>;
   let user: Record<string, any>;
+  let isValid = false;
 
   // Differentiate between Mini App (initData) and Widget (telegramUser)
   if (body.initData) {
     const params = new URLSearchParams(body.initData);
+    const data: Record<string, any> = {};
+    params.forEach((value, key) => {
+        data[key] = value;
+    });
+
     const userParam = params.get('user');
     if (!userParam) {
       return NextResponse.json({ error: 'Invalid initData: user field missing' }, { status: 400 });
     }
-    const isValid = await validateHash(params);
+    isValid = await validateHash(data);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified (initData).' }, { status: 403 });
     }
     user = JSON.parse(userParam);
   } else if (body.telegramUser) {
-    authData = body.telegramUser;
-    const isValid = await validateHash(authData);
+    const authData = body.telegramUser;
+    isValid = await validateHash(authData);
      if (!isValid) {
       return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified (widget).' }, { status: 403 });
     }
