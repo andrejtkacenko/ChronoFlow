@@ -184,6 +184,8 @@ interface NewEventDialogProps {
   userId: string;
 }
 
+type EventDataForSubmit = Omit<ScheduleItem, 'id' | 'createdAt'> & { userId?: string };
+
 const calculateEndTime = (startTime: string, duration: number): string => {
   if (!startTime || !duration) return '';
   const [hours, minutes] = startTime.split(':').map(Number);
@@ -313,7 +315,7 @@ export default function NewEventDialog({
         finalEndTime = '23:59';
     }
 
-    const eventData: Partial<ScheduleItem> = {
+    const eventData: EventDataForSubmit = {
       title,
       description,
       date: finalDate,
