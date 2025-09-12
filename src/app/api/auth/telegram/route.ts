@@ -5,54 +5,79 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { initializeAdminApp } from '@/lib/firebase-admin';
 import crypto from 'crypto';
 
+async function validateHash(data: URLSearchParams | Record<string, any>): Promise<boolean> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    console.error("TELEGRAM_BOT_TOKEN is not set on the server.");
+    throw new Error('Server configuration error for Telegram');
+  }
+
+  let hash: string | null;
+  let dataCheckArr: string[] = [];
+
+  if (data instanceof URLSearchParams) {
+    hash = data.get('hash');
+    data.forEach((value, key) => {
+      if (key !== 'hash') {
+        dataCheckArr.push(`${key}=${value}`);
+      }
+    });
+  } else {
+    hash = data.hash;
+    for (const key in data) {
+      if (key !== 'hash') {
+        dataCheckArr.push(`${key}=${data[key]}`);
+      }
+    }
+  }
+
+  if (!hash) return false;
+
+  const dataCheckString = dataCheckArr.sort().join('\n');
+
+  try {
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+    return hmac === hash;
+  } catch (error) {
+    console.error('Error during hash verification:', error);
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   const adminApp = initializeAdminApp();
   const adminAuth = getAuth(adminApp);
   const adminDb = getFirestore(adminApp);
 
-  const { initData: initDataString } = await req.json();
-
-  if (!initDataString) {
-    return NextResponse.json({ error: 'Missing initData' }, { status: 400 });
-  }
+  const body = await req.json();
   
-  const params = new URLSearchParams(initDataString);
-  const hash = params.get('hash');
-  const userParam = params.get('user');
+  let authData: Record<string, any>;
+  let user: Record<string, any>;
 
-  if (!hash || !userParam) {
-    return NextResponse.json({ error: 'Invalid initData structure' }, { status: 400 });
-  }
-
-  const dataCheckArr: string[] = [];
-  params.forEach((value, key) => {
-    if (key !== 'hash') {
-      dataCheckArr.push(`${key}=${value}`);
+  // Differentiate between Mini App (initData) and Widget (telegramUser)
+  if (body.initData) {
+    const params = new URLSearchParams(body.initData);
+    const userParam = params.get('user');
+    if (!userParam) {
+      return NextResponse.json({ error: 'Invalid initData: user field missing' }, { status: 400 });
     }
-  });
-  
-  const dataCheckString = dataCheckArr.sort().join('\n');
-    
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) {
-    console.error("TELEGRAM_BOT_TOKEN is not set on the server.");
-    return NextResponse.json({ error: 'Server configuration error for Telegram' }, { status: 500 });
-  }
-
-  try {
-    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
-    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-
-    if (hmac !== hash) {
-      console.error('Hash verification failed', { hmac, hash });
-      return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified.' }, { status: 403 });
+    const isValid = await validateHash(params);
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified (initData).' }, { status: 403 });
     }
-  } catch (error) {
-      console.error('Error during hash verification:', error);
-      return NextResponse.json({ error: 'Hash verification failed.' }, { status: 500 });
+    user = JSON.parse(userParam);
+  } else if (body.telegramUser) {
+    authData = body.telegramUser;
+    const isValid = await validateHash(authData);
+     if (!isValid) {
+      return NextResponse.json({ error: 'Invalid hash. Telegram data could not be verified (widget).' }, { status: 403 });
+    }
+    user = authData;
+  } else {
+    return NextResponse.json({ error: 'Missing initData or telegramUser' }, { status: 400 });
   }
-  
-  const user = JSON.parse(userParam);
+
   const telegramId = String(user.id);
   const uid = `tg-${telegramId}`;
 

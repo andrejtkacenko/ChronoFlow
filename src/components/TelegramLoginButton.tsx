@@ -39,8 +39,9 @@ const TelegramLoginButton = () => {
                     script.src = 'https://telegram.org/js/telegram-widget.js?22';
                     script.setAttribute('data-telegram-login', botUsername);
                     script.setAttribute('data-size', 'large');
+                    // data-request-access is removed to enable instant auth without message
                     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-                    script.setAttribute('data-request-access', 'write');
+                    
                     // Очищаем контейнер перед добавлением нового скрипта
                     container.innerHTML = '';
                     container.appendChild(script);

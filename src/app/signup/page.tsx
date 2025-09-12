@@ -55,18 +55,11 @@ export default function SignupPage() {
   const handleTelegramAuth = useCallback(async (telegramUser: any) => {
     setLoading(true);
 
-    // Преобразуем объект user в строку initData для унификации
-    const params = new URLSearchParams();
-    for (const key in telegramUser) {
-        params.append(key, telegramUser[key]);
-    }
-    const initData = params.toString();
-
     try {
       const response = await fetch('/api/auth/telegram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify({ telegramUser }), // Send as JSON object for widget
       });
 
       if (!response.ok) {
