@@ -116,7 +116,7 @@ export default function ChatAssistant({ userId }: { userId: string }) {
                           : 'bg-muted'
                       )}
                     >
-                      {message.content && message.content.map((part, partIndex) => {
+                      {message.content?.map((part, partIndex) => {
                         if (part.text) {
                           return <p key={partIndex}>{part.text}</p>;
                         }
