@@ -92,7 +92,7 @@ export async function getSuggestedTimeSlotsForTask(task: ScheduleItem, userId: s
     });
     return result.suggestions;
   } catch (error: any) {
-    console.error("Error getting suggestions:", error.message || error);
+    console.error("Error in getSuggestedTimeSlotsForTask client action:", error.message || error);
     return "Sorry, I couldn't find a time slot. There might be an issue with the scheduling service. Please try again later.";
   }
 }

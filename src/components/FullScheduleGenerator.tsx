@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, CheckCircle2, Bed, Utensils, Save, Dumbbell, Brain, BookOpen } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, CheckCircle2, Bed, Utensils, Save, Dumbbell, Brain, BookOpen, Timer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -130,7 +130,6 @@ SuggestionList.displayName = 'SuggestionList';
 const defaultPreferences = {
   sleepTimeRange: [22, 8],
   mealsPerDay: 3,
-  restTime: 2,
   workDays: [1, 2, 3, 4, 5],
   workStartTime: '09:00',
   workEndTime: '18:00',
@@ -369,18 +368,14 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
                                         <Label htmlFor="fixedEventsText" className="font-semibold">Other recurring events</Label>
                                         <Textarea id="fixedEventsText" placeholder="e.g., Team meeting every Mon at 10:00, English lesson every Friday at 18:00" value={preferences.fixedEventsText ?? ''} onChange={e => handlePrefChange('fixedEventsText', e.target.value)} className="mt-2" />
                                     </div>
-                                    <div>
-                                        <div className="flex justify-between items-center mb-1"><Label>Sleep Time Range</Label><span className="text-sm font-medium text-primary">{preferences.sleepTimeRange?.[0]}:00 - {preferences.sleepTimeRange?.[1]}:00</span></div>
-                                        <Slider value={preferences.sleepTimeRange} onValueChange={(value) => handlePrefChange('sleepTimeRange', value)} min={0} max={24} step={1} />
-                                    </div>
-                                    <div className='flex items-center gap-4'>
+                                    <div className="flex items-center gap-4">
                                         <div className="flex-1 space-y-1">
+                                            <div className="flex justify-between items-center mb-1"><Label>Sleep Time Range</Label><span className="text-sm font-medium text-primary">{preferences.sleepTimeRange?.[0]}:00 - {preferences.sleepTimeRange?.[1]}:00</span></div>
+                                            <Slider value={preferences.sleepTimeRange} onValueChange={(value) => handlePrefChange('sleepTimeRange', value)} min={0} max={24} step={1} />
+                                        </div>
+                                         <div className="flex-1 space-y-1">
                                             <div className="flex justify-between items-center"><Label>Meals per day</Label><span className="text-sm font-medium text-primary">{preferences.mealsPerDay}</span></div>
                                             <Slider value={[preferences.mealsPerDay]} onValueChange={(value) => handlePrefChange('mealsPerDay', value[0])} min={1} max={5} step={1} />
-                                        </div>
-                                        <div className="flex-1 space-y-1">
-                                            <div className="flex justify-between items-center"><Label>Rest time (hours)</Label><span className="text-sm font-medium text-primary">{preferences.restTime}</span></div>
-                                            <Slider value={[preferences.restTime]} onValueChange={(value) => handlePrefChange('restTime', value[0])} min={0} max={8} step={0.5} />
                                         </div>
                                     </div>
                                     <div>
@@ -431,5 +426,3 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     </Dialog>
   );
 }
-
-    

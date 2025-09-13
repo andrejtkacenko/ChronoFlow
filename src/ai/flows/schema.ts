@@ -26,7 +26,6 @@ export type SuggestedSlot = z.infer<typeof SuggestedSlotSchema>;
 const PreferencesSchema = z.object({
   sleepTimeRange: z.array(z.number()).optional().describe('User preferred sleep time range [startHour, endHour].'),
   mealsPerDay: z.number().describe('How many meals are eaten per day.'),
-  restTime: z.number().describe('How much rest time, besides sleep, is needed daily.'),
   workDays: z.array(z.number()).optional().describe('Which days of the week are work days (0=Sun, 1=Mon...).'),
   workStartTime: z.string().optional().describe('Work start time in HH:mm format.'),
   workEndTime: z.string().optional().describe('Work end time in HH:mm format.'),
@@ -50,7 +49,7 @@ export const GenerateFullScheduleInputSchema = z.object({
   schedule: z
     .string()
     .describe(
-      "The user's current schedule provided as a string for context. The model should avoid scheduling new items that conflict with these existing events."
+      "The user's current schedule provided as a single string, with each event on a new line. This is for context and conflict checking. If it's empty, it means there are no existing events."
     ),
   tasks: z.array(z.string()).describe('The tasks from the inbox to be scheduled.'),
   preferences: PreferencesSchema,
@@ -72,7 +71,7 @@ export const GenerateFullScheduleOutputSchema = z.object({
     .describe('A list of suggested time slots for the tasks from the inbox.'),
    routineEvents: z
     .array(SuggestedSlotSchema)
-    .describe('A list of newly created routine events like sleep, meals, and rest.'),
+    .describe('A list of newly created routine events like sleep, meals, and habits.'),
 });
 export type GenerateFullScheduleOutput = z.infer<
   typeof GenerateFullScheduleOutputSchema
