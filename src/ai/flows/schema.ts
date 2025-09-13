@@ -50,7 +50,7 @@ export const GenerateFullScheduleInputSchema = z.object({
   schedule: z
     .string()
     .describe(
-      'The user schedule, including events and tasks with their time slots.'
+      "The user's current schedule provided as a string for context. The model should avoid scheduling new items that conflict with these existing events."
     ),
   tasks: z.array(z.string()).describe('The tasks from the inbox to be scheduled.'),
   preferences: PreferencesSchema,

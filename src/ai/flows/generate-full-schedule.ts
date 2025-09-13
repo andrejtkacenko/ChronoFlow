@@ -30,31 +30,30 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert productivity coach. Your goal is to create an optimal, realistic, and balanced schedule for a user for the next {{{numberOfDays}}} days, starting from {{{startDate}}}.
 
 **INSTRUCTIONS:**
-Your response MUST conform to the JSON schema.
+Your response MUST conform to the JSON schema, containing two arrays: 'routineEvents' and 'tasks'.
 
-**Step 1: Create Foundational Routine Events**
-First, create the daily recurring events based on the user's preferences.
+**Step 1: Create Routine Events**
+First, create all the daily recurring events based on the user's preferences.
 For EACH of the {{{numberOfDays}}} days, you MUST create events for:
-- Sleep: Schedule a single sleep event. It should span across midnight based on the user's 'sleepTimeRange'.
-- Meals: Schedule {{{preferences.mealsPerDay}}} meal events. Spread them out logically (e.g., morning, noon, evening).
-- Work Blocks: If work days are specified, create a single "Work Block" event from 'workStartTime' to 'workEndTime' for each specified work day.
-- Habits: Schedule habits like sports, meditation, and reading according to their frequency, duration, and preferred time.
-- Fixed Events: Parse the 'fixedEventsText' for any recurring events (e.g., "Team meeting every Mon at 10:00") and create them.
+- Sleep: A single event based on the 'sleepTimeRange'.
+- Meals: {{{preferences.mealsPerDay}}} meal events, spread out logically.
+- Work: For each specified work day, create a "Work" event from 'workStartTime' to 'workEndTime'.
+- Habits: Schedule sport, meditation, and reading according to their frequency and duration.
+- Fixed Events: Parse 'fixedEventsText' for any recurring events and schedule them.
 
 Place ALL events created in this step into the 'routineEvents' array in the JSON output.
 
 **Step 2: Schedule Inbox Tasks**
-Next, schedule the user's tasks from their inbox.
-- Place these tasks *within* the "Work Block" events created in Step 1.
-- NEVER schedule a task that conflicts with a routine event (like a meal or a meeting).
-- Distribute tasks evenly across the available work blocks. Do not cram them all into one day.
+After all routine events are defined, schedule the user's inbox tasks into the remaining free time.
+- Find an open slot for each task.
+- NEVER schedule a task that conflicts with any event already on the user's schedule or any of the routine events you just created in Step 1.
 
 Place ALL tasks scheduled in this step into the 'tasks' array in the JSON output.
 
 ---
 **CONTEXT FOR SCHEDULING**
 
-**User's Existing Schedule (for conflict checking only):**
+**User's Existing Schedule (for conflict checking):**
 {{#if schedule}}
 {{{schedule}}}
 {{else}}
@@ -71,14 +70,13 @@ The user's schedule is currently empty.
 - Work Hours: {{{preferences.workStartTime}}} - {{{preferences.workEndTime}}}
 - Sleep Range: {{{preferences.sleepTimeRange.[0]}}}:00 - {{{preferences.sleepTimeRange.[1]}}}:00
 - Meals Per Day: {{{preferences.mealsPerDay}}}
-- Daily Rest Time: {{{preferences.restTime}}} hours
-- Sport: {{{preferences.sportFrequency}}}x/week, {{{preferences.sportDuration}}} min, at {{{preferences.sportPreferredTime}}}
-- Meditation: {{{preferences.meditationFrequency}}}x/week, {{{preferences.meditationDuration}}} min, at {{{preferences.meditationPreferredTime}}}
-- Reading: {{{preferences.readingFrequency}}}x/week, {{{preferences.readingDuration}}} min, at {{{preferences.readingPreferredTime}}}
+- Sport: {{{preferences.sportFrequency}}}x/week, {{{preferences.sportDuration}}} min
+- Meditation: {{{preferences.meditationFrequency}}}x/week, {{{preferences.meditationDuration}}} min
+- Reading: {{{preferences.readingFrequency}}}x/week, {{{preferences.readingDuration}}} min
 - Other Fixed Events: {{{preferences.fixedEventsText}}}
 ---
 
-Generate the full schedule now. The output must be a valid JSON object containing both 'tasks' and 'routineEvents' arrays.
+Generate the full schedule now.
   `,
 });
 
