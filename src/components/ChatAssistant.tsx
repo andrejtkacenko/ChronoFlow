@@ -44,7 +44,7 @@ export default function ChatAssistant({ userId }: { userId: string }) {
     try {
       const response = await chatAssistantFlow({ userId, history: [...messages, userMessage] });
       
-      const modelMessage: ChatMessage = { role: 'model', content: response };
+      const modelMessage: ChatMessage = { role: 'model', content: response.content };
       setMessages((prev) => [...prev, modelMessage]);
 
     } catch (error) {
@@ -112,7 +112,7 @@ export default function ChatAssistant({ userId }: { userId: string }) {
                           : 'bg-muted'
                       )}
                     >
-                      {message.content.map((part, partIndex) => {
+                      {message.content && message.content.map((part, partIndex) => {
                         if (part.text) {
                           return <p key={partIndex}>{part.text}</p>;
                         }
