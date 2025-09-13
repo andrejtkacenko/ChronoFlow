@@ -9,8 +9,8 @@ import { z } from 'zod';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { addMinutes, format, parse } from 'date-fns';
-import { suggestOptimalTimeSlots } from '@/ai/flows/suggest-optimal-time-slots';
-import type { SuggestedSlot } from '@/ai/flows/schema';
+import { chatAssistantFlow } from '@/ai/flows/chat-flow';
+import type { MessageData, ToolRequestPart, Part } from 'genkit';
 import { Telegraf, Markup } from 'telegraf';
 import type { Update } from 'telegraf/types';
 
@@ -29,33 +29,6 @@ async function findUserByTelegramId(telegramId: number): Promise<{ id: string; e
     }
     return null;
 }
-
-// --- AI Prompt for Parsing ---
-const ParsedTaskSchema = z.object({
-    isUnderstandable: z.boolean().describe('Set to true if the text is a task, event, or a request to schedule. Set to false for greetings, questions, or random text.'),
-    isSchedulable: z.boolean().describe('Set to true if the text contains a specific date and time for an event, or implies a desire to schedule (e.g., "next week", "tomorrow"). Otherwise, set to false if it is just a task for the inbox.'),
-    hasSpecificTime: z.boolean().describe('Set to true only if a specific date and time (e.g., "tomorrow at 5pm", "on Aug 23 at 10:00") are mentioned. Set to false for vague requests like "next week".'),
-    title: z.string().describe("The concise title of the event or task. If not understandable, this can be an empty string."),
-    date: z.string().optional().describe("The date of the event in 'YYYY-MM-DD' format, if specified."),
-    startTime: z.string().optional().describe("The start time of the event in 'HH:mm' format, if specified."),
-    duration: z.number().optional().describe("The duration of the event in minutes, Default to 60 if not mentioned."),
-});
-
-const parseTaskPrompt = ai.definePrompt({
-    name: 'parseTelegramTaskPrompt',
-    input: { schema: z.object({ text: z.string(), currentDate: z.string() }) },
-    output: { schema: ParsedTaskSchema },
-    prompt: `You are an intelligent task parser. Your job is to analyze a text message and extract event details.
-    The current date is: {{{currentDate}}}.
-    Analyze the following text: "{{{text}}}"
-
-    - If the text is a greeting, question, or gibberish, set 'isUnderstandable' to false.
-    - If the text is a to-do item (e.g., "buy milk"), extract the title. Set 'isUnderstandable' to true and 'isSchedulable' to false.
-    - If the text contains a specific date and time (e.g., "meeting tomorrow at 5pm"), extract all details. Set 'isUnderstandable' to true, 'isSchedulable' to true, and 'hasSpecificTime' to true.
-    - If the text implies scheduling without a specific time (e.g., "schedule a haircut for next week"), extract the title. Set 'isUnderstandable' to true, 'isSchedulable' to true, and 'hasSpecificTime' to false.
-    
-    Respond in the specified JSON format.`,
-});
 
 // --- Telegraf Bot Setup ---
 
@@ -214,96 +187,58 @@ bot.on('text', async (ctx) => {
     if (!appUser || !ctx.from) return;
     
     const { text } = ctx.message;
+    await ctx.sendChatAction('typing');
 
     try {
-        const { output } = await parseTaskPrompt({ text, currentDate: format(new Date(), 'yyyy-MM-dd') });
-        if (!output) {
-            throw new Error("Failed to parse task from AI.");
+        const history: MessageData[] = [{ role: 'user', content: [{ text }] }];
+        
+        // Initial call to the assistant
+        let response = await chatAssistantFlow({ userId: appUser.id, history });
+
+        let toolRequest: ToolRequestPart | undefined = response.content.find(
+            (part: Part): part is ToolRequestPart => part.toolRequest !== undefined
+        );
+
+        // If the model asks to use a tool, run the second step
+        if (toolRequest) {
+            // Append the tool request to history
+            history.push(response);
+
+            // This is a simplified tool execution loop for Telegram.
+            // We create a "tool response" message manually to feed back to the AI.
+            // The actual tool logic is executed server-side within the tool definition.
+            const toolResponse: MessageData = {
+              role: 'tool',
+              content: [{
+                  toolResponse: {
+                    name: toolRequest.name,
+                    output: { success: true, message: 'Tool execution handled.' },
+                  }
+                }]
+            };
+            history.push(toolResponse);
+
+            // Call the flow again with the tool response in history
+            response = await chatAssistantFlow({ userId: appUser.id, history });
         }
-
-        if (!output.isUnderstandable) {
-            await ctx.reply("Sorry, I didn't understand that. I can help with tasks and events. For examples, type /help.");
-            return;
-        }
-
-        if (output.isSchedulable) {
-            if (output.hasSpecificTime && output.date && output.startTime) {
-                // It's an event with a specific time, schedule it directly
-                const duration = output.duration ?? 60;
-                const startDate = parse(`${output.date}T${output.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-                const endDate = addMinutes(startDate, duration);
-
-                await addDoc(collection(db, "scheduleItems"), {
-                    userId: appUser.id,
-                    title: output.title,
-                    type: 'event',
-                    date: output.date,
-                    startTime: output.startTime,
-                    endTime: format(endDate, 'HH:mm'),
-                    duration: duration,
-                    completed: false,
-                    description: `Added from Telegram by ${ctx.from.first_name}`,
-                    icon: 'PenSquare',
-                    color: 'hsl(12, 76%, 61%)',
-                    createdAt: serverTimestamp(),
-                });
-                await ctx.reply(`✅ Event scheduled: "${output.title}" on ${output.date} at ${output.startTime}.`);
-            } else {
-                // It's a schedulable task without a specific time, so we suggest slots
-                const scheduleQuery = query(collection(db, "scheduleItems"), where("userId", "==", appUser.id), where("date", "!=", null));
-                const scheduleSnapshot = await getDocs(scheduleQuery);
-                const scheduleItems = scheduleSnapshot.docs.map(doc => doc.data());
-                const scheduleString = scheduleItems.map(item => `${item.title} on ${item.date} from ${item.startTime} to ${item.endTime}`).join("\n");
-
-                const suggestionsResult = await suggestOptimalTimeSlots({
-                    schedule: scheduleString,
-                    tasks: output.title,
-                    duration: output.duration ?? 60,
-                    currentDate: format(new Date(), 'yyyy-MM-dd'),
-                });
-
-                if (suggestionsResult.suggestions.length > 0) {
-                     const buttons = suggestionsResult.suggestions.map((slot: SuggestedSlot) => (
-                        Markup.button.callback(
-                            `${format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'EEE, d MMM')} at ${slot.startTime}`,
-                            `schedule|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
-                        )
-                     ));
-                     
-                     await ctx.reply(`I found a few open slots for "${output.title}". Which one works for you?`, Markup.inlineKeyboard(buttons, { columns: 1 }));
-                } else {
-                    await ctx.reply(`I couldn't find any open slots for "${output.title}". I'll add it to your inbox instead.`);
-                    // Fallback to adding to inbox
-                     await addDoc(collection(db, "scheduleItems"), {
-                        userId: appUser.id,
-                        title: output.title,
-                        type: 'task',
-                        completed: false,
-                        date: null,
-                        startTime: null,
-                        endTime: null,
-                        duration: output.duration ?? 60,
-                        description: `Added from Telegram by ${ctx.from.first_name}`,
-                        createdAt: serverTimestamp(),
-                    });
-                    await ctx.reply(`📥 Task added to your inbox: "${output.title}"`);
-                }
-            }
+        
+        // Handle the final response from the AI
+        const finalMessage = response.text;
+        const suggestions = (response.content.find((part: Part) => part.data)?.data as any)?.suggestions;
+       
+        if (suggestions && suggestions.length > 0) {
+            const buttons = suggestions.map((slot: any) => (
+                Markup.button.callback(
+                    `${format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'EEE, d MMM')} at ${slot.startTime}`,
+                    `schedule|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
+                )
+            ));
+            
+            await ctx.reply(finalMessage, Markup.inlineKeyboard(buttons, { columns: 1 }));
+        } else if (finalMessage) {
+            await ctx.reply(finalMessage);
         } else {
-            // It's a simple task, add to inbox
-            await addDoc(collection(db, "scheduleItems"), {
-                userId: appUser.id,
-                title: output.title,
-                type: 'task',
-                completed: false,
-                date: null,
-                startTime: null,
-                endTime: null,
-                duration: output.duration ?? 60,
-                description: `Added from Telegram by ${ctx.from.first_name}`,
-                createdAt: serverTimestamp(),
-            });
-            await ctx.reply(`📥 Task added to your inbox: "${output.title}"`);
+            await ctx.reply("Sorry, I didn't understand that. Could you rephrase?");
         }
         
     } catch (error) {
@@ -333,7 +268,3 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
   }
 );
-
-    
-
-    
