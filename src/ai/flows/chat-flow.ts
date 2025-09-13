@@ -100,7 +100,7 @@ const findTimeForTaskTool = ai.defineTool(
 
 // --- Main Chat Flow ---
 
-const systemPrompt = `You are ChronoFlow's AI assistant. Your name is Chrono. 
+const systemInstruction = `You are ChronoFlow's AI assistant. Your name is Chrono. 
 Be helpful, friendly, and concise. Your goal is to help the user manage their schedule. 
 The current date is ${format(new Date(), 'yyyy-MM-dd')}.
 Use the available tools to fulfill user requests.
@@ -126,9 +126,11 @@ export const chatAssistantFlow = ai.defineFlow(
     
     const result = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
-        prompt: systemPrompt,
+        prompt: [
+            {text: systemInstruction},
+            ...history,
+        ],
         tools: [createTaskOrEventTool, findTimeForTaskTool],
-        history: history,
         context: {
             userId: userId, // Pass userId to tool context
         },
