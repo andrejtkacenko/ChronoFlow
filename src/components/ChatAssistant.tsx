@@ -86,7 +86,7 @@ export default function ChatAssistant({ userId }: { userId: string }) {
     try {
       let response = await chatAssistantFlow({ userId, history: currentMessages });
 
-      while(response?.content.some((part: any) => part.toolRequest)) {
+      while(response?.content?.some((part: any) => part.toolRequest)) {
         const modelMessage: ChatMessage = { role: 'model', content: response.content };
         currentMessages = [...currentMessages, modelMessage];
         setMessages(currentMessages);
@@ -102,28 +102,29 @@ export default function ChatAssistant({ userId }: { userId: string }) {
         }
       }
       
-      if (!response || !response.content) {
-        throw new Error("Received an empty response from the assistant.");
+      const hasTextResponse = response?.content?.some((part: any) => part.text);
+
+      if (hasTextResponse) {
+          const finalModelMessage: ChatMessage = { role: 'model', content: response.content };
+          setMessages(prev => [...prev, finalModelMessage]);
+      } else if (!response) {
+          throw new Error("Received an empty or invalid response from the assistant.");
       }
 
-      const finalModelMessage: ChatMessage = { role: 'model', content: response.content };
-      setMessages(prev => [...prev, finalModelMessage]);
-
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat assistant error:", error);
       toast({
         variant: 'destructive',
         title: 'Chat Error',
-        description: 'Sorry, I encountered an issue. Please try again.',
+        description: error.message || 'Sorry, I encountered an issue. Please try again.',
       });
-      // Optionally remove the last user message on failure
-      // setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
   };
 
   const renderContent = (msg: ChatMessage) => {
+    if (!msg.content) return null;
     if (msg.role === 'user' || (msg.role === 'model' && msg.content.some((p: any) => p.text))) {
         return msg.content.map((part: any, index: number) => {
             if (part.text) {
