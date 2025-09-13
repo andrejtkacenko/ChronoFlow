@@ -43,6 +43,7 @@ const prompt = ai.definePrompt({
   name: 'suggestOptimalTimeSlotsPrompt',
   input: {schema: SuggestOptimalTimeSlotsInputSchema},
   output: {schema: SuggestOptimalTimeSlotsOutputSchema},
+  model: 'googleai/gemini-1.5-flash',
   prompt: `You are a scheduling assistant who analyzes a user's schedule and suggests optimal time slots for new tasks.
 
   Analyze the following schedule and task(s) to find the best time slots without conflicts.

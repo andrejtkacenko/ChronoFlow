@@ -27,6 +27,7 @@ const prompt = ai.definePrompt({
   name: 'generateFullSchedulePrompt',
   input: {schema: GenerateFullScheduleInputSchema},
   output: {schema: GenerateFullScheduleOutputSchema},
+  model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert productivity coach. Your goal is to create an optimal, realistic, and balanced schedule for a user for the next {{{numberOfDays}}} days, starting from {{{startDate}}}.
 
 **INSTRUCTIONS:**
