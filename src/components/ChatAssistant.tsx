@@ -44,6 +44,10 @@ export default function ChatAssistant({ userId }: { userId: string }) {
     try {
       const response = await chatAssistantFlow({ userId, history: [...messages, userMessage] });
       
+      if (!response || !response.content) {
+        throw new Error("Received an empty response from the assistant.");
+      }
+
       const modelMessage: ChatMessage = { role: 'model', content: response.content };
       setMessages((prev) => [...prev, modelMessage]);
 
