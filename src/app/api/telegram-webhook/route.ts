@@ -12,10 +12,13 @@ export async function POST(req: Request) {
     return NextResponse.json({status: 'ok'});
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({error: err.message}, {status: 500});
+    // Even if JSON parsing fails, tell Telegram we're okay to prevent retries
+    return NextResponse.json({status: 'ok', error: 'Invalid payload'});
   }
 }
 
 export async function GET() {
   return NextResponse.json({ message: 'Telegram webhook is active.' });
 }
+
+    

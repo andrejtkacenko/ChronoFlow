@@ -14,50 +14,6 @@ import type { SuggestedSlot } from './schema';
 
 // --- Schemas ---
 
-const TelegramMessageSchema = z.object({
-  update_id: z.number(),
-  message: z.object({
-    message_id: z.number(),
-    from: z.object({
-      id: z.number(),
-      is_bot: z.boolean(),
-      first_name: z.string(),
-      last_name: z.string().optional(),
-      username: z.string().optional(),
-      language_code: z.string().optional(),
-    }),
-    chat: z.object({
-      id: z.number(),
-      first_name: z.string(),
-      last_name: z.string().optional(),
-      username: z.string().optional(),
-      type: z.string(),
-    }),
-    date: z.number(),
-    text: z.string().optional(),
-  }).optional(),
-  callback_query: z.object({
-    id: z.string(),
-    from: z.object({
-      id: z.number(),
-      is_bot: z.boolean(),
-      first_name: z.string(),
-      last_name: z.string().optional(),
-      username: z.string().optional(),
-      language_code: z.string().optional(),
-    }),
-    message: z.object({
-      message_id: z.number(),
-      chat: z.object({
-        id: z.number(),
-      }),
-      text: z.string(),
-    }),
-    data: z.string(),
-  }).optional(),
-  my_chat_member: z.any().optional(), // To handle bot status changes gracefully
-});
-
 const ParsedTaskSchema = z.object({
     isSchedulable: z.boolean().describe('Set to true if the text contains a specific date and time for an event, or implies a desire to schedule (e.g., "next week", "tomorrow"). Otherwise, set to false if it is just a task for the inbox.'),
     hasSpecificTime: z.boolean().describe('Set to true only if a specific date and time (e.g., "tomorrow at 5pm", "on Aug 23 at 10:00") are mentioned. Set to false for vague requests like "next week".'),
@@ -173,16 +129,9 @@ export const telegramWebhookFlow = ai.defineFlow(
   async (payload) => {
     console.log("Received payload:", JSON.stringify(payload, null, 2));
 
-    const parsedPayload = TelegramMessageSchema.safeParse(payload);
-
-    if (!parsedPayload.success) {
-      console.error("Failed to parse Telegram message:", parsedPayload.error);
-      return;
-    }
-
     // --- Handle Callback Queries (Button Clicks) ---
-    if (parsedPayload.data.callback_query) {
-        const { id: callbackQueryId, from, message, data } = parsedPayload.data.callback_query;
+    if (payload.callback_query) {
+        const { id: callbackQueryId, from, message, data } = payload.callback_query;
         const [action, userId, title, date, startTime, duration] = data.split('|');
 
         if (action === 'schedule' && userId && title && date && startTime && duration) {
@@ -220,19 +169,14 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
     
     // --- Handle Regular Messages ---
-    if (!parsedPayload.data.message) {
-        console.log("Received a non-message update, skipping.");
+    const message = payload.message;
+    if (!message || !message.text) {
+        console.log("Received a non-text message update, skipping.");
         return;
     }
 
-    const { message } = parsedPayload.data;
     const { text, from, chat } = message;
 
-    if (!text) {
-        console.log("Received a message with no text, skipping.");
-        return;
-    }
-    
     const appUser = await findUserByTelegramId(from.id);
     
     if (!appUser) {
@@ -380,3 +324,5 @@ I'll parse your message and either add it directly to your calendar or suggest a
     }
   }
 );
+
+    
