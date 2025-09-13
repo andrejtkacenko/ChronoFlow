@@ -407,7 +407,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
                                         <Label>Work days</Label>
                                         <div className="flex items-center gap-1.5 mt-2">
                                             {weekDays.map((day, index) => (
-                                                <Button key={day} variant={preferences.workDays?.includes(index) ? 'default' : 'outline'} size="icon" className="h-8 w-8 rounded-full text-xs" onClick={() => handleWorkDayToggle(index)}>{day}</Button>
+                                                <Button key={day} variant={preferences.workDays?.includes(index) ? 'default' : 'secondary'} size="icon" className="h-8 w-8 rounded-full text-xs" onClick={() => handleWorkDayToggle(index)}>{day}</Button>
                                             ))}
                                         </div>
                                     </div>
@@ -462,3 +462,5 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     </Dialog>
   );
 }
+
+    
