@@ -105,26 +105,6 @@ const findTimeForTaskTool = ai.defineTool(
     }
 );
 
-const generateFullScheduleTool = ai.defineTool(
-    {
-        name: 'generateFullSchedule',
-        description: 'Triggers the generation of a full, multi-day schedule based on the user\'s inbox tasks and preferences. Use this for broad requests like "plan my week", "generate a schedule", or "organize my tasks". This only indicates that the process can be started, it does not perform the generation itself.',
-        inputSchema: z.object({}), // No input needed, it uses user's context
-        outputSchema: z.object({
-            success: z.boolean(),
-            message: z.string(),
-        })
-    },
-    async () => {
-        // This tool just signals the intent. The client-side will open the component.
-        return {
-            success: true,
-            message: "I've started the schedule generator. You can review and adjust your preferences there.",
-        };
-    }
-);
-
-
 // --- Main Chat Flow ---
 
 export const chatAssistantFlow = ai.defineFlow(
@@ -141,7 +121,7 @@ export const chatAssistantFlow = ai.defineFlow(
     const result = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
         prompt: "You are ChronoFlow's AI assistant. Be helpful, friendly, and concise. Your goal is to help the user manage their schedule. Use the available tools to fulfill user requests. If a user asks a general question, provide a helpful answer. After a tool is successfully used, confirm it to the user in a natural, conversational way.",
-        tools: [createTaskOrEventTool, findTimeForTaskTool, generateFullScheduleTool],
+        tools: [createTaskOrEventTool, findTimeForTaskTool],
         history: history,
         context: {
             userId: userId, // Pass userId to tool context

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Sparkles, LogOut, Menu, X, Wand2, User } from "lucide-react";
+import { Sparkles, LogOut, Menu, X, Wand2, User, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SmartScheduler from "./SmartScheduler";
 import { useState } from "react";
@@ -26,6 +26,7 @@ const navLinks = [
     { href: '/', label: 'Dashboard' },
     { href: '/schedule', label: 'Schedule' },
     { href: '/calendar', label: 'Calendar' },
+    { href: '/assistant', label: 'Assistant', icon: Bot },
 ]
 
 export default function Header() {
@@ -44,10 +45,13 @@ export default function Header() {
               key={`${link.href}-${link.label}`}
               asChild
               variant={pathname === link.href ? "secondary" : "ghost"}
-              className={cn(isMobile && "w-full")}
+              className={cn(isMobile && "w-full", "justify-start")}
               onClick={() => isMobile && setMobileMenuOpen(false)}
             >
-                <Link href={link.href}>{link.label}</Link>
+                <Link href={link.href}>
+                  {link.icon && <link.icon className="mr-2 h-4 w-4" />}
+                  {link.label}
+                </Link>
             </Button>
         ))}
     </nav>
@@ -122,7 +126,7 @@ export default function Header() {
             </Button>
         </div>
         {isMobileMenuOpen && (
-            <div className="absolute top-16 left-0 w-full bg-background/95 backdrop-blur-sm p-4 border-b md:hidden">
+            <div className="absolute top-16 left-0 w-full bg-background/95 backdrop-blur-sm p-4 border-b md:hidden animate-in fade-in-0 slide-in-from-top-4">
                 <NavLinks isMobile />
             </div>
         )}
