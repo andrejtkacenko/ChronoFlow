@@ -21,6 +21,7 @@ import {
     Goal,
     Timer,
     User,
+    CalendarPlus,
   } from 'lucide-react';
   
 export const iconMap: { [key: string]: LucideIcon } = {
@@ -44,6 +45,7 @@ export const iconMap: { [key: string]: LucideIcon } = {
     Goal,
     Timer,
     User,
+    CalendarPlus,
     Default: Briefcase,
 };
 
@@ -80,3 +82,5 @@ export type DisplayScheduleItem = ScheduleItem & {
   isStart?: boolean;
   isEnd?: boolean;
 }
+
+    

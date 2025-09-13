@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { collection, onSnapshot, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
-import { Loader2, Wand2, PlusCircle, CheckCircle2, Bed, Utensils, Save, Dumbbell, Brain, BookOpen, Timer } from 'lucide-react';
+import { Loader2, Wand2, PlusCircle, CheckCircle2, Bed, Utensils, Save, Dumbbell, Brain, BookOpen, Timer, CalendarPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSchedule } from '@/lib/actions';
 import { addScheduleItem } from '@/lib/client-actions';
@@ -117,7 +117,7 @@ const SuggestionList = memo(({ title, items, type, onAddEvent }: { title: string
                 <p className="text-sm text-muted-foreground">{new Date(slot.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                 <p className="text-sm text-muted-foreground">{slot.startTime} - {slot.endTime}</p>
               </div>
-              <Button size="icon" variant="ghost" onClick={() => onAddEvent(slot, type)}><PlusCircle className="h-5 w-5 text-primary" /></Button>
+              <Button size="sm" variant="ghost" onClick={() => onAddEvent(slot, type)}><PlusCircle className="mr-2 h-4 w-4" />Add</Button>
             </CardContent>
           </Card>
         ))}
@@ -168,7 +168,8 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         const docSnap = await getDoc(prefRef);
         if (docSnap.exists()) {
             const loadedPrefs = docSnap.data();
-            if (!Array.isArray(loadedPrefs.workDays)) {
+            // Ensure array type for workDays to prevent crashes
+             if (!Array.isArray(loadedPrefs.workDays)) {
               loadedPrefs.workDays = defaultPreferences.workDays;
             }
             setPreferences({...defaultPreferences, ...loadedPrefs});
@@ -240,13 +241,13 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
 
     const allTasks = inboxTasks.filter(task => selectedTasks.has(task.id)).map(task => task.title);
 
+    const aiPrefs = { ...preferences };
+    // Ensure frequency is 0 if the habit is disabled, so AI doesn't schedule it
+    if (!aiPrefs.sportEnabled) { aiPrefs.sportFrequency = 0; }
+    if (!aiPrefs.meditationEnabled) { aiPrefs.meditationFrequency = 0; }
+    if (!aiPrefs.readingEnabled) { aiPrefs.readingFrequency = 0; }
+    
     try {
-      const aiPrefs = { ...preferences };
-      // Ensure frequency is 0 if the habit is disabled
-      if (!aiPrefs.sportEnabled) { aiPrefs.sportFrequency = 0; }
-      if (!aiPrefs.meditationEnabled) { aiPrefs.meditationFrequency = 0; }
-      if (!aiPrefs.readingEnabled) { aiPrefs.readingFrequency = 0; }
-      
       const result = await generateSchedule({ tasks: allTasks, preferences: aiPrefs as any, startDate: format(new Date(), 'yyyy-MM-dd'), numberOfDays }, userId);
 
       if (typeof result === 'string') {
@@ -260,25 +261,30 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         setView('form');
       }
     } catch (error: any) {
-      console.error("Error in handleGenerate:", error);
+      console.error("Error in handleGenerate:", error.message || error);
       toast({ variant: 'destructive', title: 'An unexpected error occurred', description: error.message });
       setView('form');
     }
   };
 
+  const addEventToCalendar = useCallback(async (slot: SuggestedSlot, type: 'task' | 'routine') => {
+      await addScheduleItem({
+          userId: userId,
+          title: slot.task,
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          duration: slot.duration,
+          type: 'event',
+          icon: type === 'task' ? 'BrainCircuit' : 'Coffee',
+          color: type === 'task' ? 'hsl(var(--primary))' : 'hsl(204, 70%, 53%)',
+      });
+  }, [userId]);
+
+
   const handleAddEvent = useCallback(async (slot: SuggestedSlot, type: 'task' | 'routine') => {
     try {
-        await addScheduleItem({
-            userId: userId,
-            title: slot.task,
-            date: slot.date,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            duration: slot.duration,
-            type: 'event',
-            icon: type === 'task' ? 'BrainCircuit' : 'Coffee',
-            color: type === 'task' ? 'hsl(var(--primary))' : 'hsl(204, 70%, 53%)',
-        });
+        await addEventToCalendar(slot, type);
         toast({ title: 'Event Added', description: `"${slot.task}" was added to your calendar.` });
         
         setSuggestions(prev => {
@@ -290,13 +296,27 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to add event to calendar.' });
     }
-  }, [userId, toast]);
+  }, [addEventToCalendar, toast]);
 
-  const handleAddAll = useCallback(() => {
+  const handleSaveAllToCalendar = useCallback(async () => {
     if (!suggestions) return;
+    setIsSaving(true);
+
     const allEvents = [...suggestions.tasks, ...suggestions.routineEvents];
-    allEvents.forEach(slot => handleAddEvent(slot, suggestions.tasks.includes(slot) ? 'task' : 'routine'));
-  }, [suggestions, handleAddEvent]);
+    const promises = allEvents.map(slot => 
+        addEventToCalendar(slot, suggestions.tasks.includes(slot) ? 'task' : 'routine')
+    );
+
+    try {
+        await Promise.all(promises);
+        toast({ title: 'Schedule Saved!', description: `${allEvents.length} events have been added to your calendar.` });
+        onOpenChange(false); // Close dialog on success
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Some events could not be saved.' });
+    } finally {
+        setIsSaving(false);
+    }
+  }, [suggestions, addEventToCalendar, toast, onOpenChange]);
   
   const resetState = useCallback(() => {
     setView('form');
@@ -319,7 +339,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         case 'results': return (
             <>
                 <div className="my-4 flex-1 flex flex-col min-h-0 h-[70vh]">
-                    <h3 className="font-semibold mb-4 text-lg">Your new schedule</h3>
+                    <h3 className="font-semibold mb-4 text-lg">Your New Proposed Schedule</h3>
                     <ScrollArea className="flex-1 pr-4">
                         {!suggestions || (suggestions.tasks.length === 0 && suggestions.routineEvents.length === 0) ? (
                         <p className="text-sm text-muted-foreground text-center pt-10">All suggested events have been added to your calendar.</p>
@@ -332,10 +352,14 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
                     </ScrollArea>
                 </div>
                  <DialogFooter className="justify-between pt-4 border-t">
-                    <div>{(suggestions?.tasks?.length || 0) + (suggestions?.routineEvents?.length || 0) > 0 && (<Button variant="outline" onClick={handleAddAll}>Add All</Button>)}</div>
                     <div>
-                        <Button variant="ghost" onClick={resetState}>Start Over</Button>
-                        <Button onClick={() => onOpenChange(false)}>Close</Button>
+                         <Button variant="ghost" onClick={resetState}>Start Over</Button>
+                    </div>
+                    <div>
+                        <Button onClick={handleSaveAllToCalendar} disabled={isSaving}>
+                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CalendarPlus className="mr-2 h-4 w-4"/>}
+                            Save to Calendar
+                        </Button>
                     </div>
                 </DialogFooter>
             </>
@@ -426,3 +450,5 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     </Dialog>
   );
 }
+
+    
