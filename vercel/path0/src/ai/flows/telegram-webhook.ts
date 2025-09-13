@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { addMinutes, format, parse } from 'date-fns';
-import { suggestOptimalTimeSlots } from './suggest-optimal-time-slots';
+import { suggestOptimalTimeSlots } from '@/ai/flows/suggest-optimal-time-slots';
 import type { SuggestedSlot } from './schema';
 import { Telegraf, Markup } from 'telegraf';
 import type { Update } from 'telegraf/types';
@@ -286,3 +286,5 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
   }
 );
+
+    
