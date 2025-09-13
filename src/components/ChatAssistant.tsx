@@ -68,20 +68,16 @@ export default function ChatAssistant({ userId }: { userId: string }) {
     };
 };
 
-  const handleSubmit = async (e: React.FormEvent, initialMessages?: ChatMessage[]) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!input.trim() && !initialMessages) || isLoading) return;
+    if (!input.trim() || isLoading) return;
 
     setIsLoading(true);
 
-    let currentMessages = initialMessages || [...messages];
-
-    if (!initialMessages) {
-      const userMessage: ChatMessage = { role: 'user', content: [{ text: input }] };
-      currentMessages = [...currentMessages, userMessage];
-      setMessages(currentMessages);
-      setInput('');
-    }
+    const userMessage: ChatMessage = { role: 'user', content: [{ text: input }] };
+    let currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
+    setInput('');
 
     try {
       let response = await chatAssistantFlow({ userId, history: currentMessages });
@@ -107,10 +103,6 @@ export default function ChatAssistant({ userId }: { userId: string }) {
       if (hasTextResponse) {
           const finalModelMessage: ChatMessage = { role: 'model', content: response.content };
           setMessages(prev => [...prev, finalModelMessage]);
-      } else if (!response) {
-          // This case handles a truly empty or invalid response, which is an error.
-          // A response with only a tool call is handled above and will not trigger this.
-          throw new Error("Received an empty or invalid response from the assistant.");
       }
 
     } catch (error: any) {
