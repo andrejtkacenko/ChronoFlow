@@ -10,7 +10,7 @@ import { MessageSquare, Send, X, Bot, User, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { chatAssistantFlow } from '@/ai/flows/chat-flow';
 import { useToast } from '@/hooks/use-toast';
-import type { MessageData } from 'genkit';
+import type { MessageData, ToolRequestPart, ToolResponsePart } from 'genkit';
 
 type ChatMessage = {
   role: 'user' | 'model';
@@ -49,28 +49,42 @@ export default function ChatAssistant({ userId }: { userId: string }) {
         })
       );
 
-      let response = await chatAssistantFlow({ userId, history });
+      const response = await chatAssistantFlow({ userId, history });
 
-      // Handle potential tool calls
-      const toolRequest = response.toolRequest;
+      const toolRequest = response.content.find(
+        (part): part is ToolRequestPart => part.toolRequest !== undefined
+      )?.toolRequest;
+
       if (toolRequest) {
-        // If there's a tool call, we need to make another call to the model with the tool response
-        const toolResponse = await chatAssistantFlow({
-          userId,
-          history: [...history, response],
-        });
-        response = toolResponse;
-      }
-      
-      const textResponse = response.text;
+        // Tool was called, we won't get a text response yet.
+        // We need to execute the tool and send the result back.
+        // For now, we are simulating a successful tool call since the flow executes it on the server.
+        // In a more advanced implementation, the client could execute tools.
+        const toolResponse: MessageData = {
+          role: 'model',
+          content: [{
+              toolResponse: {
+                name: toolRequest.name,
+                output: (toolRequest as any).input, // Simulate successful processing
+              }
+            } as ToolResponsePart
+          ]
+        };
 
-      if (textResponse) {
+        const finalResponse = await chatAssistantFlow({userId, history: [...history, response, toolResponse]});
+
+        const textResponse = finalResponse.text;
+        if(textResponse) {
           const finalModelMessage: ChatMessage = { role: 'model', content: textResponse };
           setMessages(prev => [...prev, finalModelMessage]);
+        }
+        
       } else {
-        // This can happen if a tool is called and the model has nothing further to say.
-        // It's not necessarily an error, so we just log it and don't show an error toast.
-        console.log("Assistant returned a response with no text content, likely after a tool call.");
+        const textResponse = response.text;
+        if (textResponse) {
+            const finalModelMessage: ChatMessage = { role: 'model', content: textResponse };
+            setMessages(prev => [...prev, finalModelMessage]);
+        }
       }
 
     } catch (error: any) {
@@ -81,7 +95,7 @@ export default function ChatAssistant({ userId }: { userId: string }) {
         description: error.message || 'Sorry, I encountered an issue. Please try again.',
       });
       // Revert the optimistic UI update on error
-      setMessages(prev => prev.slice(0, -1));
+      setMessages(messages);
     } finally {
       setIsLoading(false);
     }
