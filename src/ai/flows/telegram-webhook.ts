@@ -211,7 +211,7 @@ bot.on('text', async (ctx) => {
               role: 'tool',
               content: [{
                   toolResponse: {
-                    name: toolRequest.name,
+                    name: toolRequest.toolRequest.name,
                     output: { success: true, message: 'Tool execution handled.' },
                   }
                 }]
