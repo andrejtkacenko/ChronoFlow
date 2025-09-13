@@ -6,7 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, limit } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDocs, query, where, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { addMinutes, format, parse } from 'date-fns';
 import { suggestOptimalTimeSlots } from '@/ai/flows/suggest-optimal-time-slots';
@@ -104,6 +104,7 @@ bot.help(async (ctx) => {
 *Direct commands:*
 • \`/start\` - Greet the bot and check your connection.
 • \`/help\` - Show this help message.
+• \`/today\` - See all your scheduled events for today.
 
 *Natural Language:*
 Just send me a message and I'll try to understand it!
@@ -112,23 +113,55 @@ Just send me a message and I'll try to understand it!
 _Examples:_
 • \`Buy milk\`
 • \`Call the doctor\`
-• \`Finish the report by Friday\`
 
 *2. Schedule a specific event:*
 _Examples:_
 • \`Team meeting tomorrow at 10:00\`
 • \`Lunch with Alex on Friday at 1pm for 1 hour\`
-• \`dentist appointment 25 dec 15:30\`
 
 *3. Ask me to find a time:*
 _Examples:_
 • \`Find time for a run this week\`
 • \`Schedule a 1-hour meeting with the team tomorrow\`
-• \`I need to get a haircut next week\`
-
-I'll parse your message and either add it directly to your calendar or suggest available time slots for you to choose from.
     `;
     await ctx.replyWithMarkdown(helpMessage);
+});
+
+bot.command('today', async (ctx) => {
+    const appUser = (ctx as any).appUser;
+    if (!appUser) return;
+
+    try {
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const q = query(
+            collection(db, "scheduleItems"), 
+            where("userId", "==", appUser.id),
+            where("date", "==", todayStr),
+            orderBy("startTime")
+        );
+        
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            await ctx.reply("✨ Your schedule for today is clear!");
+            return;
+        }
+
+        const todayFormatted = format(new Date(), 'eeee, MMMM d');
+        let replyMessage = `*Your agenda for ${todayFormatted}:*\n\n`;
+        
+        querySnapshot.forEach(doc => {
+            const item = doc.data();
+            const time = (item.startTime && item.endTime) ? `${item.startTime} - ${item.endTime}` : 'All day';
+            replyMessage += `• ${time}: ${item.title}\n`;
+        });
+
+        await ctx.replyWithMarkdown(replyMessage);
+
+    } catch (error) {
+        console.error("Error fetching today's schedule:", error);
+        await ctx.reply("Sorry, I couldn't retrieve your schedule for today. Please try again.");
+    }
 });
 
 // --- Bot Action (Callback Query) Handler ---
@@ -300,3 +333,5 @@ export const telegramWebhookFlow = ai.defineFlow(
     }
   }
 );
+
+    
