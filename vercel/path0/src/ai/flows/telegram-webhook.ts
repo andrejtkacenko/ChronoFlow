@@ -10,7 +10,7 @@ import { collection, addDoc, serverTimestamp, getDocs, query, where, limit } fro
 import { db } from "@/lib/firebase";
 import { addMinutes, format, parse } from 'date-fns';
 import { suggestOptimalTimeSlots } from '@/ai/flows/suggest-optimal-time-slots';
-import type { SuggestedSlot } from './schema';
+import type { SuggestedSlot } from '@/ai/flows/schema';
 import { Telegraf, Markup } from 'telegraf';
 import type { Update } from 'telegraf/types';
 
