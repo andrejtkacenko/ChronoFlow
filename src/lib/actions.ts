@@ -4,10 +4,10 @@
 import { suggestOptimalTimeSlots } from "@/ai/flows/suggest-optimal-time-slots";
 import { generateFullSchedule } from "@/ai/flows/generate-full-schedule";
 import type { GenerateFullScheduleInput, GenerateFullScheduleOutput, SuggestedSlot } from "@/ai/flows/schema";
-import { collection, getDocs, query, where, writeBatch } from "firebase/firestore";
+import { collection, getDocs, query, where, writeBatch, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 import type { ScheduleItem } from "./types";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 
 export async function getSuggestedTimeSlots(tasks: string, userId: string): Promise<SuggestedSlot[] | string> {
   if (!userId) {
@@ -102,3 +102,34 @@ export async function deleteScheduleItemsInRange(
     return { deletedCount: snapshot.size };
 }
 
+
+export async function addScheduleItem(item: Omit<ScheduleItem, 'id' | 'createdAt' | 'completed'> & { userId: string, completed?: boolean }) {
+    if (!item.userId) {
+        throw new Error("User not authenticated.");
+    }
+
+    const itemWithDefaults = {
+        ...item,
+        description: item.description ?? null,
+        date: item.date ?? null,
+        startTime: item.startTime ?? null,
+        endTime: item.endTime ?? null,
+        duration: item.duration ?? null,
+        icon: item.icon ?? null,
+        color: item.color ?? null,
+        completed: item.completed ?? false,
+        notificationTime: item.notificationTime ?? null,
+        notificationSent: item.notificationSent ?? false,
+    }
+
+    try {
+        const docRef = await addDoc(collection(db, "scheduleItems"), {
+            ...itemWithDefaults,
+            createdAt: serverTimestamp(),
+        });
+        return docRef.id;
+    } catch (e) {
+        console.error("Error adding schedule item: ", e);
+        throw new Error("Could not add schedule item to the database.");
+    }
+}

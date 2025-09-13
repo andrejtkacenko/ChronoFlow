@@ -21,6 +21,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { deleteScheduleItemsInRange } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import ChatAssistant from '@/components/ChatAssistant';
 
 const hours = Array.from({ length: 24 }, (_, i) => {
     const hour24 = i;
@@ -266,7 +267,6 @@ export default function SchedulePage() {
     setNewEventTime(null);
     setIsNewTask(true);
     setIsEventDialogOpen(true);
-    setProjection(null);
   }
   
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
@@ -445,6 +445,9 @@ export default function SchedulePage() {
               <ChevronLeft className={cn("h-5 w-5 transition-transform", !isRightSidebarOpen && "rotate-180")} />
           </Button>
       </div>
+      
+      <ChatAssistant userId={user.uid} />
+
       {(isEventDialogOpen) && user && (
         <NewEventDialog
             isOpen={isEventDialogOpen}
