@@ -236,11 +236,7 @@ export const telegramWebhookFlow = ai.defineFlow(
     const appUser = await findUserByTelegramId(from.id);
     
     if (!appUser) {
-        const baseUrl = process.env.NEXT_PUBLIC_URL;
-        if (!baseUrl) {
-            await sendTelegramMessage(chat.id, 'The application URL is not configured. Please contact support.');
-            return;
-        }
+        const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://chrono-flow-rho.vercel.app';
         const webAppUrl = `${baseUrl}/`; 
         await sendTelegramMessage(
             chat.id, 
@@ -378,11 +374,9 @@ I'll parse your message and either add it directly to your calendar or suggest a
             await sendTelegramMessage(chat.id, `📥 Task added to your inbox: "${output.title}"`);
         }
         
-    } catch (error) => {
+    } catch (error) {
         console.error("Error processing message: ", error);
         await sendTelegramMessage(chat.id, 'Sorry, an error occurred while processing your request.');
     }
   }
 );
-
-    
