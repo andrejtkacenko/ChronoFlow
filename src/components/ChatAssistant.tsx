@@ -14,7 +14,9 @@ import { addScheduleItem as addClientScheduleItem } from '@/lib/client-actions';
 
 type ChatMessage = {
   role: 'user' | 'model' | 'tool';
-  content: any; // Simplified for easier handling of text and tool parts
+  content: string; 
+  toolCallId?: string;
+  toolResponse?: { name: string; output: any };
 };
 
 export default function ChatAssistant({ userId }: { userId: string }) {
@@ -31,7 +33,7 @@ export default function ChatAssistant({ userId }: { userId: string }) {
     }
   }, [messages]);
 
-  const processToolCall = async (toolRequest: any) => {
+const processToolCall = async (toolRequest: any) => {
     const { name, input } = toolRequest;
     let output;
 
@@ -42,9 +44,6 @@ export default function ChatAssistant({ userId }: { userId: string }) {
             await addClientScheduleItem({ userId, title, date, startTime, duration, type });
             output = { success: true, message: `${type === 'event' ? 'Event' : 'Task'} "${title}" created successfully.` };
         } 
-        // NOTE: findTimeForTask and generateFullSchedule are designed to be triggered
-        // from within other components, so we just return a message here.
-        // A more advanced implementation could open the relevant dialog.
         else if (name === 'findTimeForTask') {
             output = { success: true, message: "Use the 'Smart Scheduler' to find time for tasks." };
         } else if (name === 'generateFullSchedule') {
@@ -57,14 +56,12 @@ export default function ChatAssistant({ userId }: { userId: string }) {
     }
     
     return {
-        role: 'tool',
-        content: [{
-            toolResponse: {
-                toolCallId: toolRequest.toolCallId,
-                name: name,
-                output: output,
-            },
-        }],
+        role: 'tool' as const,
+        content: `Tool call ${name} executed.`, // For history, not display
+        toolResponse: {
+            name: name,
+            output: output,
+        },
     };
 };
 
@@ -74,34 +71,40 @@ export default function ChatAssistant({ userId }: { userId: string }) {
 
     setIsLoading(true);
 
-    const userMessage: ChatMessage = { role: 'user', content: [{ text: input }] };
-    let currentMessages = [...messages, userMessage];
-    setMessages(currentMessages);
+    const userMessage: ChatMessage = { role: 'user', content: input };
+    const currentHistory = [...messages, userMessage].map(m => {
+        if (m.role === 'user') return { role: 'user', content: [{text: m.content}] };
+        if (m.role === 'model') return { role: 'model', content: [{text: m.content}] };
+        if (m.role === 'tool' && m.toolResponse) {
+             return { role: 'tool', content: [{ toolResponse: { toolCallId: m.toolCallId, name: m.toolResponse.name, output: m.toolResponse.output } }] };
+        }
+        return m;
+    });
+
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
 
     try {
-      let response = await chatAssistantFlow({ userId, history: currentMessages });
+      let response = await chatAssistantFlow({ userId, history: currentHistory });
 
       while(response?.content?.some((part: any) => part.toolRequest)) {
-        const modelMessage: ChatMessage = { role: 'model', content: response.content };
-        currentMessages = [...currentMessages, modelMessage];
-        setMessages(currentMessages);
-
         const toolRequestPart = response.content.find((part: any) => part.toolRequest);
         if (toolRequestPart) {
-            const toolResponseMessage = await processToolCall(toolRequestPart.toolRequest);
-            currentMessages = [...currentMessages, toolResponseMessage];
-            setMessages(currentMessages);
+            const toolRequest = toolRequestPart.toolRequest;
+            const toolResponseMessage = await processToolCall(toolRequest);
+            const toolCallId = toolRequest.toolCallId;
 
-            // Call the flow again with the tool's response
-            response = await chatAssistantFlow({ userId, history: currentMessages });
+            const newHistory = [...currentHistory, { role: 'tool' as const, content: [{ toolResponse: { toolCallId: toolCallId, name: toolRequest.name, output: toolResponseMessage.toolResponse.output } }] }];
+            response = await chatAssistantFlow({ userId, history: newHistory });
+        } else {
+            break; // Should not happen if loop condition is met, but for safety.
         }
       }
       
-      const hasTextResponse = response?.content?.some((part: any) => part.text);
+      const textResponse = response?.text;
 
-      if (hasTextResponse) {
-          const finalModelMessage: ChatMessage = { role: 'model', content: response.content };
+      if (textResponse) {
+          const finalModelMessage: ChatMessage = { role: 'model', content: textResponse };
           setMessages(prev => [...prev, finalModelMessage]);
       }
 
@@ -118,17 +121,9 @@ export default function ChatAssistant({ userId }: { userId: string }) {
   };
 
   const renderContent = (msg: ChatMessage) => {
-    if (!msg.content) return null;
-    // Check if the message is from the user OR if it's from the model AND contains a text part.
-    if (msg.role === 'user' || (msg.role === 'model' && msg.content.some((p: any) => p.text))) {
-        return msg.content.map((part: any, index: number) => {
-            if (part.text) {
-                return <p key={index}>{part.text}</p>;
-            }
-            return null; // Don't render tool calls/responses directly, only text parts.
-        });
+    if (msg.role === 'user' || (msg.role === 'model' && msg.content)) {
+        return <p>{msg.content}</p>;
     }
-    // Don't render tool responses or tool-only messages from the model
     return null;
   };
 
@@ -158,7 +153,8 @@ export default function ChatAssistant({ userId }: { userId: string }) {
               <div className="space-y-4">
                 {messages.map((message, index) => {
                   const content = renderContent(message);
-                  if (!content) return null; // Don't render empty messages
+                  // Don't render tool responses or messages without visible content
+                  if (message.role === 'tool' || !content) return null; 
 
                   return (
                     <div
