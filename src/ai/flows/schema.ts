@@ -24,7 +24,7 @@ export type SuggestedSlot = z.infer<typeof SuggestedSlotSchema>;
 
 // Schema for user preferences for full schedule generation
 const PreferencesSchema = z.object({
-  mainGoals: z.string().describe("User's main goals for the week/quarter."),
+  mainGoals: z.string().optional().describe("User's main goals for the week/quarter."),
   sleepTimeRange: z.array(z.number()).optional().describe('User preferred sleep time range [startHour, endHour].'),
   mealsPerDay: z.number().describe('How many meals are eaten per day.'),
   restTime: z.number().describe('How much rest time, besides sleep, is needed daily.'),
@@ -51,6 +51,7 @@ const PreferencesSchema = z.object({
     .describe('Other fixed commitments, habits, or routines with specific times or frequencies (e.g., "Team meeting every Mon at 10:00").'),
   pastLearnings: z
     .string()
+    .optional()
     .describe('Past successes, lessons, or obstacles in planning (e.g., "Better not to set more than 2 large tasks per day", "Morning workouts give more energy.").'),
 });
 
