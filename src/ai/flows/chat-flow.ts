@@ -139,7 +139,7 @@ export const chatAssistantFlow = ai.defineFlow(
   async ({ userId, history }) => {
     
     const result = await ai.generate({
-        model: 'googleai/gemini-1.5-pro-latest',
+        model: 'googleai/gemini-1.5-flash',
         prompt: "You are ChronoFlow's AI assistant. Be helpful, friendly, and concise. Your goal is to help the user manage their schedule. Use the available tools to fulfill user requests. If a user asks a general question, provide a helpful answer. After a tool is successfully used, confirm it to the user in a natural, conversational way.",
         tools: [createTaskOrEventTool, findTimeForTaskTool, generateFullScheduleTool],
         history: history,
@@ -147,7 +147,7 @@ export const chatAssistantFlow = ai.defineFlow(
             userId: userId, // Pass userId to tool context
         },
         config: {
-            temperature: 0.2,
+            temperature: 0.1,
         },
     });
 
