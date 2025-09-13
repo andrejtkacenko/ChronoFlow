@@ -152,6 +152,7 @@ export const chatAssistantFlow = ai.defineFlow(
         },
     });
 
-    return result.message;
+    // Return a plain object to avoid serialization errors in Next.js
+    return { ...result.message };
   }
 );
