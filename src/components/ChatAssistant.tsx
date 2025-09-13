@@ -10,13 +10,11 @@ import { MessageSquare, Send, X, Bot, User, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { chatAssistantFlow } from '@/ai/flows/chat-flow';
 import { useToast } from '@/hooks/use-toast';
-import { addScheduleItem as addClientScheduleItem } from '@/lib/client-actions';
+import type { MessageData } from 'genkit';
 
 type ChatMessage = {
-  role: 'user' | 'model' | 'tool';
+  role: 'user' | 'model';
   content: string; 
-  toolCallId?: string;
-  toolResponse?: { name: string; output: any };
 };
 
 export default function ChatAssistant({ userId }: { userId: string }) {
@@ -33,38 +31,6 @@ export default function ChatAssistant({ userId }: { userId: string }) {
     }
   }, [messages]);
 
-const processToolCall = async (toolRequest: any) => {
-    const { name, input } = toolRequest;
-    let output;
-
-    try {
-        if (name === 'createTaskOrEvent') {
-            const { title, date, startTime, duration } = input;
-            const type = date ? 'event' : 'task';
-            await addClientScheduleItem({ userId, title, date, startTime, duration, type });
-            output = { success: true, message: `${type === 'event' ? 'Event' : 'Task'} "${title}" created successfully.` };
-        } 
-        else if (name === 'findTimeForTask') {
-            output = { success: true, message: "Use the 'Smart Scheduler' to find time for tasks." };
-        } else if (name === 'generateFullSchedule') {
-            output = { success: true, message: "Use the 'Schedule Generator' to create a full schedule." };
-        } else {
-            throw new Error(`Unknown tool: ${name}`);
-        }
-    } catch (e: any) {
-        output = { success: false, error: e.message };
-    }
-    
-    return {
-        role: 'tool' as const,
-        content: `Tool call ${name} executed.`, // For history, not display
-        toolResponse: {
-            name: name,
-            output: output,
-        },
-    };
-};
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -72,40 +38,38 @@ const processToolCall = async (toolRequest: any) => {
     setIsLoading(true);
 
     const userMessage: ChatMessage = { role: 'user', content: input };
-    const currentHistory = [...messages, userMessage].map(m => {
-        if (m.role === 'user') return { role: 'user', content: [{text: m.content}] };
-        if (m.role === 'model') return { role: 'model', content: [{text: m.content}] };
-        if (m.role === 'tool' && m.toolResponse) {
-             return { role: 'tool', content: [{ toolResponse: { toolCallId: m.toolCallId, name: m.toolResponse.name, output: m.toolResponse.output } }] };
-        }
-        return m;
-    });
-
     setMessages(prev => [...prev, userMessage]);
+    
+    const newHistory = [...messages, userMessage].map(
+      (msg): MessageData => ({
+        role: msg.role,
+        content: [{ text: msg.content }],
+      })
+    );
+    
     setInput('');
 
     try {
-      let response = await chatAssistantFlow({ userId, history: currentHistory });
+      let response = await chatAssistantFlow({ userId, history: newHistory });
 
-      while(response?.content?.some((part: any) => part.toolRequest)) {
-        const toolRequestPart = response.content.find((part: any) => part.toolRequest);
-        if (toolRequestPart) {
-            const toolRequest = toolRequestPart.toolRequest;
-            const toolResponseMessage = await processToolCall(toolRequest);
-            const toolCallId = toolRequest.toolCallId;
-
-            const newHistory = [...currentHistory, { role: 'tool' as const, content: [{ toolResponse: { toolCallId: toolCallId, name: toolRequest.name, output: toolResponseMessage.toolResponse.output } }] }];
-            response = await chatAssistantFlow({ userId, history: newHistory });
-        } else {
-            break; // Should not happen if loop condition is met, but for safety.
-        }
+      // Handle potential tool calls
+      const toolRequest = response.toolRequest;
+      if (toolRequest) {
+        // If there's a tool call, we need to make another call to the model with the tool response
+        const toolResponse = await chatAssistantFlow({
+          userId,
+          history: [...newHistory, response.message],
+        });
+        response = toolResponse;
       }
       
-      const textResponse = response?.text;
+      const textResponse = response.text;
 
       if (textResponse) {
           const finalModelMessage: ChatMessage = { role: 'model', content: textResponse };
           setMessages(prev => [...prev, finalModelMessage]);
+      } else {
+        throw new Error("Received an empty text response from the assistant.");
       }
 
     } catch (error: any) {
@@ -115,16 +79,11 @@ const processToolCall = async (toolRequest: any) => {
         title: 'Chat Error',
         description: error.message || 'Sorry, I encountered an issue. Please try again.',
       });
+      // Optionally remove the user's message if the request fails
+      setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const renderContent = (msg: ChatMessage) => {
-    if (msg.role === 'user' || (msg.role === 'model' && msg.content)) {
-        return <p>{msg.content}</p>;
-    }
-    return null;
   };
 
 
@@ -152,10 +111,6 @@ const processToolCall = async (toolRequest: any) => {
             <ScrollArea className="h-full p-4" ref={scrollAreaRef as any}>
               <div className="space-y-4">
                 {messages.map((message, index) => {
-                  const content = renderContent(message);
-                  // Don't render tool responses or messages without visible content
-                  if (message.role === 'tool' || !content) return null; 
-
                   return (
                     <div
                       key={index}
@@ -173,7 +128,7 @@ const processToolCall = async (toolRequest: any) => {
                             : 'bg-muted'
                         )}
                       >
-                       {content}
+                       <p>{message.content}</p>
                       </div>
                       {message.role === 'user' && <User className="flex-shrink-0" />}
                     </div>
