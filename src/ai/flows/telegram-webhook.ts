@@ -138,9 +138,9 @@ bot.on('callback_query', async (ctx) => {
 
     if ('data' in ctx.callbackQuery) {
         const data = ctx.callbackQuery.data;
-        const [action, userId, title, date, startTime, duration] = data.split('|');
+        const [action, title, date, startTime, duration] = data.split('|');
 
-        if (action === 'schedule' && appUser.id === userId && title && date && startTime && duration) {
+        if (action === 'schedule' && title && date && startTime && duration) {
             try {
                 const startDate = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
                 const endDate = addMinutes(startDate, Number(duration));
@@ -169,7 +169,7 @@ bot.on('callback_query', async (ctx) => {
             }
         } else {
             await ctx.answerCbQuery("Error: Invalid action.");
-            console.error("Invalid callback data:", data);
+            console.error("Invalid callback data received:", data);
         }
     }
 });
@@ -233,7 +233,7 @@ bot.on('text', async (ctx) => {
                      const buttons = suggestionsResult.suggestions.map((slot: SuggestedSlot) => (
                         Markup.button.callback(
                             `${format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'EEE, d MMM')} at ${slot.startTime}`,
-                            `schedule|${appUser.id}|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
+                            `schedule|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
                         )
                      ));
                      

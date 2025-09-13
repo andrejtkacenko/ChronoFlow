@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import type { ScheduleItem } from '@/lib/types';
@@ -13,23 +13,49 @@ import { iconMap } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
 
 const EventItem = ({ item }: { item: ScheduleItem }) => {
+    const { toast } = useToast();
     const Icon = iconMap[item.icon || 'Default'] || iconMap.Default;
     const isTask = item.type === 'task';
     const isCompleted = isTask && item.completed;
     
+    const handleCompletionChange = async (completed: boolean) => {
+        try {
+            const itemRef = doc(db, "scheduleItems", item.id);
+            await updateDoc(itemRef, { completed });
+            toast({
+                title: completed ? 'Task Completed!' : 'Task Marked as Incomplete',
+                description: `"${item.title}"`,
+            });
+        } catch (error) {
+            console.error("Error updating task status:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not update task status.',
+            });
+        }
+    };
+
     return (
-        <div className={cn("flex items-center gap-4 py-3", isCompleted && "opacity-50")}>
-             <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{backgroundColor: item.color ? item.color.replace(')', ', 0.1)').replace('hsl', 'hsla') : undefined}}>
+        <div className={cn("flex items-center gap-4 py-3", isCompleted && "opacity-60")}>
+             <div className="flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0" style={{backgroundColor: item.color ? item.color.replace(')', ', 0.1)').replace('hsl', 'hsla') : undefined}}>
                 <Icon className="size-5" style={{color: item.color ?? undefined}} />
             </div>
             <div className="flex-1">
                 <p className={cn("font-semibold", isCompleted && "line-through")}>{item.title}</p>
                 <p className="text-sm text-muted-foreground">{item.startTime} - {item.endTime}</p>
             </div>
-            {isTask && !isCompleted && (
-                <Button size="sm" variant="secondary">Mark as done</Button>
+            {isTask && (
+                <Checkbox 
+                    checked={item.completed} 
+                    onCheckedChange={handleCompletionChange}
+                    aria-label={`Mark ${item.title} as ${item.completed ? 'incomplete' : 'complete'}`}
+                />
             )}
         </div>
     )

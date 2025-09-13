@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
@@ -30,6 +30,7 @@ export default function ProfileSettings({ userId }: { userId: string }) {
   const [photoURL, setPhotoURL] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
   
   useEffect(() => {
       if (user) {
@@ -39,14 +40,17 @@ export default function ProfileSettings({ userId }: { userId: string }) {
       setIsLoading(false);
   }, [user]);
 
-  const handleTelegramLink = async (telegramResponse: any) => {
+  const handleTelegramLink = useCallback(async (telegramResponse: any) => {
+    setIsLinking(true);
     try {
       await linkTelegramAccount(telegramResponse);
       toast({ title: 'Telegram Linked', description: 'Your Telegram account has been successfully linked.' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Linking Failed', description: error.message });
+    } finally {
+      setIsLinking(false);
     }
-  };
+  }, [linkTelegramAccount, toast]);
 
   // Привязываем коллбэк к window для виджета Telegram
   useEffect(() => {
@@ -158,7 +162,12 @@ export default function ProfileSettings({ userId }: { userId: string }) {
                         </div>
                     </div>
                     <div className="flex justify-center">
-                        {!userData?.telegramId ? (
+                        {isLinking ? (
+                             <Button variant="outline" disabled>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Linking...
+                            </Button>
+                        ) : !userData?.telegramId ? (
                             <TelegramLoginButton />
                         ) : (
                            <Button variant="outline" disabled>Linked</Button>

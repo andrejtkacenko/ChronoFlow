@@ -31,6 +31,7 @@ import { Textarea } from './ui/textarea';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useAuth } from '@/hooks/use-auth';
 
 // --- Components ---
 

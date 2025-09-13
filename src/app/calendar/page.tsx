@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -152,7 +152,7 @@ export default function CalendarPage() {
   const eventsByDay = useMemo(() => {
     const eventsMap = new Map<string, ScheduleItem[]>();
     scheduleItems.forEach((item) => {
-      const dateString = item.date; // Date is already YYYY-MM-DD
+      const dateString = item.date;
       if (dateString) {
         if (!eventsMap.has(dateString)) {
             eventsMap.set(dateString, []);
@@ -163,10 +163,10 @@ export default function CalendarPage() {
     return eventsMap;
   }, [scheduleItems]);
 
-  const getEventsForDay = (day: Date) => {
+  const getEventsForDay = useCallback((day: Date) => {
     const dateString = format(day, 'yyyy-MM-dd');
     return eventsByDay.get(dateString) || [];
-  };
+  }, [eventsByDay]);
 
   if (authLoading || !user) {
     return (
