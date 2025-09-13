@@ -108,6 +108,8 @@ export default function ChatAssistant({ userId }: { userId: string }) {
           const finalModelMessage: ChatMessage = { role: 'model', content: response.content };
           setMessages(prev => [...prev, finalModelMessage]);
       } else if (!response) {
+          // This case handles a truly empty or invalid response, which is an error.
+          // A response with only a tool call is handled above and will not trigger this.
           throw new Error("Received an empty or invalid response from the assistant.");
       }
 
@@ -125,15 +127,17 @@ export default function ChatAssistant({ userId }: { userId: string }) {
 
   const renderContent = (msg: ChatMessage) => {
     if (!msg.content) return null;
+    // Check if the message is from the user OR if it's from the model AND contains a text part.
     if (msg.role === 'user' || (msg.role === 'model' && msg.content.some((p: any) => p.text))) {
         return msg.content.map((part: any, index: number) => {
             if (part.text) {
                 return <p key={index}>{part.text}</p>;
             }
-            return null; // Don't render tool calls/responses directly
+            return null; // Don't render tool calls/responses directly, only text parts.
         });
     }
-    return null; // Don't render tool-only messages
+    // Don't render tool responses or tool-only messages from the model
+    return null;
   };
 
 
