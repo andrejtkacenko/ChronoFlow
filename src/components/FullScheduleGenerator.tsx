@@ -18,8 +18,7 @@ import { db } from '@/lib/firebase';
 import type { ScheduleItem } from '@/lib/types';
 import { Loader2, Wand2, PlusCircle, CheckCircle2, Bed, Utensils, Save, Dumbbell, Brain, BookOpen, Timer, CalendarPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateSchedule } from '@/lib/actions';
-import { addScheduleItem } from '@/lib/client-actions';
+import { generateSchedule, saveScheduleTemplate } from '@/lib/actions';
 import type { GenerateFullScheduleOutput, SuggestedSlot } from '@/ai/flows/schema';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent } from './ui/card';
@@ -103,7 +102,7 @@ const GenerationProgress = memo(() => {
 });
 GenerationProgress.displayName = 'GenerationProgress';
 
-const SuggestionList = memo(({ title, items, type, onAddEvent }: { title: string; items: SuggestedSlot[]; type: 'task' | 'routine'; onAddEvent: (slot: SuggestedSlot, type: 'task' | 'routine') => void; }) => {
+const SuggestionList = memo(({ title, items, type }: { title: string; items: SuggestedSlot[]; type: 'task' | 'routine'; }) => {
   if (items.length === 0) return null;
   return (
     <div className="mb-4">
@@ -111,13 +110,12 @@ const SuggestionList = memo(({ title, items, type, onAddEvent }: { title: string
       <div className="space-y-2">
         {items.map((slot, index) => (
           <Card key={index} className="bg-secondary/50">
-            <CardContent className="p-3 flex items-center justify-between">
+            <CardContent className="p-3">
               <div>
                 <p className="font-semibold">{slot.task}</p>
                 <p className="text-sm text-muted-foreground">{new Date(slot.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                 <p className="text-sm text-muted-foreground">{slot.startTime} - {slot.endTime}</p>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => onAddEvent(slot, type)}><PlusCircle className="mr-2 h-4 w-4" />Add</Button>
             </CardContent>
           </Card>
         ))}
@@ -159,6 +157,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
   const [isSaving, setIsSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<GenerateFullScheduleOutput | null>(null);
   const [numberOfDays, setNumberOfDays] = useState(7);
+  const [templateName, setTemplateName] = useState('');
 
   const fetchUserPreferences = useCallback(async () => {
     if (!userId) return;
@@ -255,6 +254,7 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         setView('form');
       } else if (result) {
         setSuggestions(result);
+        setTemplateName(`My Schedule - ${format(new Date(), 'MMM d')}`)
         setView('results');
       } else {
         toast({ variant: 'destructive', title: "Generation Error", description: "The service did not return a result." });
@@ -267,61 +267,27 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
     }
   };
 
-  const addEventToCalendar = useCallback(async (slot: SuggestedSlot, type: 'task' | 'routine') => {
-      await addScheduleItem({
-          userId: userId,
-          title: slot.task,
-          date: slot.date,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          duration: slot.duration,
-          type: 'event',
-          icon: type === 'task' ? 'BrainCircuit' : 'Coffee',
-          color: type === 'task' ? 'hsl(var(--primary))' : 'hsl(204, 70%, 53%)',
-      });
-  }, [userId]);
-
-
-  const handleAddEvent = useCallback(async (slot: SuggestedSlot, type: 'task' | 'routine') => {
-    try {
-        await addEventToCalendar(slot, type);
-        toast({ title: 'Event Added', description: `"${slot.task}" was added to your calendar.` });
-        
-        setSuggestions(prev => {
-            if (!prev) return null;
-            if (type === 'task') return {...prev, tasks: prev.tasks.filter(s => s !== slot)};
-            return {...prev, routineEvents: prev.routineEvents.filter(s => s !== slot)};
-        });
-
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to add event to calendar.' });
+  const handleSaveAsTemplate = async () => {
+    if (!suggestions || !templateName.trim()) {
+        toast({ variant: 'destructive', title: 'Template Name Required', description: 'Please provide a name for your template.' });
+        return;
     }
-  }, [addEventToCalendar, toast]);
-
-  const handleSaveAllToCalendar = useCallback(async () => {
-    if (!suggestions) return;
     setIsSaving(true);
-
-    const allEvents = [...suggestions.tasks, ...suggestions.routineEvents];
-    const promises = allEvents.map(slot => 
-        addEventToCalendar(slot, suggestions.tasks.includes(slot) ? 'task' : 'routine')
-    );
-
-    try {
-        await Promise.all(promises);
-        toast({ title: 'Schedule Saved!', description: `${allEvents.length} events have been added to your calendar.` });
-        onOpenChange(false); // Close dialog on success
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Some events could not be saved.' });
-    } finally {
-        setIsSaving(false);
+    const result = await saveScheduleTemplate(templateName, suggestions, preferences, userId);
+    if (result.success) {
+        toast({ title: 'Template Saved!', description: `"${templateName}" has been saved.` });
+        onOpenChange(false);
+    } else {
+        toast({ variant: 'destructive', title: 'Error Saving Template', description: result.message });
     }
-  }, [suggestions, addEventToCalendar, toast, onOpenChange]);
+    setIsSaving(false);
+  }
   
   const resetState = useCallback(() => {
     setView('form');
     setSelectedTasks(new Set());
     setSuggestions(null);
+    setTemplateName('');
   }, []);
 
   const handleOpenChange = useCallback((isOpen: boolean) => {
@@ -339,14 +305,19 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         case 'results': return (
             <>
                 <div className="my-4 flex-1 flex flex-col min-h-0 h-[70vh]">
-                    <h3 className="font-semibold mb-4 text-lg">Your New Proposed Schedule</h3>
-                    <ScrollArea className="flex-1 pr-4">
+                    <div className="space-y-2 mb-4">
+                        <Label htmlFor="templateName" className="font-semibold">Template Name</Label>
+                        <Input id="templateName" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="e.g., My Perfect Week" />
+                    </div>
+
+                    <h3 className="font-semibold mb-2 text-lg">Your New Proposed Schedule</h3>
+                    <ScrollArea className="flex-1 pr-4 -mr-4">
                         {!suggestions || (suggestions.tasks.length === 0 && suggestions.routineEvents.length === 0) ? (
-                        <p className="text-sm text-muted-foreground text-center pt-10">All suggested events have been added to your calendar.</p>
+                            <p className="text-sm text-muted-foreground text-center pt-10">No events were generated for this schedule.</p>
                         ) : (
                         <>
-                            <SuggestionList title="Tasks" items={suggestions.tasks} type="task" onAddEvent={handleAddEvent} />
-                            <SuggestionList title="Routine" items={suggestions.routineEvents} type="routine" onAddEvent={handleAddEvent} />
+                            <SuggestionList title="Tasks" items={suggestions.tasks} type="task" />
+                            <SuggestionList title="Routine" items={suggestions.routineEvents} type="routine" />
                         </>
                         )}
                     </ScrollArea>
@@ -356,9 +327,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
                          <Button variant="ghost" onClick={resetState}>Start Over</Button>
                     </div>
                     <div>
-                        <Button onClick={handleSaveAllToCalendar} disabled={isSaving}>
-                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CalendarPlus className="mr-2 h-4 w-4"/>}
-                            Save to Calendar
+                        <Button onClick={handleSaveAsTemplate} disabled={isSaving || !templateName.trim()}>
+                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                            Save as Template
                         </Button>
                     </div>
                 </DialogFooter>
