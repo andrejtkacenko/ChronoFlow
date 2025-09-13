@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview A Telegram webhook handler to add tasks to the inbox or schedule events from natural language.
+ * @fileOverview A Telegram webhook handler powered by Telegraf to process user messages.
  */
 
 import { ai } from '@/ai/genkit';
@@ -11,20 +11,10 @@ import { db } from "@/lib/firebase";
 import { addMinutes, format, parse } from 'date-fns';
 import { suggestOptimalTimeSlots } from './suggest-optimal-time-slots';
 import type { SuggestedSlot } from './schema';
+import { Telegraf, Markup } from 'telegraf';
+import type { Update } from 'telegraf/types';
 
-// --- Schemas ---
-
-const ParsedTaskSchema = z.object({
-    isSchedulable: z.boolean().describe('Set to true if the text contains a specific date and time for an event, or implies a desire to schedule (e.g., "next week", "tomorrow"). Otherwise, set to false if it is just a task for the inbox.'),
-    hasSpecificTime: z.boolean().describe('Set to true only if a specific date and time (e.g., "tomorrow at 5pm", "on Aug 23 at 10:00") are mentioned. Set to false for vague requests like "next week".'),
-    title: z.string().describe("The concise title of the event or task."),
-    date: z.string().optional().describe("The date of the event in 'YYYY-MM-DD' format, if specified."),
-    startTime: z.string().optional().describe("The start time of the event in 'HH:mm' format, if specified."),
-    duration: z.number().optional().describe("The duration of the event in minutes, Default to 60 if not mentioned."),
-});
-
-// --- Helper Functions ---
-
+// --- Helper: Find User ---
 async function findUserByTelegramId(telegramId: number): Promise<{ id: string; email: string | null; } | null> {
     const usersQuery = query(collection(db, "users"), where("telegramId", "==", String(telegramId)), limit(1));
     const querySnapshot = await getDocs(usersQuery);
@@ -37,68 +27,18 @@ async function findUserByTelegramId(telegramId: number): Promise<{ id: string; e
             email: userData.email || null,
         };
     }
-    
     return null;
 }
 
-
-async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: any) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) {
-        console.error("TELEGRAM_BOT_TOKEN environment variable is not set. Cannot send message.");
-        return;
-    }
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const body: any = {
-        chat_id: chatId,
-        text: text,
-        parse_mode: 'Markdown',
-    };
-    if (replyMarkup) {
-        body.reply_markup = replyMarkup;
-    }
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body),
-        });
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Error sending message to Telegram:", errorData);
-        }
-    } catch (error) {
-        console.error("Failed to fetch Telegram API:", error);
-    }
-}
-
-async function answerCallbackQuery(callbackQueryId: string, text?: string) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return;
-    const url = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
-    });
-}
-
-async function editMessageText(chatId: number, messageId: number, text: string) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return;
-    const url = `https://api.telegram.org/bot${botToken}/editMessageText`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'Markdown' }),
-    });
-}
-
-
 // --- AI Prompt for Parsing ---
+const ParsedTaskSchema = z.object({
+    isSchedulable: z.boolean().describe('Set to true if the text contains a specific date and time for an event, or implies a desire to schedule (e.g., "next week", "tomorrow"). Otherwise, set to false if it is just a task for the inbox.'),
+    hasSpecificTime: z.boolean().describe('Set to true only if a specific date and time (e.g., "tomorrow at 5pm", "on Aug 23 at 10:00") are mentioned. Set to false for vague requests like "next week".'),
+    title: z.string().describe("The concise title of the event or task."),
+    date: z.string().optional().describe("The date of the event in 'YYYY-MM-DD' format, if specified."),
+    startTime: z.string().optional().describe("The start time of the event in 'HH:mm' format, if specified."),
+    duration: z.number().optional().describe("The duration of the event in minutes, Default to 60 if not mentioned."),
+});
 
 const parseTaskPrompt = ai.definePrompt({
     name: 'parseTelegramTaskPrompt',
@@ -118,89 +58,48 @@ const parseTaskPrompt = ai.definePrompt({
     Respond with the extracted information in the specified JSON format.`,
 });
 
-// --- Main Webhook Flow ---
+// --- Telegraf Bot Setup ---
 
-export const telegramWebhookFlow = ai.defineFlow(
-  {
-    name: 'telegramWebhookFlow',
-    inputSchema: z.any(),
-    outputSchema: z.void(),
-  },
-  async (payload) => {
-    console.log("Received payload:", JSON.stringify(payload, null, 2));
+const botToken = process.env.TELEGRAM_BOT_TOKEN;
+if (!botToken) {
+    console.error("TELEGRAM_BOT_TOKEN is not set. Bot will not work.");
+    throw new Error("TELEGRAM_BOT_TOKEN is not set.");
+}
+const bot = new Telegraf(botToken);
 
-    // --- Handle Callback Queries (Button Clicks) ---
-    if (payload.callback_query) {
-        const { id: callbackQueryId, from, message, data } = payload.callback_query;
-        const [action, userId, title, date, startTime, duration] = data.split('|');
-
-        if (action === 'schedule' && userId && title && date && startTime && duration) {
-             const appUser = await findUserByTelegramId(from.id);
-            if (!appUser || appUser.id !== userId) {
-                await answerCallbackQuery(callbackQueryId, "User authentication error.");
-                return;
-            }
-            
-            const startDate = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-            const endDate = addMinutes(startDate, Number(duration));
-
-            await addDoc(collection(db, "scheduleItems"), {
-                userId: appUser.id,
-                title,
-                type: 'event',
-                date: date,
-                startTime: startTime,
-                endTime: format(endDate, 'HH:mm'),
-                duration: Number(duration),
-                completed: false,
-                description: `Added from Telegram by ${from.first_name}`,
-                icon: 'PenSquare',
-                color: 'hsl(12, 76%, 61%)',
-                createdAt: serverTimestamp(),
-            });
-
-            await answerCallbackQuery(callbackQueryId);
-            await editMessageText(message.chat.id, message.message_id, `✅ Event scheduled: "${title}" on ${date} at ${startTime}.`);
-        } else {
-             await answerCallbackQuery(callbackQueryId, "Error processing request.");
-             console.error("Invalid callback data:", data);
-        }
-        return;
+// --- Bot Middleware for User Authentication ---
+bot.use(async (ctx, next) => {
+    const telegramId = ctx.from?.id;
+    if (!telegramId) {
+        return; // Ignore updates without a user ID
     }
     
-    // --- Handle Regular Messages ---
-    const message = payload.message;
-    if (!message || !message.text) {
-        console.log("Received a non-text message update, skipping.");
-        return;
-    }
+    const appUser = await findUserByTelegramId(telegramId);
 
-    const { text, from, chat } = message;
-
-    const appUser = await findUserByTelegramId(from.id);
-    
     if (!appUser) {
         const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://chrono-flow-rho.vercel.app';
         const webAppUrl = `${baseUrl}/`; 
-        await sendTelegramMessage(
-            chat.id, 
+        await ctx.reply(
             `Sorry, your Telegram account is not linked to a ChronoFlow profile. Please open the app to link your account.`,
-            {
-                 inline_keyboard: [
-                    [{ text: 'Open App & Login', web_app: { url: webAppUrl } }]
-                ]
-            }
+            Markup.inlineKeyboard([
+                Markup.button.webApp('Open App & Login', webAppUrl)
+            ])
         );
-        return;
+        return; // Stop processing if user is not linked
     }
 
-    if (text.startsWith('/start')) {
-        await sendTelegramMessage(chat.id, `Hi ${from.first_name}! Your account is linked. Just send me tasks like "buy milk" or "schedule a meeting for tomorrow at 2pm".`);
-        return;
-    }
+    // Attach user to context for other handlers to use
+    (ctx as any).appUser = appUser;
+    return next();
+});
 
-    if (text.startsWith('/help')) {
-        const helpMessage = `
+// --- Bot Command Handlers ---
+bot.start(async (ctx) => {
+    await ctx.reply(`Hi ${ctx.from.first_name}! Your account is linked. Just send me tasks like "buy milk" or "schedule a meeting for tomorrow at 2pm".`);
+});
+
+bot.help(async (ctx) => {
+    const helpMessage = `
 *Here's what I can do:*
 
 *Direct commands:*
@@ -229,10 +128,54 @@ _Examples:_
 • \`I need to get a haircut next week\`
 
 I'll parse your message and either add it directly to your calendar or suggest available time slots for you to choose from.
-        `;
-        await sendTelegramMessage(chat.id, helpMessage);
-        return;
+    `;
+    await ctx.replyWithMarkdown(helpMessage);
+});
+
+// --- Bot Action (Callback Query) Handler ---
+bot.on('callback_query', async (ctx) => {
+    const appUser = (ctx as any).appUser;
+    if (!appUser || !ctx.from) return;
+
+    if ('data' in ctx.callbackQuery) {
+        const data = ctx.callbackQuery.data;
+        const [action, userId, title, date, startTime, duration] = data.split('|');
+
+        if (action === 'schedule' && appUser.id === userId && title && date && startTime && duration) {
+            const startDate = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+            const endDate = addMinutes(startDate, Number(duration));
+
+            await addDoc(collection(db, "scheduleItems"), {
+                userId: appUser.id,
+                title,
+                type: 'event',
+                date: date,
+                startTime: startTime,
+                endTime: format(endDate, 'HH:mm'),
+                duration: Number(duration),
+                completed: false,
+                description: `Added from Telegram by ${ctx.from.first_name}`,
+                icon: 'PenSquare',
+                color: 'hsl(12, 76%, 61%)',
+                createdAt: serverTimestamp(),
+            });
+
+            await ctx.answerCbQuery();
+            await ctx.editMessageText(`✅ Event scheduled: "${title}" on ${date} at ${startTime}.`);
+        } else {
+            await ctx.answerCbQuery("Error processing request.");
+            console.error("Invalid callback data:", data);
+        }
     }
+});
+
+
+// --- Bot Text Message Handler ---
+bot.on('text', async (ctx) => {
+    const appUser = (ctx as any).appUser;
+    if (!appUser || !ctx.from) return;
+    
+    const { text } = ctx.message;
 
     try {
         const { output } = await parseTaskPrompt({ text, currentDate: format(new Date(), 'yyyy-MM-dd') });
@@ -256,12 +199,12 @@ I'll parse your message and either add it directly to your calendar or suggest a
                     endTime: format(endDate, 'HH:mm'),
                     duration: duration,
                     completed: false,
-                    description: `Added from Telegram by ${from.first_name}`,
+                    description: `Added from Telegram by ${ctx.from.first_name}`,
                     icon: 'PenSquare',
                     color: 'hsl(12, 76%, 61%)',
                     createdAt: serverTimestamp(),
                 });
-                await sendTelegramMessage(chat.id, `✅ Event scheduled: "${output.title}" on ${output.date} at ${output.startTime}.`);
+                await ctx.reply(`✅ Event scheduled: "${output.title}" on ${output.date} at ${output.startTime}.`);
             } else {
                 // It's a schedulable task without a specific time, so we suggest slots
                 const scheduleQuery = query(collection(db, "scheduleItems"), where("userId", "==", appUser.id), where("date", "!=", null));
@@ -277,14 +220,16 @@ I'll parse your message and either add it directly to your calendar or suggest a
                 });
 
                 if (suggestionsResult.suggestions.length > 0) {
-                     const inline_keyboard = suggestionsResult.suggestions.map((slot: SuggestedSlot) => ([{
-                        text: `${format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'EEE, d MMM')} at ${slot.startTime}`,
-                        callback_data: `schedule|${appUser.id}|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
-                     }]));
+                     const buttons = suggestionsResult.suggestions.map((slot: SuggestedSlot) => (
+                        Markup.button.callback(
+                            `${format(parse(slot.date, 'yyyy-MM-dd', new Date()), 'EEE, d MMM')} at ${slot.startTime}`,
+                            `schedule|${appUser.id}|${slot.task}|${slot.date}|${slot.startTime}|${slot.duration}`
+                        )
+                     ));
                      
-                     await sendTelegramMessage(chat.id, `I found a few open slots for "${output.title}". Which one works for you?`, { inline_keyboard });
+                     await ctx.reply(`I found a few open slots for "${output.title}". Which one works for you?`, Markup.inlineKeyboard(buttons, { columns: 1 }));
                 } else {
-                    await sendTelegramMessage(chat.id, `I couldn't find any open slots for "${output.title}". You can add it to your inbox instead.`);
+                    await ctx.reply(`I couldn't find any open slots for "${output.title}". You can add it to your inbox instead.`);
                     // Fallback to adding to inbox
                      await addDoc(collection(db, "scheduleItems"), {
                         userId: appUser.id,
@@ -295,10 +240,10 @@ I'll parse your message and either add it directly to your calendar or suggest a
                         startTime: null,
                         endTime: null,
                         duration: output.duration ?? 60,
-                        description: `Added from Telegram by ${from.first_name}`,
+                        description: `Added from Telegram by ${ctx.from.first_name}`,
                         createdAt: serverTimestamp(),
                     });
-                    await sendTelegramMessage(chat.id, `📥 Task added to your inbox: "${output.title}"`);
+                    await ctx.reply(`📥 Task added to your inbox: "${output.title}"`);
                 }
             }
         } else {
@@ -312,17 +257,32 @@ I'll parse your message and either add it directly to your calendar or suggest a
                 startTime: null,
                 endTime: null,
                 duration: output.duration ?? 60,
-                description: `Added from Telegram by ${from.first_name}`,
+                description: `Added from Telegram by ${ctx.from.first_name}`,
                 createdAt: serverTimestamp(),
             });
-            await sendTelegramMessage(chat.id, `📥 Task added to your inbox: "${output.title}"`);
+            await ctx.reply(`📥 Task added to your inbox: "${output.title}"`);
         }
         
     } catch (error) {
         console.error("Error processing message: ", error);
-        await sendTelegramMessage(chat.id, 'Sorry, an error occurred while processing your request.');
+        await ctx.reply('Sorry, an error occurred while processing your request.');
+    }
+});
+
+
+// --- Main Webhook Flow for Genkit ---
+// This function acts as the entry point for the webhook request.
+export const telegramWebhookFlow = ai.defineFlow(
+  {
+    name: 'telegramWebhookFlow',
+    inputSchema: z.any(),
+    outputSchema: z.void(),
+  },
+  async (payload: Update) => {
+    try {
+      await bot.handleUpdate(payload);
+    } catch (error) {
+      console.error('Error handling Telegraf update:', error);
     }
   }
 );
-
-    
