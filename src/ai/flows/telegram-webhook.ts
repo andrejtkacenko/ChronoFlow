@@ -46,18 +46,15 @@ const parseTaskPrompt = ai.definePrompt({
     input: { schema: z.object({ text: z.string(), currentDate: z.string() }) },
     output: { schema: ParsedTaskSchema },
     prompt: `You are an intelligent task parser. Your job is to analyze a text message and extract event details.
-    
-    The current date is: {{{currentDate}}}
-    
+    The current date is: {{{currentDate}}}.
     Analyze the following text: "{{{text}}}"
 
-    - First, determine if the text is a task-related request. If it's a greeting ("hi", "hello"), a question ("how are you?"), or random gibberish, set 'isUnderstandable' to false and all other fields to their defaults.
-    - If the text is a to-do item (e.g., "buy milk", "call mom"), extract the title. Set 'isUnderstandable' to true, 'isSchedulable' to false, and 'hasSpecificTime' to false.
-    - If the text contains a clear, specific date and time (e.g., "tomorrow at 5pm", "on friday at 10:00", "сегодня в 19:30"), extract the date, time, and duration. The duration defaults to 60 minutes if not specified. Set 'isUnderstandable' to true, 'isSchedulable' to true, and 'hasSpecificTime' to true.
-    - If the text implies a desire to schedule but lacks a specific time (e.g., "schedule a haircut for next week", "find time for a workout tomorrow"), extract the title and an approximate duration. Set 'isUnderstandable' to true, 'isSchedulable' to true, but 'hasSpecificTime' to false.
-    - The title should be the core action of the task/event.
+    - If the text is a greeting, question, or gibberish, set 'isUnderstandable' to false.
+    - If the text is a to-do item (e.g., "buy milk"), extract the title. Set 'isUnderstandable' to true and 'isSchedulable' to false.
+    - If the text contains a specific date and time (e.g., "meeting tomorrow at 5pm"), extract all details. Set 'isUnderstandable' to true, 'isSchedulable' to true, and 'hasSpecificTime' to true.
+    - If the text implies scheduling without a specific time (e.g., "schedule a haircut for next week"), extract the title. Set 'isUnderstandable' to true, 'isSchedulable' to true, and 'hasSpecificTime' to false.
     
-    Respond with the extracted information in the specified JSON format.`,
+    Respond in the specified JSON format.`,
 });
 
 // --- Telegraf Bot Setup ---
@@ -65,12 +62,12 @@ const parseTaskPrompt = ai.definePrompt({
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 if (!botToken) {
     console.error("TELEGRAM_BOT_TOKEN is not set. Bot will not work.");
-    // We don't throw here to allow the app to build, but the bot will be disabled.
+    throw new Error("TELEGRAM_BOT_TOKEN is not set.");
 }
-const bot = botToken ? new Telegraf(botToken) : null;
+const bot = new Telegraf(botToken);
 
 // --- Bot Middleware for User Authentication ---
-bot?.use(async (ctx, next) => {
+bot.use(async (ctx, next) => {
     const telegramId = ctx.from?.id;
     if (!telegramId) {
         return; // Ignore updates without a user ID
@@ -96,11 +93,11 @@ bot?.use(async (ctx, next) => {
 });
 
 // --- Bot Command Handlers ---
-bot?.start(async (ctx) => {
+bot.start(async (ctx) => {
     await ctx.reply(`Hi ${ctx.from.first_name}! Your account is linked. Just send me tasks like "buy milk" or "schedule a meeting for tomorrow at 2pm". For more examples, type /help.`);
 });
 
-bot?.help(async (ctx) => {
+bot.help(async (ctx) => {
     const helpMessage = `
 *Here's what I can do:*
 
@@ -135,7 +132,7 @@ I'll parse your message and either add it directly to your calendar or suggest a
 });
 
 // --- Bot Action (Callback Query) Handler ---
-bot?.on('callback_query', async (ctx) => {
+bot.on('callback_query', async (ctx) => {
     const appUser = (ctx as any).appUser;
     if (!appUser || !ctx.from) return;
 
@@ -179,7 +176,7 @@ bot?.on('callback_query', async (ctx) => {
 
 
 // --- Bot Text Message Handler ---
-bot?.on('text', async (ctx) => {
+bot.on('text', async (ctx) => {
     const appUser = (ctx as any).appUser;
     if (!appUser || !ctx.from) return;
     

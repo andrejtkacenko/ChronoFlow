@@ -28,13 +28,7 @@ const navLinks = [
     { href: '/calendar', label: 'Calendar' },
 ]
 
-interface HeaderProps {
-  showDateNav?: boolean;
-}
-
-export default function Header({ 
-  showDateNav = false,
-}: HeaderProps) {
+export default function Header() {
   const [isSmartSchedulerOpen, setSmartSchedulerOpen] = useState(false);
   const [isFullScheduleGeneratorOpen, setFullScheduleGeneratorOpen] = useState(false);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -68,12 +62,6 @@ export default function Header({
         </Link>
         
         <NavLinks />
-
-        {showDateNav && (
-            <div className="flex items-center gap-4 mx-auto">
-                {/* Date navigation removed as per user request */}
-            </div>
-        )}
 
         <div className="ml-auto flex items-center gap-2">
           <Button

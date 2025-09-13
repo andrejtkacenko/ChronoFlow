@@ -121,22 +121,20 @@ export default function CalendarPage() {
   useEffect(() => {
     if (user) {
       setLoading(true);
+      const firstDay = format(startDate, 'yyyy-MM-dd');
+      const lastDay = format(endDate, 'yyyy-MM-dd');
       
       const q = query(
         collection(db, "scheduleItems"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        where("date", ">=", firstDay),
+        where("date", "<=", lastDay)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const items: ScheduleItem[] = [];
-        const firstDay = format(startDate, 'yyyy-MM-dd');
-        const lastDay = format(endDate, 'yyyy-MM-dd');
-
         querySnapshot.forEach((doc) => {
-          const item = { id: doc.id, ...doc.data() } as ScheduleItem;
-          if (item.date && item.date >= firstDay && item.date <= lastDay) {
-             items.push(item);
-          }
+          items.push({ id: doc.id, ...doc.data() } as ScheduleItem);
         });
         setScheduleItems(items);
         setLoading(false);
