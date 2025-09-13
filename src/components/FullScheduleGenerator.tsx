@@ -243,9 +243,10 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
 
     try {
       const aiPrefs = { ...preferences };
-      if (!aiPrefs.sportEnabled) { aiPrefs.sportFrequency = 0; aiPrefs.sportDuration = 0; }
-      if (!aiPrefs.meditationEnabled) { aiPrefs.meditationFrequency = 0; aiPrefs.meditationDuration = 0; }
-      if (!aiPrefs.readingEnabled) { aiPrefs.readingFrequency = 0; aiPrefs.readingDuration = 0; }
+      // Ensure frequency is 0 if the habit is disabled
+      if (!aiPrefs.sportEnabled) { aiPrefs.sportFrequency = 0; }
+      if (!aiPrefs.meditationEnabled) { aiPrefs.meditationFrequency = 0; }
+      if (!aiPrefs.readingEnabled) { aiPrefs.readingFrequency = 0; }
       
       const result = await generateSchedule({ tasks: allTasks, preferences: aiPrefs as any, startDate: format(new Date(), 'yyyy-MM-dd'), numberOfDays }, userId);
 
@@ -259,9 +260,9 @@ export default function FullScheduleGenerator({ open, onOpenChange, userId }: { 
         toast({ variant: 'destructive', title: "Generation Error", description: "The service did not return a result." });
         setView('form');
       }
-    } catch (error) {
-      console.error(error);
-      toast({ variant: 'destructive', title: 'An unexpected error occurred' });
+    } catch (error: any) {
+      console.error("Error in handleGenerate:", error);
+      toast({ variant: 'destructive', title: 'An unexpected error occurred', description: error.message });
       setView('form');
     }
   };

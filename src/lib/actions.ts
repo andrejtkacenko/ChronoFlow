@@ -31,8 +31,8 @@ export async function getSuggestedTimeSlots(tasks: string, userId: string): Prom
       currentDate: format(new Date(), 'yyyy-MM-dd'),
     });
     return result.suggestions;
-  } catch (error) {
-    console.error("Error getting suggestions:", error);
+  } catch (error: any) {
+    console.error("Error getting suggestions:", error.message || error);
     return "Sorry, I couldn't find a time slot. There might be an issue with the scheduling service. Please try again later.";
   }
 }
@@ -58,8 +58,8 @@ export async function generateSchedule(input: Omit<GenerateFullScheduleInput, 's
       schedule: scheduleString,
     });
     return result;
-  } catch (error) {
-    console.error("Error generating schedule:", error);
+  } catch (error: any) {
+    console.error("Error generating schedule:", error.message || error);
     return "Sorry, I couldn't generate a schedule. There might be an issue with the planning service. Please try again later.";
   }
 }
@@ -128,8 +128,8 @@ export async function addScheduleItem(item: Omit<ScheduleItem, 'id' | 'createdAt
             createdAt: serverTimestamp(),
         });
         return docRef.id;
-    } catch (e) {
-        console.error("Error adding schedule item: ", e);
+    } catch (e: any) {
+        console.error("Error adding schedule item: ", e.message || e);
         throw new Error("Could not add schedule item to the database.");
     }
 }

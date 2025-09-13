@@ -36,8 +36,8 @@ export async function addScheduleItem(item: Omit<ScheduleItem, 'id' | 'createdAt
             createdAt: serverTimestamp(),
         });
         return docRef.id;
-    } catch (e) {
-        console.error("Error adding schedule item: ", e);
+    } catch (e: any) {
+        console.error("Error adding schedule item: ", e.message || e);
         throw new Error("Could not add schedule item to the database.");
     }
 }
@@ -52,8 +52,8 @@ export async function updateScheduleItem(id: string, item: Partial<Omit<Schedule
     try {
         const itemRef = doc(db, "scheduleItems", id);
         await updateDoc(itemRef, itemWithNulls);
-    } catch (e) {
-        console.error("Error updating schedule item: ", e);
+    } catch (e: any) {
+        console.error("Error updating schedule item: ", e.message || e);
         throw new Error("Could not update schedule item in the database.");
     }
 }
@@ -62,8 +62,8 @@ export async function deleteScheduleItem(id: string) {
     try {
         const itemRef = doc(db, "scheduleItems", id);
         await deleteDoc(itemRef);
-    } catch (e) {
-        console.error("Error deleting schedule item: ", e);
+    } catch (e: any) {
+        console.error("Error deleting schedule item: ", e.message || e);
         throw new Error("Could not delete schedule item from the database.");
     }
 }
@@ -91,8 +91,8 @@ export async function getSuggestedTimeSlotsForTask(task: ScheduleItem, userId: s
       currentDate: format(new Date(), 'yyyy-MM-dd')
     });
     return result.suggestions;
-  } catch (error) {
-    console.error("Error getting suggestions:", error);
+  } catch (error: any) {
+    console.error("Error getting suggestions:", error.message || error);
     return "Sorry, I couldn't find a time slot. There might be an issue with the scheduling service. Please try again later.";
   }
 }
