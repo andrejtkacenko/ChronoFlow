@@ -9,8 +9,8 @@ import { z } from 'zod';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { addMinutes, format, parse } from 'date-fns';
-import { suggestOptimalTimeSlots } from './suggest-optimal-time-slots';
-import type { SuggestedSlot } from './schema';
+import { suggestOptimalTimeSlots } from '@/ai/flows/suggest-optimal-time-slots';
+import type { SuggestedSlot } from '@/ai/flows/schema';
 import { Telegraf, Markup } from 'telegraf';
 import type { Update } from 'telegraf/types';
 
@@ -32,9 +32,10 @@ async function findUserByTelegramId(telegramId: number): Promise<{ id: string; e
 
 // --- AI Prompt for Parsing ---
 const ParsedTaskSchema = z.object({
+    isUnderstandable: z.boolean().describe('Set to true if the text is a task, event, or a request to schedule. Set to false for greetings, questions, or random text.'),
     isSchedulable: z.boolean().describe('Set to true if the text contains a specific date and time for an event, or implies a desire to schedule (e.g., "next week", "tomorrow"). Otherwise, set to false if it is just a task for the inbox.'),
     hasSpecificTime: z.boolean().describe('Set to true only if a specific date and time (e.g., "tomorrow at 5pm", "on Aug 23 at 10:00") are mentioned. Set to false for vague requests like "next week".'),
-    title: z.string().describe("The concise title of the event or task."),
+    title: z.string().describe("The concise title of the event or task. If not understandable, this can be an empty string."),
     date: z.string().optional().describe("The date of the event in 'YYYY-MM-DD' format, if specified."),
     startTime: z.string().optional().describe("The start time of the event in 'HH:mm' format, if specified."),
     duration: z.number().optional().describe("The duration of the event in minutes, Default to 60 if not mentioned."),
@@ -50,9 +51,10 @@ const parseTaskPrompt = ai.definePrompt({
     
     Analyze the following text: "{{{text}}}"
 
-    - If the text is just a to-do item (e.g., "buy milk", "call mom"), extract the title and set 'isSchedulable' to false and 'hasSpecificTime' to false.
-    - If the text contains a clear, specific date and time (e.g., "tomorrow at 5pm", "on friday at 10:00", "сегодня в 19:30"), extract the date, time, and duration. The duration defaults to 60 minutes if not specified. Set 'isSchedulable' to true and 'hasSpecificTime' to true.
-    - If the text implies a desire to schedule but lacks a specific time (e.g., "schedule a haircut for next week", "find time for a workout tomorrow"), extract the title and an approximate duration. Set 'isSchedulable' to true but 'hasSpecificTime' to false.
+    - First, determine if the text is a task-related request. If it's a greeting ("hi", "hello"), a question ("how are you?"), or random gibberish, set 'isUnderstandable' to false and all other fields to their defaults.
+    - If the text is a to-do item (e.g., "buy milk", "call mom"), extract the title. Set 'isUnderstandable' to true, 'isSchedulable' to false, and 'hasSpecificTime' to false.
+    - If the text contains a clear, specific date and time (e.g., "tomorrow at 5pm", "on friday at 10:00", "сегодня в 19:30"), extract the date, time, and duration. The duration defaults to 60 minutes if not specified. Set 'isUnderstandable' to true, 'isSchedulable' to true, and 'hasSpecificTime' to true.
+    - If the text implies a desire to schedule but lacks a specific time (e.g., "schedule a haircut for next week", "find time for a workout tomorrow"), extract the title and an approximate duration. Set 'isUnderstandable' to true, 'isSchedulable' to true, but 'hasSpecificTime' to false.
     - The title should be the core action of the task/event.
     
     Respond with the extracted information in the specified JSON format.`,
@@ -63,12 +65,12 @@ const parseTaskPrompt = ai.definePrompt({
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 if (!botToken) {
     console.error("TELEGRAM_BOT_TOKEN is not set. Bot will not work.");
-    throw new Error("TELEGRAM_BOT_TOKEN is not set.");
+    // We don't throw here to allow the app to build, but the bot will be disabled.
 }
-const bot = new Telegraf(botToken);
+const bot = botToken ? new Telegraf(botToken) : null;
 
 // --- Bot Middleware for User Authentication ---
-bot.use(async (ctx, next) => {
+bot?.use(async (ctx, next) => {
     const telegramId = ctx.from?.id;
     if (!telegramId) {
         return; // Ignore updates without a user ID
@@ -94,11 +96,11 @@ bot.use(async (ctx, next) => {
 });
 
 // --- Bot Command Handlers ---
-bot.start(async (ctx) => {
-    await ctx.reply(`Hi ${ctx.from.first_name}! Your account is linked. Just send me tasks like "buy milk" or "schedule a meeting for tomorrow at 2pm".`);
+bot?.start(async (ctx) => {
+    await ctx.reply(`Hi ${ctx.from.first_name}! Your account is linked. Just send me tasks like "buy milk" or "schedule a meeting for tomorrow at 2pm". For more examples, type /help.`);
 });
 
-bot.help(async (ctx) => {
+bot?.help(async (ctx) => {
     const helpMessage = `
 *Here's what I can do:*
 
@@ -133,7 +135,7 @@ I'll parse your message and either add it directly to your calendar or suggest a
 });
 
 // --- Bot Action (Callback Query) Handler ---
-bot.on('callback_query', async (ctx) => {
+bot?.on('callback_query', async (ctx) => {
     const appUser = (ctx as any).appUser;
     if (!appUser || !ctx.from) return;
 
@@ -142,28 +144,34 @@ bot.on('callback_query', async (ctx) => {
         const [action, userId, title, date, startTime, duration] = data.split('|');
 
         if (action === 'schedule' && appUser.id === userId && title && date && startTime && duration) {
-            const startDate = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-            const endDate = addMinutes(startDate, Number(duration));
+            try {
+                const startDate = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+                const endDate = addMinutes(startDate, Number(duration));
 
-            await addDoc(collection(db, "scheduleItems"), {
-                userId: appUser.id,
-                title,
-                type: 'event',
-                date: date,
-                startTime: startTime,
-                endTime: format(endDate, 'HH:mm'),
-                duration: Number(duration),
-                completed: false,
-                description: `Added from Telegram by ${ctx.from.first_name}`,
-                icon: 'PenSquare',
-                color: 'hsl(12, 76%, 61%)',
-                createdAt: serverTimestamp(),
-            });
+                await addDoc(collection(db, "scheduleItems"), {
+                    userId: appUser.id,
+                    title,
+                    type: 'event',
+                    date: date,
+                    startTime: startTime,
+                    endTime: format(endDate, 'HH:mm'),
+                    duration: Number(duration),
+                    completed: false,
+                    description: `Added from Telegram by ${ctx.from.first_name}`,
+                    icon: 'PenSquare',
+                    color: 'hsl(12, 76%, 61%)',
+                    createdAt: serverTimestamp(),
+                });
 
-            await ctx.answerCbQuery();
-            await ctx.editMessageText(`✅ Event scheduled: "${title}" on ${date} at ${startTime}.`);
+                await ctx.answerCbQuery('Event scheduled!');
+                await ctx.editMessageText(`✅ Event scheduled: "${title}" on ${date} at ${startTime}.`);
+            } catch (error) {
+                console.error("Error scheduling event from callback:", error);
+                await ctx.answerCbQuery("Error: Could not schedule event.");
+                await ctx.editMessageText(`❌ Failed to schedule "${title}". Please try again.`);
+            }
         } else {
-            await ctx.answerCbQuery("Error processing request.");
+            await ctx.answerCbQuery("Error: Invalid action.");
             console.error("Invalid callback data:", data);
         }
     }
@@ -171,7 +179,7 @@ bot.on('callback_query', async (ctx) => {
 
 
 // --- Bot Text Message Handler ---
-bot.on('text', async (ctx) => {
+bot?.on('text', async (ctx) => {
     const appUser = (ctx as any).appUser;
     if (!appUser || !ctx.from) return;
     
@@ -181,6 +189,11 @@ bot.on('text', async (ctx) => {
         const { output } = await parseTaskPrompt({ text, currentDate: format(new Date(), 'yyyy-MM-dd') });
         if (!output) {
             throw new Error("Failed to parse task from AI.");
+        }
+
+        if (!output.isUnderstandable) {
+            await ctx.reply("Sorry, I didn't understand that. I can help with tasks and events. For examples, type /help.");
+            return;
         }
 
         if (output.isSchedulable) {
@@ -229,7 +242,7 @@ bot.on('text', async (ctx) => {
                      
                      await ctx.reply(`I found a few open slots for "${output.title}". Which one works for you?`, Markup.inlineKeyboard(buttons, { columns: 1 }));
                 } else {
-                    await ctx.reply(`I couldn't find any open slots for "${output.title}". You can add it to your inbox instead.`);
+                    await ctx.reply(`I couldn't find any open slots for "${output.title}". I'll add it to your inbox instead.`);
                     // Fallback to adding to inbox
                      await addDoc(collection(db, "scheduleItems"), {
                         userId: appUser.id,
@@ -279,6 +292,10 @@ export const telegramWebhookFlow = ai.defineFlow(
     outputSchema: z.void(),
   },
   async (payload: Update) => {
+    if (!bot) {
+      console.error('Telegraf bot is not initialized. TELEGRAM_BOT_TOKEN might be missing.');
+      return;
+    }
     try {
       await bot.handleUpdate(payload);
     } catch (error) {
