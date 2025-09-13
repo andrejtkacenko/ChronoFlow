@@ -35,22 +35,21 @@ export default function ChatAssistant({ userId }: { userId: string }) {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    const userMessage: ChatMessage = { role: 'user', content: input };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInput('');
     setIsLoading(true);
 
-    const userMessage: ChatMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    
-    const newHistory = [...messages, userMessage].map(
-      (msg): MessageData => ({
-        role: msg.role,
-        content: [{ text: msg.content }],
-      })
-    );
-    
-    setInput('');
-
     try {
-      let response = await chatAssistantFlow({ userId, history: newHistory });
+      const history: MessageData[] = newMessages.map(
+        (msg): MessageData => ({
+          role: msg.role,
+          content: [{ text: msg.content }],
+        })
+      );
+
+      let response = await chatAssistantFlow({ userId, history });
 
       // Handle potential tool calls
       const toolRequest = response.toolRequest;
@@ -58,7 +57,7 @@ export default function ChatAssistant({ userId }: { userId: string }) {
         // If there's a tool call, we need to make another call to the model with the tool response
         const toolResponse = await chatAssistantFlow({
           userId,
-          history: [...newHistory, response.message],
+          history: [...history, response],
         });
         response = toolResponse;
       }
@@ -69,7 +68,9 @@ export default function ChatAssistant({ userId }: { userId: string }) {
           const finalModelMessage: ChatMessage = { role: 'model', content: textResponse };
           setMessages(prev => [...prev, finalModelMessage]);
       } else {
-        throw new Error("Received an empty text response from the assistant.");
+        // This can happen if a tool is called and the model has nothing further to say.
+        // It's not necessarily an error, so we just log it and don't show an error toast.
+        console.log("Assistant returned a response with no text content, likely after a tool call.");
       }
 
     } catch (error: any) {
@@ -79,7 +80,7 @@ export default function ChatAssistant({ userId }: { userId: string }) {
         title: 'Chat Error',
         description: error.message || 'Sorry, I encountered an issue. Please try again.',
       });
-      // Optionally remove the user's message if the request fails
+      // Revert the optimistic UI update on error
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { addScheduleItem as serverAddScheduleItem } from '@/lib/actions';
 import { format, addMinutes } from 'date-fns';
 import { getSuggestedTimeSlots } from '@/lib/actions';
+import type { MessageData } from 'genkit';
 
 // --- Tool Definitions ---
 
@@ -132,7 +133,7 @@ export const chatAssistantFlow = ai.defineFlow(
     name: 'chatAssistantFlow',
     inputSchema: z.object({
       userId: z.string(), 
-      history: z.array(z.any()), 
+      history: z.array(z.custom<MessageData>()), 
     }),
     outputSchema: z.any(),
   },
@@ -151,6 +152,6 @@ export const chatAssistantFlow = ai.defineFlow(
         },
     });
 
-    return result;
+    return result.message;
   }
 );
