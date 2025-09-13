@@ -1,4 +1,6 @@
 
+'use server';
+
 import {NextRequest, NextResponse} from 'next/server';
 import {telegramWebhookFlow} from '@/ai/flows/telegram-webhook';
 
