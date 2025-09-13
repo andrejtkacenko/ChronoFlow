@@ -123,14 +123,7 @@ export const chatAssistantFlow = ai.defineFlow(
     name: 'chatAssistantFlow',
     inputSchema: z.object({
       userId: z.string(), // We'll need the user ID for context
-      history: z.array(z.object({
-        role: z.enum(['user', 'model']),
-        content: z.array(z.object({
-            text: z.string().optional(),
-            toolRequest: z.any().optional(),
-            toolResponse: z.any().optional(),
-        }))
-      })),
+      history: z.array(z.any()), // Use z.any() for simplicity with tool requests/responses
     }),
     outputSchema: z.any(),
   },
@@ -141,7 +134,7 @@ export const chatAssistantFlow = ai.defineFlow(
 
     const result = await ai.generate({
         model: 'googleai/gemini-2.5-flash',
-        prompt: "You are ChronoFlow's AI assistant. Be helpful, friendly, and concise. Your goal is to help the user manage their schedule. Use the available tools to fulfill user requests. If a user asks a general question, provide a helpful answer.",
+        prompt: "You are ChronoFlow's AI assistant. Be helpful, friendly, and concise. Your goal is to help the user manage their schedule. Use the available tools to fulfill user requests. If a user asks a general question, provide a helpful answer. After a tool is successfully used, confirm it to the user in a natural, conversational way.",
         tools: [createTaskOrEventTool, findTimeForTaskTool, generateFullScheduleTool],
         history: history,
         config: {
