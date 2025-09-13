@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { addScheduleItem as serverAddScheduleItem, getSuggestedTimeSlots } from '@/lib/actions';
 import { format, addMinutes, parse } from 'date-fns';
 import type { MessageData } from 'genkit';
-import type { SuggestedSlot } from './schema';
+import { SuggestedSlotSchema } from './schema';
 
 // --- Tool Definitions ---
 
