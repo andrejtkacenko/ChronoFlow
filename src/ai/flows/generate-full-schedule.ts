@@ -48,7 +48,6 @@ Next, schedule the user's tasks from their inbox.
 - Place these tasks *within* the "Work Block" events created in Step 1.
 - NEVER schedule a task that conflicts with a routine event (like a meal or a meeting).
 - Distribute tasks evenly across the available work blocks. Do not cram them all into one day.
-- Consider the user's peak energy times ('energyPeaks') for demanding tasks.
 
 Place ALL tasks scheduled in this step into the 'tasks' array in the JSON output.
 
@@ -71,7 +70,6 @@ The user's schedule is currently empty.
 - Work Days: {{{preferences.workDays}}} (0=Sun, 1=Mon,...)
 - Work Hours: {{{preferences.workStartTime}}} - {{{preferences.workEndTime}}}
 - Sleep Range: {{{preferences.sleepTimeRange.[0]}}}:00 - {{{preferences.sleepTimeRange.[1]}}}:00
-- Energy Peaks: {{{preferences.energyPeaks}}}
 - Meals Per Day: {{{preferences.mealsPerDay}}}
 - Daily Rest Time: {{{preferences.restTime}}} hours
 - Sport: {{{preferences.sportFrequency}}}x/week, {{{preferences.sportDuration}}} min, at {{{preferences.sportPreferredTime}}}

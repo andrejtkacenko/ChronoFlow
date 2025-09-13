@@ -28,11 +28,6 @@ const PreferencesSchema = z.object({
   sleepTimeRange: z.array(z.number()).optional().describe('User preferred sleep time range [startHour, endHour].'),
   mealsPerDay: z.number().describe('How many meals are eaten per day.'),
   restTime: z.number().describe('How much rest time, besides sleep, is needed daily.'),
-  energyPeaks: z
-    .string()
-    .describe(
-      'When the user has peak energy levels (morning, afternoon, evening).'
-    ),
   workDays: z.array(z.number()).optional().describe('Which days of the week are work days (0=Sun, 1=Mon...).'),
   workStartTime: z.string().optional().describe('Work start time in HH:mm format.'),
   workEndTime: z.string().optional().describe('Work end time in HH:mm format.'),
@@ -49,10 +44,6 @@ const PreferencesSchema = z.object({
     .string()
     .optional()
     .describe('Other fixed commitments, habits, or routines with specific times or frequencies (e.g., "Team meeting every Mon at 10:00").'),
-  pastLearnings: z
-    .string()
-    .optional()
-    .describe('Past successes, lessons, or obstacles in planning (e.g., "Better not to set more than 2 large tasks per day", "Morning workouts give more energy.").'),
 });
 
 // Input schema for the generateFullSchedule flow
