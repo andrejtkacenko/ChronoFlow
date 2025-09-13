@@ -128,7 +128,7 @@ export default function Header() {
         )}
       </header>
       <SmartScheduler open={isSmartSchedulerOpen} onOpenChange={setSmartSchedulerOpen} />
-      {user && <FullScheduleGenerator open={isFullScheduleGeneratorOpen} onOpenChange={setFullScheduleGeneratorOpen} />}
+      {user && <FullScheduleGenerator open={isFullScheduleGeneratorOpen} onOpenChange={setFullScheduleGeneratorOpen} userId={user.uid} />}
     </>
   );
 }
